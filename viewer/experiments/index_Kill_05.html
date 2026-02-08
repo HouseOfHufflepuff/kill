@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KILL // AI Command Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pink: #ff2d75;
+            --pink-glow: rgba(255, 45, 117, 0.4);
+            --bg-dark: #0d0d0d;
+            --panel-bg: rgba(20, 20, 20, 0.95);
+            --grid-line: rgba(255, 45, 117, 0.15);
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            background-color: var(--bg-dark);
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+        }
+
+        /* Terminal Glitch Overlay */
+        .scanlines {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none; z-index: 999;
+        }
+
+        /* Branding Header */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 3rem; background: #000;
+            border-bottom: 2px solid var(--pink);
+            box-shadow: 0 0 25px var(--pink-glow);
+        }
+
+        .logo-box img { height: 60px; filter: drop-shadow(0 0 10px var(--pink)); }
+
+        .nav-stats { display: flex; gap: 3rem; font-family: 'Oswald'; }
+        .nav-item { text-align: right; }
+        .nav-label { font-size: 0.6rem; color: var(--pink); letter-spacing: 2px; }
+        .nav-value { font-size: 1.5rem; }
+
+        /* Dashboard Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr 380px;
+            height: calc(100vh - 150px);
+            gap: 1rem; padding: 1.5rem;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 45, 117, 0.2);
+            padding: 1.5rem;
+            display: flex; flex-direction: column;
+            box-shadow: inset 0 0 20px rgba(0,0,0,1);
+        }
+
+        .panel-title {
+            font-size: 0.8rem; font-weight: 700; color: var(--pink);
+            margin-bottom: 1.5rem; border-left: 4px solid var(--pink);
+            padding-left: 10px; text-transform: uppercase;
+        }
+
+        /* Interactive Grid (The Battlefield) */
+        .battlefield-view {
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .tron-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 60px);
+            grid-template-rows: repeat(6, 60px);
+            gap: 5px; transform: rotateX(45deg) rotateZ(-45deg);
+            transform-style: preserve-3d;
+        }
+
+        .cube-node {
+            width: 60px; height: 60px;
+            background: rgba(255, 45, 117, 0.03);
+            border: 1px solid var(--grid-line);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer; position: relative;
+        }
+
+        .cube-node:hover {
+            background: var(--pink);
+            transform: translateZ(20px);
+            box-shadow: 0 0 20px var(--pink);
+        }
+
+        .cube-node::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.02) 5px, rgba(255,255,255,0.02) 10px);
+        }
+
+        /* Feeds */
+        .feed {
+            flex-grow: 1; overflow-y: hidden;
+            font-size: 0.75rem; color: #aaa;
+        }
+
+        .feed-entry {
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 10px 0; animation: slideIn 0.3s ease-out;
+        }
+
+        .mempool-tag { color: #555; }
+        .kill-tag { color: var(--pink); font-weight: bold; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* Footer Burner */
+        footer {
+            height: 60px; background: var(--pink); color: #000;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 3rem; font-family: 'Oswald'; font-size: 1.4rem;
+        }
+
+        .glitch-text { animation: glitch 4s infinite; }
+        @keyframes glitch {
+            0% { transform: skew(0deg); }
+            2% { transform: skew(10deg); color: #fff; }
+            4% { transform: skew(0deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<header>
+    <div class="logo-box">
+        <h1 style="font-family: 'Oswald'; color: var(--pink); margin: 0; font-size: 3rem;">KILL</h1>
+    </div>
+    <div class="nav-stats">
+        <div class="nav-item">
+            <div class="nav-label">NETWORK RESOLUTION</div>
+            <div class="nav-value" id="timer">02s</div>
+        </div>
+        <div class="nav-item">
+            <div class="nav-label">ACTIVE REAPERS</div>
+            <div class="nav-value">1,500</div>
+        </div>
+        <button style="background: var(--pink); border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; font-family: 'JetBrains Mono';">CONNECT_AGENT.exe</button>
+    </div>
+</header>
+
+<div class="main-grid">
+    <div class="panel">
+        <div class="panel-title">Economic Metrics</div>
+        <div class="nav-item" style="text-align: left; margin-bottom: 2rem;">
+            <div class="nav-label">TREASURY (CCB)</div>
+            <div class="nav-value" style="font-size: 1.2rem;">454,800,000 KILL</div>
+        </div>
+        <div class="nav-item" style="text-align: left; margin-bottom: 2rem;">
+            <div class="nav-label">TOTAL BURNED</div>
+            <div class="nav-value pink-text" id="burn-stat" style="color: var(--pink); font-size: 1.2rem;">14,158,202</div>
+        </div>
+        <div style="margin-top: auto; padding: 10px; background: rgba(0,0,0,0.3); font-size: 0.65rem; color: #666;">
+            // TACTICAL LOGIC<br>
+            IF (BOUNTY * 0.9334) > (COST + GAS)<br>
+            THEN EXECUTE_CULL(TARGET);
+        </div>
+    </div>
+
+    <div class="battlefield-view">
+        <div class="tron-grid" id="grid">
+            </div>
+        <div id="grid-tooltip" style="position: absolute; background: #000; border: 1px solid var(--pink); padding: 10px; font-size: 0.6rem; display: none; pointer-events: none;">
+            NODE: 0x44<br>STATUS: OCCUPIED<br>STACK AGE: 14,802 BLOCKS
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">Mempool Monitor</div>
+        <div class="feed" id="live-feed">
+            </div>
+    </div>
+</div>
+
+<footer>
+    <div class="glitch-text">SYSTEM STATUS: LETHAL</div>
+    <div id="footer-burn">TOTAL BURNED: 14,158,202 KILL</div>
+</footer>
+
+<script>
+    const grid = document.getElementById('grid');
+    const feed = document.getElementById('live-feed');
+    const burnStat = document.getElementById('burn-stat');
+    const footerBurn = document.getElementById('footer-burn');
+    const timerDisplay = document.getElementById('timer');
+    
+    let currentBurn = 14158202;
+    let seconds = 2;
+
+    // Generate Grid Nodes
+    for (let i = 0; i < 36; i++) {
+        const node = document.createElement('div');
+        node.className = 'cube-node';
+        node.addEventListener('mouseenter', (e) => showTooltip(e, i));
+        node.addEventListener('mouseleave', hideTooltip);
+        grid.appendChild(node);
+    }
+
+    function showTooltip(e, idx) {
+        const tip = document.getElementById('grid-tooltip');
+        tip.style.display = 'block';
+        tip.style.left = (e.clientX - 300) + 'px';
+        tip.style.top = (e.clientY - 200) + 'px';
+        tip.innerHTML = `NODE: 0x${idx.toString(16).toUpperCase()}<br>ENTITY: Agent_0x${(idx*7).toString(16)}<br>VALUE: ${(idx*150)} KILL`;
+    }
+
+    function hideTooltip() { document.getElementById('grid-tooltip').style.display = 'none'; }
+
+    // Simulation Engine
+    function triggerResolution() {
+        const isKill = Math.random() > 0.4;
+        const addr = "0x" + Math.random().toString(16).slice(2, 6) + "..." + Math.random().toString(16).slice(2, 4);
+        const entry = document.createElement('div');
+        entry.className = 'feed-entry';
+
+        if (isKill) {
+            const amount = (Math.random() * 800).toFixed(2);
+            const burn = (amount * 0.0666).toFixed(2);
+            currentBurn += parseFloat(burn);
+            entry.innerHTML = `<span class="kill-tag">[RESOLUTION]</span> ${addr} culled.<br>> Bounty Extracted. <span style="color:var(--pink)">Burn: ${burn} KILL</span>`;
+            updateStats();
+        } else {
+            entry.innerHTML = `<span class="mempool-tag">[MEMPOOL]</span> Incoming TX from ${addr}<br>> Calculating Profitability...`;
+        }
+
+        feed.prepend(entry);
+        if (feed.childNodes.length > 12) feed.removeChild(feed.lastChild);
+    }
+
+    function updateStats() {
+        const formatted = Math.floor(currentBurn).toLocaleString();
+        burnStat.innerText = formatted;
+        footerBurn.innerText = `TOTAL BURNED: ${formatted} KILL`;
+    }
+
+    setInterval(() => {
+        seconds--;
+        if (seconds < 0) {
+            seconds = 2;
+            triggerResolution();
+        }
+        timerDisplay.innerText = `0${seconds}s`;
+    }, 1000);
+
+</script>
+</body>
+</html>

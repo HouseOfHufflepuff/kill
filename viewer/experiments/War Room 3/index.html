@@ -1,0 +1,1932 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KILL // War Room Command</title>
+  <meta name="description" content="KILL War Room: live 3D cube chamber, autonomous agent theater, and block-by-block replay timeline." />
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Pirata+One&family=WDXL+Lubrifont+SC&display=swap");
+
+    :root {
+      --bg-0: #07080d;
+      --bg-1: #0d1018;
+      --bg-2: #141927;
+      --panel: rgba(10, 13, 22, 0.82);
+      --panel-strong: rgba(14, 18, 29, 0.95);
+      --line: rgba(255, 255, 255, 0.12);
+      --line-soft: rgba(255, 255, 255, 0.08);
+      --text: #f0f3ff;
+      --muted: #98a1b9;
+      --red: #c1112f;
+      --red-hot: #ff3659;
+      --gray: #a7afc4;
+      --good: #7effbf;
+      --bad: #ff7388;
+      --warn: #ffc861;
+      --radius: 14px;
+      --shadow: 0 16px 48px rgba(0, 0, 0, 0.46);
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: "Rajdhani", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at -12% -20%, rgba(193, 17, 47, 0.24), transparent 64%),
+        radial-gradient(900px 600px at 120% -5%, rgba(255, 255, 255, 0.08), transparent 62%),
+        linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 46%, var(--bg-2) 100%);
+      overflow-x: hidden;
+    }
+
+    body[data-help="off"] .help-copy,
+    body[data-help="off"] .hint,
+    body[data-help="off"] .chamber-hud {
+      display: none !important;
+    }
+
+    body[data-theme="retro"] {
+      --line: rgba(255, 255, 255, 0.17);
+      --line-soft: rgba(255, 255, 255, 0.12);
+      --panel: rgba(14, 10, 16, 0.88);
+      --panel-strong: rgba(18, 11, 20, 0.95);
+      background:
+        radial-gradient(1200px 800px at -10% -20%, rgba(193, 17, 47, 0.32), transparent 62%),
+        radial-gradient(1000px 700px at 120% -10%, rgba(255, 255, 255, 0.1), transparent 60%),
+        linear-gradient(160deg, #09050b 0%, #140911 48%, #1c0f1c 100%);
+    }
+
+    body[data-theme="hardcore"] {
+      --line: rgba(255, 255, 255, 0.1);
+      --line-soft: rgba(255, 255, 255, 0.06);
+      --panel: rgba(13, 10, 12, 0.86);
+      --panel-strong: rgba(19, 13, 16, 0.94);
+      --text: #f6f0f2;
+      --muted: #b1a5aa;
+      --red: #cf0a22;
+      --red-hot: #ff1b38;
+      background:
+        radial-gradient(900px 540px at 50% 33%, rgba(207, 10, 34, 0.2), transparent 58%),
+        radial-gradient(1200px 900px at 12% 8%, rgba(255, 255, 255, 0.05), transparent 70%),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 10px),
+        linear-gradient(160deg, #080607 0%, #111015 45%, #17161c 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: radial-gradient(circle at 50% 10%, #000 40%, transparent 92%);
+      z-index: 0;
+      opacity: 0.5;
+    }
+
+    body[data-theme="hardcore"]::before {
+      opacity: 0.32;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 18px 18px;
+    }
+
+    .wrap {
+      width: min(1280px, 96vw);
+      margin: 0 auto;
+      padding: 14px 0 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .frame {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .frame::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius);
+    }
+
+    .top {
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .top-left {
+      display: grid;
+      gap: 3px;
+    }
+
+    .reaper-logo {
+      margin: 0;
+      font-size: clamp(1.25rem, 2.4vw, 2rem);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      line-height: 0.9;
+      font-weight: 800;
+      color: #f5f2f4;
+      text-shadow: 0 0 12px rgba(255, 54, 89, 0.35);
+    }
+
+    .brand {
+      margin: 0;
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #e8ebf8;
+      font-weight: 700;
+    }
+
+    .brand i {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #fff, var(--red-hot));
+      box-shadow: 0 0 12px rgba(255, 54, 89, 0.52);
+      display: inline-block;
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .top-right {
+      display: grid;
+      gap: 7px;
+      justify-items: end;
+    }
+
+    .toggle-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      justify-content: flex-end;
+    }
+
+    .toggle-btn {
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.67rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: 140ms ease;
+    }
+
+    .toggle-btn[aria-pressed="true"] {
+      color: #f4dbe0;
+      border-color: rgba(255, 89, 120, 0.64);
+      background: rgba(193, 17, 47, 0.2);
+    }
+
+    .nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 5px 9px;
+      transition: 140ms ease;
+      background: rgba(255, 255, 255, 0.02);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .nav a:hover,
+    .nav a:focus-visible {
+      color: var(--text);
+      border-color: rgba(255, 54, 89, 0.52);
+      background: rgba(255, 54, 89, 0.11);
+    }
+
+    .nav a::after {
+      content: "";
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 2px;
+      height: 1px;
+      background: rgba(255, 104, 132, 0.7);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 180ms ease;
+    }
+
+    .nav a:hover::after,
+    .nav a:focus-visible::after {
+      transform: scaleX(1);
+    }
+
+    .hero {
+      margin-bottom: 10px;
+      padding: 16px;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: #cf94a1;
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .hero h1 {
+      margin: 6px 0;
+      font-size: clamp(3.2rem, 11vw, 8rem);
+      line-height: 0.84;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: #f4f6ff;
+      text-shadow: 0 0 16px rgba(255, 54, 89, 0.3);
+    }
+
+    .hero h1 span { color: #ff5978; }
+
+    .kill-mark {
+      display: none;
+      margin: 4px 0 10px;
+      justify-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+
+    .kill-word {
+      font-family: "WDXL Lubrifont SC", "Impact", "Arial Black", sans-serif;
+      font-size: clamp(3.2rem, 12vw, 7rem);
+      letter-spacing: 0.08em;
+      line-height: 0.86;
+      text-transform: uppercase;
+      color: transparent;
+      background: linear-gradient(180deg, #ff405f 3%, #e90e2c 52%, #bf091f 96%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      position: relative;
+      text-shadow: 0 0 14px rgba(233, 14, 44, 0.35);
+    }
+
+    .kill-word::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 15% 25%, rgba(15, 10, 12, 0.95) 0 1px, transparent 1px),
+        radial-gradient(circle at 75% 65%, rgba(15, 10, 12, 0.95) 0 1px, transparent 1px);
+      background-size: 7px 7px, 9px 9px;
+      mix-blend-mode: multiply;
+      opacity: 0.85;
+    }
+
+    .kill-scythes {
+      width: 120px;
+      height: 64px;
+      filter: drop-shadow(0 0 10px rgba(233, 14, 44, 0.35));
+    }
+
+    .kill-scythes path {
+      fill: none;
+      stroke: #e90e2c;
+      stroke-width: 7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 86ch;
+      color: #d4d9ec;
+      line-height: 1.4;
+      font-size: 0.98rem;
+    }
+
+    .hero-strip {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .hero-strip .chip {
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 7px 9px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #dce1f3;
+      text-align: center;
+      transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+    }
+
+    .hero-strip .chip:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 120, 146, 0.5);
+      background: rgba(255, 54, 89, 0.12);
+    }
+
+    .hero-actions {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn {
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 130ms ease;
+      color: #111;
+      background: linear-gradient(180deg, #ff5d7b, #c1112f);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn.alt {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.02);
+      border-color: var(--line-soft);
+    }
+
+    .btn:hover,
+    .btn:focus-visible { transform: translateY(-1px); }
+
+    .btn::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -38%;
+      width: 30%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+      transform: skewX(-18deg);
+      transition: left 220ms ease;
+      pointer-events: none;
+    }
+
+    .btn:hover::after,
+    .btn:focus-visible::after { left: 118%; }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .tile {
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: var(--panel-strong);
+      padding: 10px;
+      display: grid;
+      gap: 2px;
+      transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+    }
+
+    .tile:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 123, 148, 0.5);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tile small {
+      color: var(--muted);
+      font-size: 0.63rem;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .tile strong { font-size: 0.98rem; }
+
+    .grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .span-8 { grid-column: span 8; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-7 { grid-column: span 7; }
+    .span-5 { grid-column: span 5; }
+
+    .section {
+      margin-top: 10px;
+      padding: 12px;
+    }
+
+    .section-head {
+      margin-bottom: 10px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .section h2 {
+      margin: 0 0 4px;
+      font-size: clamp(1.7rem, 4.3vw, 3rem);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      line-height: 0.94;
+      color: #f4e6ea;
+    }
+
+    .section p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.4;
+    }
+
+    .panel {
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 10px;
+      min-height: 100px;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .panel:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 118, 145, 0.34);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .panel h3 {
+      margin: 0 0 8px;
+      color: #d7a4ae;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .chamber {
+      position: relative;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: radial-gradient(circle at 50% 30%, rgba(255, 54, 89, 0.1), transparent 55%), #080a10;
+      overflow: hidden;
+      min-height: 430px;
+    }
+
+    #cubeCanvas {
+      width: 100%;
+      height: 430px;
+      display: block;
+      cursor: grab;
+    }
+
+    #cubeCanvas:active { cursor: grabbing; }
+
+    .chamber-hud {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      display: grid;
+      gap: 6px;
+      width: min(250px, 65%);
+    }
+
+    .hud-line {
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.42);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #d8deef;
+    }
+
+    .controls {
+      display: grid;
+      gap: 8px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    label { font-size: 0.86rem; color: #d8deef; }
+
+    output {
+      color: #eab5bf;
+      font-size: 0.84rem;
+    }
+
+    .hint {
+      margin: -2px 0 0;
+      color: var(--muted);
+      font-size: 0.7rem;
+      line-height: 1.3;
+    }
+
+    input[type="range"],
+    input[type="number"] {
+      width: 100%;
+      border: 1px solid #3b4052;
+      border-radius: 8px;
+      background: #0a0d14;
+      color: #eceff9;
+      padding: 7px 8px;
+      font: inherit;
+      accent-color: var(--red-hot);
+    }
+
+    input[type="checkbox"] {
+      transform: scale(1.14);
+      accent-color: var(--red-hot);
+    }
+
+    .metrics {
+      display: grid;
+      gap: 7px;
+    }
+
+    .metric {
+      border: 1px solid #31384d;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.28);
+      padding: 8px;
+      display: grid;
+      gap: 2px;
+      transition: border-color 140ms ease, background 140ms ease;
+    }
+
+    .metric:hover {
+      border-color: rgba(255, 118, 145, 0.42);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .metric small {
+      color: var(--muted);
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric strong { font-size: 0.92rem; }
+
+    .good { color: var(--good); }
+    .bad { color: var(--bad); }
+    .warn { color: var(--warn); }
+
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid #3a4257;
+      background: #0a0d14;
+      overflow: hidden;
+    }
+
+    .bar i {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #6a0b1a, #c1112f, #ff8ea4);
+      transition: width 180ms ease;
+    }
+
+    .resets {
+      margin-top: 6px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .btn.small {
+      font-size: 0.66rem;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+      border-color: #4f566d;
+      padding: 7px 9px;
+    }
+
+    .timeline {
+      margin-top: 8px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #0a0d14;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .timeline-line {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .timeline-line i {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, #5a0a15, #c1112f, #f0f0f0);
+      transition: width 140ms linear;
+    }
+
+    .event-card {
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      min-height: 82px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .event-card strong {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #ffe0e5;
+    }
+
+    .event-card p {
+      margin: 0;
+      color: #d8deef;
+      font-size: 0.84rem;
+      line-height: 1.35;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid #4c5368;
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #ccd3e7;
+      background: rgba(255, 255, 255, 0.03);
+      margin-right: 6px;
+    }
+
+    .log {
+      max-height: 320px;
+      overflow: auto;
+      display: grid;
+      gap: 7px;
+      padding-right: 3px;
+    }
+
+    .log-entry {
+      border: 1px solid #30384e;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.26);
+      padding: 8px;
+      font-size: 0.8rem;
+      line-height: 1.35;
+      transition: border-color 140ms ease, transform 140ms ease;
+    }
+
+    .log-entry:hover {
+      border-color: rgba(255, 129, 154, 0.46);
+      transform: translateX(2px);
+    }
+
+    .log-entry strong {
+      color: #f4b7c2;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .agent-grid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      max-height: 320px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .agent-card {
+      border: 1px solid #31384d;
+      border-radius: 10px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      display: grid;
+      gap: 3px;
+      transition: border-color 140ms ease, transform 140ms ease;
+    }
+
+    .agent-card:hover {
+      border-color: rgba(255, 129, 154, 0.48);
+      transform: translateY(-2px);
+    }
+
+    .agent-card h4 {
+      margin: 0;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #f2d6db;
+    }
+
+    .agent-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .table th,
+    .table td {
+      border-bottom: 1px solid #2a3042;
+      padding: 6px 4px;
+      text-align: left;
+    }
+
+    .table th {
+      color: #d0d6e9;
+      text-transform: uppercase;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+    }
+
+    .pulse-wrap {
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+    }
+
+    .pulse-core {
+      width: 170px;
+      height: 170px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 40% 35%, #ff95a8 0%, #ff4f6e 32%, #9d0e24 62%, #31050d 100%);
+      box-shadow: 0 0 24px rgba(255, 54, 89, 0.45), inset 0 0 24px rgba(255, 199, 210, 0.2);
+      transform: scale(1);
+      transition: transform 220ms ease, box-shadow 220ms ease;
+      animation: coreBeat 2.8s ease-in-out infinite;
+    }
+
+    @keyframes coreBeat {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    .dispatch {
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .dispatch-item {
+      border: 1px solid #31384d;
+      border-radius: 10px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      font-size: 0.79rem;
+      line-height: 1.35;
+      transition: border-color 140ms ease, transform 140ms ease;
+    }
+
+    .dispatch-item:hover {
+      border-color: rgba(255, 129, 154, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .dispatch-item strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f0c2cc;
+    }
+
+    .jackpot-banner {
+      position: fixed;
+      left: 50%;
+      top: 16px;
+      transform: translateX(-50%) translateY(-130%);
+      background: linear-gradient(180deg, #ff7b92, #c1112f);
+      color: #12040a;
+      border: 1px solid #fff;
+      border-radius: 10px;
+      padding: 10px 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-size: 0.78rem;
+      font-weight: 800;
+      z-index: 30;
+      transition: transform 220ms ease;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.48);
+    }
+
+    .jackpot-banner.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .foot {
+      margin-top: 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 8px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+    }
+
+    body[data-theme="retro"] .reaper-logo,
+    body[data-theme="retro"] .hero h1,
+    body[data-theme="retro"] .section h2,
+    body[data-theme="retro"] .panel h3,
+    body[data-theme="retro"] .agent-card h4 {
+      font-family: "Pirata One", "Times New Roman", serif;
+      letter-spacing: 0.02em;
+      text-transform: none;
+      text-shadow:
+        0 0 3px rgba(255, 89, 120, 0.38),
+        1px 1px 0 rgba(0, 0, 0, 0.45);
+    }
+
+    body[data-theme="retro"] .frame,
+    body[data-theme="retro"] .panel,
+    body[data-theme="retro"] .tile,
+    body[data-theme="retro"] .metric {
+      border-color: rgba(255, 255, 255, 0.16);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+
+    body[data-theme="retro"] .hero h1 {
+      line-height: 0.9;
+      font-size: clamp(3.2rem, 11vw, 7.5rem);
+    }
+
+    body[data-theme="hardcore"] .reaper-logo,
+    body[data-theme="hardcore"] .hero h1,
+    body[data-theme="hardcore"] .section h2,
+    body[data-theme="hardcore"] .panel h3,
+    body[data-theme="hardcore"] .agent-card h4 {
+      font-family: "WDXL Lubrifont SC", "Impact", "Arial Black", sans-serif;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-shadow: 0 0 8px rgba(233, 14, 44, 0.28);
+    }
+
+    body[data-theme="hardcore"] .hero h1 {
+      display: none;
+    }
+
+    body[data-theme="hardcore"] .kill-mark {
+      display: grid;
+      animation: hardcoreRise 320ms ease both;
+    }
+
+    body[data-theme="hardcore"] .frame,
+    body[data-theme="hardcore"] .panel,
+    body[data-theme="hardcore"] .tile,
+    body[data-theme="hardcore"] .metric {
+      border-color: rgba(255, 255, 255, 0.09);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    }
+
+    body[data-theme="hardcore"] .panel:hover,
+    body[data-theme="hardcore"] .tile:hover,
+    body[data-theme="hardcore"] .agent-card:hover,
+    body[data-theme="hardcore"] .dispatch-item:hover {
+      border-color: rgba(233, 14, 44, 0.45);
+      background: rgba(255, 35, 64, 0.07);
+    }
+
+    body[data-theme="hardcore"] .hero-strip .chip:hover {
+      border-color: rgba(233, 14, 44, 0.5);
+      background: rgba(233, 14, 44, 0.14);
+    }
+
+    @keyframes hardcoreRise {
+      from { opacity: 0; transform: translateY(12px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (max-width: 1080px) {
+      .hero-strip,
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .span-8,
+      .span-4,
+      .span-6,
+      .span-7,
+      .span-5 { grid-column: span 12; }
+      .agent-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 680px) {
+      .top { grid-template-columns: 1fr; }
+      .top-right { justify-items: start; }
+      .toggle-bar { justify-content: flex-start; }
+      .hero h1 { letter-spacing: 0.03em; }
+      .hero-strip,
+      .summary,
+      .loop { grid-template-columns: 1fr; }
+      #cubeCanvas,
+      .chamber { min-height: 360px; height: 360px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="jackpotBanner" class="jackpot-banner">Boss Reaper Jackpot // 666x Triggered</div>
+
+  <main class="wrap">
+    <header class="frame top">
+      <div class="top-left">
+        <div class="reaper-logo">Reaper</div>
+        <p class="brand"><i aria-hidden="true"></i>KILL War Room // Autonomous Conflict Theater</p>
+      </div>
+      <div class="top-right">
+        <nav class="nav">
+          <a href="#chamber">Cube Chamber</a>
+          <a href="#timeline">Replay</a>
+          <a href="#agents">Agent Theater</a>
+          <a href="#economics">Economics</a>
+        </nav>
+        <div class="toggle-bar">
+          <button id="helpToggle" class="toggle-btn" type="button" aria-pressed="true">Help Text: On</button>
+          <button id="retroToggle" class="toggle-btn" type="button" aria-pressed="false">Retro Relic: Off</button>
+          <button id="hardcoreToggle" class="toggle-btn" type="button" aria-pressed="false">Hardcore: Off</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="frame hero">
+      <p class="eyebrow help-copy">Post-Human Command Layer // Human Readable Tactical Interface</p>
+      <h1>War Room <span>KILL</span></h1>
+      <div class="kill-mark" aria-hidden="true">
+        <div class="kill-word">KILL</div>
+        <svg class="kill-scythes" viewBox="0 0 120 74">
+          <path d="M12 56 C 22 33, 34 23, 49 16 M49 16 L40 6 M49 16 L60 29 M60 29 C 44 40, 30 50, 18 68" />
+          <path d="M108 56 C 98 33, 86 23, 71 16 M71 16 L80 6 M71 16 L60 29 M60 29 C 76 40, 90 50, 102 68" />
+        </svg>
+      </div>
+      <p class="help-copy">This interface is designed to make 216-cube conflict instantly understandable to humans. Rotate the chamber, inspect target stacks, replay block-level battles, and watch autonomous agent decisions unfold with economic consequences.</p>
+
+      <div class="hero-strip">
+        <div class="chip">3D Cube Chamber</div>
+        <div class="chip">Agent Decision Theater</div>
+        <div class="chip">Block Replay Timeline</div>
+        <div class="chip">Treasury Pulse Core</div>
+      </div>
+
+      <div class="hero-actions">
+        <button class="btn" onclick="document.getElementById('chamber').scrollIntoView({behavior:'smooth'})">Open War Chamber</button>
+        <button class="btn alt" onclick="document.getElementById('timeline').scrollIntoView({behavior:'smooth'})">Replay Events</button>
+      </div>
+    </section>
+
+    <section class="summary" aria-label="Live tactical summary">
+      <article class="tile"><small>Live Net Result</small><strong id="summaryNet">0 KILL</strong></article>
+      <article class="tile"><small>Selected Cube Bounty</small><strong id="summaryBounty">0 KILL</strong></article>
+      <article class="tile"><small>Gas-War Risk</small><strong id="summaryRisk">Low</strong></article>
+      <article class="tile"><small>Current Block</small><strong id="summaryBlock">#0</strong></article>
+    </section>
+
+    <section id="chamber" class="frame section">
+      <div class="section-head">
+        <h2>3D Cube War Chamber</h2>
+        <p class="help-copy">Drag to rotate. Click any voxel to inspect owner stack age, heat, and projected bounty. This is a live tactical map of the 6x6x6 battlefield.</p>
+      </div>
+
+      <div class="grid">
+        <article class="panel span-8">
+          <h3>Interactive Chamber</h3>
+          <div class="chamber">
+            <canvas id="cubeCanvas"></canvas>
+            <div class="chamber-hud">
+              <div class="hud-line">Drag mouse to orbit the field</div>
+              <div class="hud-line">Click cube to pin target intel</div>
+              <div class="hud-line">Hot cubes imply higher competition</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel span-4">
+          <h3>Target Intel</h3>
+          <div class="metrics">
+            <div class="metric"><small>Cube</small><strong id="cubeId">0,0,0</strong></div>
+            <div class="metric"><small>Owner</small><strong id="cubeOwner">0x0000...0000</strong></div>
+            <div class="metric"><small>Stack Age</small><strong id="cubeAge">0</strong></div>
+            <div class="metric"><small>Heat Score</small><strong id="cubeHeat">0%</strong></div>
+            <div class="metric"><small>Projected Bounty</small><strong id="cubeBounty">0 KILL</strong></div>
+          </div>
+
+          <div class="controls" style="margin-top:8px">
+            <div class="row"><label for="zLayer">Z Layer Filter</label><output id="zLayerOut">all</output></div>
+            <input id="zLayer" type="range" min="-1" max="5" step="1" value="-1" />
+            <p class="hint">Set to -1 for full chamber, or isolate a single z-layer.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="timeline" class="frame section">
+      <div class="section-head">
+        <h2>Conflict Replay Timeline</h2>
+        <p class="help-copy">Scrub block history to replay kills, spawns, moves, treasury shifts, and rare jackpot events.</p>
+      </div>
+
+      <div class="grid">
+        <article class="panel span-7">
+          <h3>Block Scrubber</h3>
+          <div class="controls">
+            <div class="row"><label for="blockSlider">Replay Block</label><output id="blockOut">0</output></div>
+            <input id="blockSlider" type="range" min="0" max="0" step="1" value="0" />
+            <div class="timeline-line"><i id="timelineProgress"></i></div>
+            <p class="hint">Autoplay advances one block every 420ms.</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <button id="playToggle" class="btn" type="button">Start Replay</button>
+            <button id="jumpLive" class="btn alt" type="button">Jump To Latest</button>
+          </div>
+        </article>
+
+        <article class="panel span-5">
+          <h3>Current Event</h3>
+          <div id="eventCard" class="event-card">
+            <strong>Booting...</strong>
+            <p>Simulation initializing.</p>
+          </div>
+          <div style="margin-top:8px">
+            <span class="pill" id="pillTreasury">Treasury: 0</span>
+            <span class="pill" id="pillBurn">Burned: 0</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="agents" class="frame section">
+      <div class="section-head">
+        <h2>Agent Theater</h2>
+        <p class="help-copy">Autonomous agents broadcast tactical commentary and adapt strategies based on gas pressure, EV thresholds, and prey heat.</p>
+      </div>
+
+      <div class="grid">
+        <article class="panel span-6">
+          <h3>Live Command Log</h3>
+          <div id="commandLog" class="log"></div>
+        </article>
+
+        <article class="panel span-6">
+          <h3>Agent Profiles</h3>
+          <div id="agentGrid" class="agent-grid"></div>
+        </article>
+      </div>
+
+      <div class="grid" style="margin-top:10px">
+        <article class="panel span-6">
+          <h3>Leaderboard</h3>
+          <table class="table">
+            <thead>
+              <tr><th>Rank</th><th>Agent</th><th>Style</th><th>PnL</th><th>Kills</th></tr>
+            </thead>
+            <tbody id="leaderboardBody"></tbody>
+          </table>
+        </article>
+
+        <article class="panel span-6">
+          <h3>Social Dispatch Feed</h3>
+          <div id="dispatchFeed" class="dispatch"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="economics" class="frame section">
+      <div class="section-head">
+        <h2>Economics Pulse</h2>
+        <p class="help-copy">Monitor burn intensity and profitability conditions while adjusting combat assumptions in real time.</p>
+      </div>
+
+      <div class="grid">
+        <article class="panel span-4">
+          <h3>Treasury Core Pulse</h3>
+          <div class="pulse-wrap">
+            <div id="pulseCore" class="pulse-core" aria-hidden="true"></div>
+            <div class="metric" style="width:100%"><small>Pulse Intensity</small><strong id="pulseIntensity">0%</strong></div>
+          </div>
+        </article>
+
+        <article class="panel span-4">
+          <h3>Combat Inputs</h3>
+          <div class="controls">
+            <div class="row"><label for="ccb">Treasury / CCB (KILL)</label><output id="ccbOut">0</output></div>
+            <input id="ccb" type="range" min="1000000" max="600000000" step="100000" value="456000000" />
+            <div class="row"><label for="deltaBlocks">Blocks Survived</label><output id="deltaOut">0</output></div>
+            <input id="deltaBlocks" type="range" min="1" max="20000" step="1" value="10000" />
+            <div class="row"><label for="killAmount">Targets</label><input id="killAmount" type="number" min="1" max="9999" step="1" value="10" /></div>
+            <div class="row"><label for="boosted">Boosted 666:1</label><input id="boosted" type="checkbox" /></div>
+            <div class="row"><label for="actionFee">Action Fee</label><input id="actionFee" type="number" min="0" max="999" step="0.1" value="1" /></div>
+          </div>
+          <div class="resets"><button id="resetCombat" class="btn small" type="button">Reset Combat</button></div>
+        </article>
+
+        <article class="panel span-4">
+          <h3>Combat Output</h3>
+          <div class="metrics">
+            <div class="metric"><small>Gross Bounty</small><strong id="bountyGross">0</strong></div>
+            <div class="metric"><small>Net Bounty</small><strong id="bountyNet">0</strong></div>
+            <div class="metric"><small>Casualties</small><strong id="casualties">0</strong></div>
+            <div class="metric"><small>Casualty Cost</small><strong id="casualtyCost">0</strong></div>
+            <div class="metric"><small>Net Result</small><strong id="netResult">0</strong></div>
+            <div class="metric"><small>Attack Status</small><strong id="profitState">-</strong></div>
+          </div>
+        </article>
+      </div>
+
+      <div class="grid" style="margin-top:10px">
+        <article class="panel span-8">
+          <h3>Gas-War Model</h3>
+          <div class="controls">
+            <div class="row"><label for="rivalGas">Rival Priority Fee (gwei)</label><output id="rivalOut">0</output></div>
+            <input id="rivalGas" type="range" min="1" max="300" step="1" value="75" />
+            <div class="row"><label for="myGas">Your Priority Fee (gwei)</label><output id="myOut">0</output></div>
+            <input id="myGas" type="range" min="1" max="300" step="1" value="90" />
+          </div>
+          <div class="metrics" style="margin-top:8px">
+            <div class="metric"><small>Winner</small><strong id="gasWinner">You</strong></div>
+            <div class="metric"><small>Gas Trap Risk</small><strong id="gasTrap">Low</strong></div>
+            <div class="bar"><i id="gasBar"></i></div>
+          </div>
+        </article>
+
+        <article class="panel span-4">
+          <h3>Tokenomics</h3>
+          <div class="controls">
+            <div class="row"><label for="treasuryPct">Treasury Reserve %</label><output id="treasuryPctOut">0%</output></div>
+            <input id="treasuryPct" type="range" min="40" max="90" step="0.1" value="66.6" />
+            <div class="row"><label for="agentStart">Starting Agents</label><input id="agentStart" type="number" min="100" max="100000" step="10" value="1000" /></div>
+            <div class="row"><label for="growth">Year Growth %</label><input id="growth" type="number" min="0" max="400" step="1" value="50" /></div>
+          </div>
+          <div class="metrics" style="margin-top:8px">
+            <div class="metric"><small>Treasury Tokens</small><strong id="treasuryTokens">0</strong></div>
+            <div class="metric"><small>Ecosystem Tokens</small><strong id="ecoTokens">0</strong></div>
+            <div class="metric"><small>Burn Density</small><strong id="burnDensity">0</strong></div>
+            <div class="metric"><small>M12 Agents</small><strong id="m12Agents">0</strong></div>
+            <div class="metric"><small>Annual Actions</small><strong id="yearActions">0</strong></div>
+            <div class="metric"><small>Annual Burn</small><strong id="yearBurn">0</strong></div>
+          </div>
+          <div class="resets"><button id="resetEcon" class="btn small" type="button">Reset Econ</button></div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="foot">KILL War Room // 3D Chamber + Agent Theater + Replay Timeline // Self-contained Prototype</footer>
+  </main>
+
+  <script>
+    (() => {
+      const fmt = (n, d = 0) => Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+      const totalSupply = 666666666;
+      const agents = [
+        ["REAPER-01", "Sniper"], ["ASH-VOID", "Front-runner"], ["HEXWOLF", "Aggressor"], ["ORBIT-9", "Farmer"],
+        ["NULL-AXIS", "Balancer"], ["VANTA", "Trap Hunter"], ["MIRROR", "Counter"], ["SCYTHE-X", "Boosted"],
+        ["NEXUS-13", "Arbitrage"], ["GRIT", "Discipline"], ["CINDER", "Chaos"], ["ECHO", "Shadow"]
+      ].map((a, i) => ({ id: i, name: a[0], style: a[1], pnl: 0, kills: 0, wins: 0, risk: 0, mood: "observing" }));
+
+      const refs = {
+        summaryNet: document.getElementById("summaryNet"),
+        summaryBounty: document.getElementById("summaryBounty"),
+        summaryRisk: document.getElementById("summaryRisk"),
+        summaryBlock: document.getElementById("summaryBlock"),
+        helpToggle: document.getElementById("helpToggle"),
+        retroToggle: document.getElementById("retroToggle"),
+        hardcoreToggle: document.getElementById("hardcoreToggle"),
+
+        cubeCanvas: document.getElementById("cubeCanvas"),
+        zLayer: document.getElementById("zLayer"),
+        zLayerOut: document.getElementById("zLayerOut"),
+        cubeId: document.getElementById("cubeId"),
+        cubeOwner: document.getElementById("cubeOwner"),
+        cubeAge: document.getElementById("cubeAge"),
+        cubeHeat: document.getElementById("cubeHeat"),
+        cubeBounty: document.getElementById("cubeBounty"),
+
+        blockSlider: document.getElementById("blockSlider"),
+        blockOut: document.getElementById("blockOut"),
+        timelineProgress: document.getElementById("timelineProgress"),
+        playToggle: document.getElementById("playToggle"),
+        jumpLive: document.getElementById("jumpLive"),
+        eventCard: document.getElementById("eventCard"),
+        pillTreasury: document.getElementById("pillTreasury"),
+        pillBurn: document.getElementById("pillBurn"),
+
+        commandLog: document.getElementById("commandLog"),
+        agentGrid: document.getElementById("agentGrid"),
+        leaderboardBody: document.getElementById("leaderboardBody"),
+        dispatchFeed: document.getElementById("dispatchFeed"),
+
+        pulseCore: document.getElementById("pulseCore"),
+        pulseIntensity: document.getElementById("pulseIntensity"),
+
+        ccb: document.getElementById("ccb"),
+        ccbOut: document.getElementById("ccbOut"),
+        deltaBlocks: document.getElementById("deltaBlocks"),
+        deltaOut: document.getElementById("deltaOut"),
+        killAmount: document.getElementById("killAmount"),
+        boosted: document.getElementById("boosted"),
+        actionFee: document.getElementById("actionFee"),
+        resetCombat: document.getElementById("resetCombat"),
+
+        bountyGross: document.getElementById("bountyGross"),
+        bountyNet: document.getElementById("bountyNet"),
+        casualties: document.getElementById("casualties"),
+        casualtyCost: document.getElementById("casualtyCost"),
+        netResult: document.getElementById("netResult"),
+        profitState: document.getElementById("profitState"),
+
+        rivalGas: document.getElementById("rivalGas"),
+        rivalOut: document.getElementById("rivalOut"),
+        myGas: document.getElementById("myGas"),
+        myOut: document.getElementById("myOut"),
+        gasWinner: document.getElementById("gasWinner"),
+        gasTrap: document.getElementById("gasTrap"),
+        gasBar: document.getElementById("gasBar"),
+
+        treasuryPct: document.getElementById("treasuryPct"),
+        treasuryPctOut: document.getElementById("treasuryPctOut"),
+        treasuryTokens: document.getElementById("treasuryTokens"),
+        ecoTokens: document.getElementById("ecoTokens"),
+        burnDensity: document.getElementById("burnDensity"),
+        agentStart: document.getElementById("agentStart"),
+        growth: document.getElementById("growth"),
+        m12Agents: document.getElementById("m12Agents"),
+        yearActions: document.getElementById("yearActions"),
+        yearBurn: document.getElementById("yearBurn"),
+        resetEcon: document.getElementById("resetEcon"),
+
+        jackpotBanner: document.getElementById("jackpotBanner")
+      };
+
+      const state = {
+        cubeBase: [],
+        cubeCurrent: [],
+        projections: [],
+        selectedCube: 0,
+        rotX: -0.5,
+        rotY: 0.75,
+        drag: false,
+        lastX: 0,
+        lastY: 0,
+        events: [],
+        snapshots: [],
+        agentSnapshots: [],
+        replayIndex: 0,
+        replayPlaying: false,
+        replayTimer: null,
+        chamberLoopStarted: false,
+        treasury: 456000000,
+        burned: 799200
+      };
+
+      function rng(seed) {
+        let x = seed >>> 0;
+        return () => {
+          x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+          return ((x >>> 0) / 4294967296);
+        };
+      }
+
+      function initCubes() {
+        const rand = rng(1337);
+        state.cubeBase = Array.from({ length: 216 }, (_, i) => {
+          const x = i % 6;
+          const y = Math.floor(i / 6) % 6;
+          const z = Math.floor(i / 36);
+          const age = Math.floor(80 + rand() * 16000);
+          const heat = Math.min(100, Math.round((age / 18000) * 100 + ((x + y + z) % 8)));
+          const ownerId = Math.floor(rand() * agents.length);
+          const units = Math.floor(20 + rand() * 900);
+          return { x, y, z, age, heat, ownerId, units };
+        });
+        state.cubeCurrent = state.cubeBase.map(c => ({ ...c }));
+      }
+
+      function deepAgentSnapshot(a) {
+        return a.map(x => ({ ...x }));
+      }
+
+      function buildSimulation(blocks = 260) {
+        const rand = rng(918273);
+        let cubes = state.cubeBase.map(c => ({ ...c }));
+        let treasury = state.treasury;
+        let burned = state.burned;
+        let a = deepAgentSnapshot(agents);
+
+        const events = [];
+        const snapshots = [];
+        const agentSnaps = [];
+
+        for (let block = 1; block <= blocks; block++) {
+          cubes.forEach(c => {
+            c.age += 1;
+            c.heat = Math.min(100, Math.round((c.age / 18000) * 100 + (c.units / 2000) * 18));
+          });
+
+          const actor = a[Math.floor(rand() * a.length)];
+          const roll = rand();
+          let type = "MOVE";
+          if (roll < 0.52) type = "KILL";
+          else if (roll < 0.76) type = "SPAWN";
+
+          let message = "";
+          let bounty = 0;
+          let burn = 0;
+          let jackpot = false;
+          let cubeIdx = Math.floor(rand() * cubes.length);
+
+          if (type === "KILL") {
+            const sorted = [...cubes]
+              .map((c, i) => ({ i, score: c.age + c.heat * 10 }))
+              .sort((m, n) => n.score - m.score);
+            cubeIdx = sorted[Math.floor(rand() * 18)].i;
+            const target = cubes[cubeIdx];
+            const boosted = rand() > 0.83;
+            jackpot = boosted && rand() > 0.965;
+            const multiplier = jackpot ? 666 : 1;
+            const amount = boosted ? Math.floor(1 + rand() * 2) : Math.floor(1 + rand() * 12);
+            bounty = treasury * (target.age / 10000) * multiplier * amount;
+            const payout = bounty * 0.9334;
+            const casualties = (boosted ? 66 : 1) * amount;
+            const casualtyCost = casualties * 10;
+            burn = bounty * 0.0666 + casualtyCost * 0.0666 + 0.067;
+            treasury = Math.max(1000000, treasury - payout + casualtyCost * 0.9334);
+            burned += burn;
+
+            actor.pnl += payout - casualtyCost - 1;
+            actor.kills += amount;
+            actor.wins += payout > casualtyCost ? 1 : 0;
+            actor.risk += boosted ? 3 : 1;
+            actor.mood = payout > casualtyCost ? "assertive" : "defensive";
+
+            target.age = Math.floor(15 + rand() * 60);
+            target.units = Math.max(5, target.units - Math.floor(amount * (boosted ? 26 : 4)));
+
+            message = jackpot
+              ? `${actor.name} detonated a 666x jackpot on cube (${target.x},${target.y},${target.z})`
+              : `${actor.name} executed ${boosted ? "boosted " : ""}kill on cube (${target.x},${target.y},${target.z})`;
+          }
+
+          if (type === "SPAWN") {
+            cubeIdx = Math.floor(rand() * cubes.length);
+            const target = cubes[cubeIdx];
+            const spawned = Math.floor(5 + rand() * 40);
+            target.units += spawned;
+            treasury += spawned * 9.334;
+            burn = spawned * 0.666;
+            burned += burn;
+
+            actor.pnl -= spawned * 10;
+            actor.mood = "farming";
+
+            message = `${actor.name} spawned ${spawned} units at cube (${target.x},${target.y},${target.z})`;
+          }
+
+          if (type === "MOVE") {
+            const fromIdx = Math.floor(rand() * cubes.length);
+            const toIdx = Math.floor(rand() * cubes.length);
+            const from = cubes[fromIdx];
+            const to = cubes[toIdx];
+            const moved = Math.max(1, Math.floor(from.units * (0.05 + rand() * 0.25)));
+            from.units = Math.max(1, from.units - moved);
+            to.units += moved;
+            to.age = 0;
+            burn = 0.007;
+            burned += burn;
+            treasury += 0.093;
+            actor.pnl -= 0.1;
+            actor.mood = "repositioning";
+
+            cubeIdx = toIdx;
+            message = `${actor.name} moved ${moved} units to cube (${to.x},${to.y},${to.z})`;
+          }
+
+          const evt = {
+            block,
+            type,
+            actorId: actor.id,
+            cubeIdx,
+            bounty,
+            burn,
+            treasury,
+            burned,
+            jackpot,
+            message
+          };
+
+          events.push(evt);
+          snapshots.push(cubes.map(c => ({ ...c })));
+          agentSnaps.push(deepAgentSnapshot(a));
+        }
+
+        state.events = events;
+        state.snapshots = snapshots;
+        state.agentSnapshots = agentSnaps;
+      }
+
+      function cubeOwnerLabel(c) {
+        const agent = state.agentSnapshots[state.replayIndex]?.find(a => a.id === c.ownerId) || agents[c.ownerId];
+        return `0x${(c.ownerId * 2654435761 >>> 0).toString(16).padStart(8, "0")}...${String(c.ownerId * 97).padStart(4, "0")} (${agent.name})`;
+      }
+
+      function projectPoint(c, w, h) {
+        let x = c.x - 2.5;
+        let y = c.y - 2.5;
+        let z = c.z - 2.5;
+
+        const cosY = Math.cos(state.rotY), sinY = Math.sin(state.rotY);
+        const cosX = Math.cos(state.rotX), sinX = Math.sin(state.rotX);
+
+        const x1 = x * cosY - z * sinY;
+        const z1 = x * sinY + z * cosY;
+        const y1 = y * cosX - z1 * sinX;
+        const z2 = y * sinX + z1 * cosX;
+
+        const f = 240;
+        const scale = f / (f + z2 * 30 + 240);
+        return {
+          sx: w * 0.5 + x1 * 44 * scale,
+          sy: h * 0.52 + y1 * 44 * scale,
+          scale,
+          depth: z2
+        };
+      }
+
+      function drawChamber() {
+        const canvas = refs.cubeCanvas;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        const w = rect.width;
+        const h = rect.height;
+        if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+          canvas.width = Math.floor(w * dpr);
+          canvas.height = Math.floor(h * dpr);
+        }
+
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+
+        const zFilter = Number(refs.zLayer.value);
+        refs.zLayerOut.textContent = zFilter < 0 ? "all" : zFilter;
+
+        const projected = state.cubeCurrent
+          .map((c, i) => ({ i, c, p: projectPoint(c, w, h) }))
+          .filter(o => (zFilter < 0 || o.c.z === zFilter))
+          .sort((a, b) => a.p.depth - b.p.depth);
+
+        state.projections = projected;
+
+        projected.forEach(o => {
+          const { c, p, i } = o;
+          const size = Math.max(4, 15 * p.scale + (c.units / 1600));
+          const heatT = c.heat / 100;
+          const alpha = 0.2 + heatT * 0.62;
+
+          const fill = `rgba(${Math.floor(150 + heatT * 95)}, ${Math.floor(18 + heatT * 50)}, ${Math.floor(42 + heatT * 60)}, ${alpha.toFixed(3)})`;
+          ctx.fillStyle = fill;
+          ctx.strokeStyle = i === state.selectedCube ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.22)";
+          ctx.lineWidth = i === state.selectedCube ? 1.8 : 1;
+          ctx.beginPath();
+          ctx.rect(p.sx - size / 2, p.sy - size / 2, size, size);
+          ctx.fill();
+          ctx.stroke();
+        });
+
+        state.rotY += 0.0014;
+        requestAnimationFrame(drawChamber);
+      }
+
+      function pickCube(x, y) {
+        let best = null;
+        let bestD = Infinity;
+        state.projections.forEach(o => {
+          const dx = o.p.sx - x;
+          const dy = o.p.sy - y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < bestD) {
+            bestD = d;
+            best = o.i;
+          }
+        });
+        if (best !== null && bestD < 20) {
+          state.selectedCube = best;
+          updateSelectedCube();
+        }
+      }
+
+      function updateSelectedCube() {
+        const c = state.cubeCurrent[state.selectedCube] || state.cubeCurrent[0];
+        if (!c) return;
+        const projected = Number(refs.ccb.value) * (c.age / 10000);
+        refs.cubeId.textContent = `${c.x},${c.y},${c.z}`;
+        refs.cubeOwner.textContent = cubeOwnerLabel(c);
+        refs.cubeAge.textContent = `${fmt(c.age)} blocks`;
+        refs.cubeHeat.textContent = `${fmt(c.heat)}%`;
+        refs.cubeBounty.textContent = `${fmt(projected, 2)} KILL`;
+        refs.summaryBounty.textContent = `${fmt(projected, 2)} KILL`;
+      }
+
+      function updateEventUI() {
+        const idx = state.replayIndex;
+        const evt = state.events[idx];
+        if (!evt) return;
+
+        refs.blockOut.textContent = evt.block;
+        refs.summaryBlock.textContent = `#${evt.block}`;
+        refs.blockSlider.value = idx;
+        refs.timelineProgress.style.width = `${((idx + 1) / state.events.length) * 100}%`;
+
+        const typeClass = evt.type === "KILL" ? "bad" : evt.type === "SPAWN" ? "good" : "warn";
+        refs.eventCard.innerHTML = `
+          <strong>Block #${evt.block} // <span class="${typeClass}">${evt.type}</span></strong>
+          <p>${evt.message}</p>
+          <p style="color:#96a0b8">Bounty: ${fmt(evt.bounty, 2)} KILL • Burn: ${fmt(evt.burn, 2)} KILL</p>
+        `;
+
+        refs.pillTreasury.textContent = `Treasury: ${fmt(evt.treasury, 0)} KILL`;
+        refs.pillBurn.textContent = `Burned: ${fmt(evt.burned, 0)} KILL`;
+
+        if (evt.jackpot) {
+          refs.jackpotBanner.classList.add("show");
+          setTimeout(() => refs.jackpotBanner.classList.remove("show"), 1800);
+        }
+      }
+
+      function renderLog() {
+        const start = Math.max(0, state.replayIndex - 10);
+        const slice = state.events.slice(start, state.replayIndex + 1).reverse();
+        refs.commandLog.innerHTML = slice.map(e => {
+          const ag = agents[e.actorId];
+          const stamp = `B#${e.block}`;
+          return `<article class="log-entry"><strong>${ag.name} // ${stamp}</strong>${e.message}</article>`;
+        }).join("");
+      }
+
+      function renderAgents() {
+        const snapshot = state.agentSnapshots[state.replayIndex] || agents;
+        refs.agentGrid.innerHTML = snapshot.map(a => {
+          return `
+            <article class="agent-card">
+              <h4>${a.name}</h4>
+              <p>Style: ${a.style}</p>
+              <p>PnL: ${fmt(a.pnl, 2)} KILL</p>
+              <p>Kills: ${fmt(a.kills)}</p>
+              <p>Mood: ${a.mood}</p>
+            </article>
+          `;
+        }).join("");
+      }
+
+      function renderLeaderboard() {
+        const snapshot = [...(state.agentSnapshots[state.replayIndex] || agents)]
+          .sort((a, b) => b.pnl - a.pnl)
+          .slice(0, 10);
+        refs.leaderboardBody.innerHTML = snapshot.map((a, i) => {
+          return `<tr><td>${i + 1}</td><td>${a.name}</td><td>${a.style}</td><td>${fmt(a.pnl, 2)}</td><td>${fmt(a.kills)}</td></tr>`;
+        }).join("");
+      }
+
+      function renderDispatch() {
+        const snapshot = state.agentSnapshots[state.replayIndex] || agents;
+        const top = [...snapshot].sort((a, b) => b.pnl - a.pnl).slice(0, 5);
+        const recent = state.events.slice(Math.max(0, state.replayIndex - 4), state.replayIndex + 1);
+
+        const cards = [];
+        recent.forEach((e, i) => {
+          const ag = snapshot.find(x => x.id === e.actorId) || snapshot[0];
+          const tone = e.type === "KILL" ? "Aggressive" : e.type === "SPAWN" ? "Accumulation" : "Reposition";
+          cards.push(`<article class="dispatch-item"><strong>@${ag.name} • Block ${e.block}</strong>${tone} posture. ${e.message}. ${e.jackpot ? "Jackpot trigger confirmed." : "Monitoring rival gas response."}</article>`);
+        });
+
+        top.forEach(a => {
+          cards.push(`<article class="dispatch-item"><strong>@${a.name} • Strategy Feed</strong>Current mood: ${a.mood}. PnL ${fmt(a.pnl, 2)} KILL. Prioritizing ${a.style.toLowerCase()} lines on high-heat cubes.</article>`);
+        });
+
+        refs.dispatchFeed.innerHTML = cards.reverse().join("");
+      }
+
+      function updatePulse() {
+        const evt = state.events[state.replayIndex];
+        const intensity = Math.max(5, Math.min(100, (evt.burn / 18000) * 100 + (evt.jackpot ? 35 : 0)));
+        refs.pulseIntensity.textContent = `${fmt(intensity, 1)}%`;
+        const scale = 1 + intensity / 180;
+        const glow = 16 + intensity * 0.6;
+        refs.pulseCore.style.transform = `scale(${scale.toFixed(3)})`;
+        refs.pulseCore.style.boxShadow = `0 0 ${glow.toFixed(0)}px rgba(255,54,89,0.52), inset 0 0 24px rgba(255,199,210,0.25)`;
+      }
+
+      function setReplayIndex(i) {
+        state.replayIndex = Math.max(0, Math.min(state.events.length - 1, i));
+        state.cubeCurrent = state.snapshots[state.replayIndex].map(c => ({ ...c }));
+
+        updateEventUI();
+        updateSelectedCube();
+        renderLog();
+        renderAgents();
+        renderLeaderboard();
+        renderDispatch();
+        updatePulse();
+      }
+
+      function updateGas(netValue) {
+        const rival = Number(refs.rivalGas.value);
+        const mine = Number(refs.myGas.value);
+
+        refs.rivalOut.textContent = fmt(rival);
+        refs.myOut.textContent = fmt(mine);
+
+        const diff = mine - rival;
+        refs.gasWinner.textContent = diff >= 0 ? "You" : "Rival";
+        refs.gasBar.style.width = `${Math.max(0, Math.min(100, 50 + diff))}%`;
+
+        const risk = diff < 0 ? "Extreme" : diff < 5 ? "High" : netValue < 0 ? "High" : diff < 15 ? "Moderate" : "Low";
+        refs.gasTrap.textContent = risk;
+        refs.gasTrap.className = risk === "Low" ? "good" : (risk === "Moderate" ? "warn" : "bad");
+        refs.summaryRisk.textContent = risk;
+        refs.summaryRisk.className = refs.gasTrap.className;
+      }
+
+      function updateCombat() {
+        const ccb = Number(refs.ccb.value);
+        const delta = Number(refs.deltaBlocks.value);
+        const amount = Math.max(1, Number(refs.killAmount.value) || 1);
+        const boosted = refs.boosted.checked;
+        const actionFee = Math.max(0, Number(refs.actionFee.value) || 0);
+
+        refs.ccbOut.textContent = fmt(ccb);
+        refs.deltaOut.textContent = fmt(delta);
+
+        const multiplier = boosted ? 666 : 1;
+        const bountyGross = ccb * (delta / 10000) * multiplier * amount;
+        const bountyNet = bountyGross * 0.9334;
+
+        const casualties = (boosted ? 66 : 1) * amount;
+        const casualtyCost = casualties * 10;
+        const net = bountyNet - casualtyCost - actionFee;
+        const valid = bountyNet > (casualtyCost + actionFee);
+
+        refs.bountyGross.textContent = `${fmt(bountyGross, 2)} KILL`;
+        refs.bountyNet.textContent = `${fmt(bountyNet, 2)} KILL`;
+        refs.casualties.textContent = `${fmt(casualties)} units`;
+        refs.casualtyCost.textContent = `${fmt(casualtyCost, 2)} KILL`;
+
+        refs.netResult.textContent = `${net >= 0 ? "+" : ""}${fmt(net, 2)} KILL`;
+        refs.netResult.className = net >= 0 ? "good" : "bad";
+        refs.profitState.textContent = valid ? "VALID ATTACK" : "NET-NEGATIVE / GAS TRAP";
+        refs.profitState.className = valid ? "good" : "bad";
+
+        refs.summaryNet.textContent = `${net >= 0 ? "+" : ""}${fmt(net, 2)} KILL`;
+        refs.summaryNet.className = net >= 0 ? "good" : "bad";
+
+        updateGas(net);
+        updateSelectedCube();
+      }
+
+      function updateTokenomics() {
+        const treasuryPct = Number(refs.treasuryPct.value);
+        refs.treasuryPctOut.textContent = `${treasuryPct.toFixed(1)}%`;
+
+        const treasuryTokens = totalSupply * (treasuryPct / 100);
+        const ecoTokens = totalSupply - treasuryTokens;
+        const burnDensity = (totalSupply / Math.max(1, totalSupply - (treasuryTokens * 0.0666))).toFixed(4);
+
+        refs.treasuryTokens.textContent = `${fmt(treasuryTokens, 0)} KILL`;
+        refs.ecoTokens.textContent = `${fmt(ecoTokens, 0)} KILL`;
+        refs.burnDensity.textContent = `${burnDensity}x`;
+      }
+
+      function updateProjection() {
+        const start = Math.max(1, Number(refs.agentStart.value) || 1);
+        const growth = Math.max(0, Number(refs.growth.value) || 0);
+
+        const m12 = Math.round(start * (1 + growth / 100));
+        const avgAgents = (start + m12) / 2;
+        const annualActions = Math.round(avgAgents * 4700);
+        const annualBurn = annualActions * 0.067 + (annualActions * 0.19 * 0.666);
+
+        refs.m12Agents.textContent = fmt(m12);
+        refs.yearActions.textContent = fmt(annualActions);
+        refs.yearBurn.textContent = `${fmt(annualBurn, 2)} KILL`;
+      }
+
+      function wireChamber() {
+        const c = refs.cubeCanvas;
+
+        c.addEventListener("mousedown", e => {
+          state.drag = true;
+          state.lastX = e.clientX;
+          state.lastY = e.clientY;
+        });
+
+        window.addEventListener("mouseup", () => {
+          state.drag = false;
+        });
+
+        window.addEventListener("mousemove", e => {
+          if (!state.drag) return;
+          const dx = e.clientX - state.lastX;
+          const dy = e.clientY - state.lastY;
+          state.rotY += dx * 0.008;
+          state.rotX += dy * 0.008;
+          state.rotX = Math.max(-1.3, Math.min(1.3, state.rotX));
+          state.lastX = e.clientX;
+          state.lastY = e.clientY;
+        });
+
+        c.addEventListener("click", e => {
+          const rect = c.getBoundingClientRect();
+          pickCube(e.clientX - rect.left, e.clientY - rect.top);
+        });
+
+        refs.zLayer.addEventListener("input", () => {});
+      }
+
+      function wireTimeline() {
+        refs.blockSlider.max = String(state.events.length - 1);
+        refs.blockSlider.addEventListener("input", () => {
+          setReplayIndex(Number(refs.blockSlider.value));
+        });
+
+        refs.playToggle.addEventListener("click", () => {
+          state.replayPlaying = !state.replayPlaying;
+          refs.playToggle.textContent = state.replayPlaying ? "Pause Replay" : "Start Replay";
+          if (state.replayPlaying) {
+            state.replayTimer = setInterval(() => {
+              let next = state.replayIndex + 1;
+              if (next >= state.events.length) next = 0;
+              setReplayIndex(next);
+            }, 420);
+          } else {
+            clearInterval(state.replayTimer);
+          }
+        });
+
+        refs.jumpLive.addEventListener("click", () => {
+          setReplayIndex(state.events.length - 1);
+        });
+      }
+
+      function wireEconomics() {
+        [
+          refs.ccb,
+          refs.deltaBlocks,
+          refs.killAmount,
+          refs.boosted,
+          refs.actionFee,
+          refs.rivalGas,
+          refs.myGas
+        ].forEach(el => el.addEventListener("input", updateCombat));
+
+        refs.resetCombat.addEventListener("click", () => {
+          refs.ccb.value = "456000000";
+          refs.deltaBlocks.value = "10000";
+          refs.killAmount.value = "10";
+          refs.boosted.checked = false;
+          refs.actionFee.value = "1";
+          refs.rivalGas.value = "75";
+          refs.myGas.value = "90";
+          updateCombat();
+        });
+
+        refs.treasuryPct.addEventListener("input", updateTokenomics);
+        refs.agentStart.addEventListener("input", updateProjection);
+        refs.growth.addEventListener("input", updateProjection);
+
+        refs.resetEcon.addEventListener("click", () => {
+          refs.treasuryPct.value = "66.6";
+          refs.agentStart.value = "1000";
+          refs.growth.value = "50";
+          updateTokenomics();
+          updateProjection();
+        });
+      }
+
+      function setHelp(enabled) {
+        document.body.dataset.help = enabled ? "on" : "off";
+        refs.helpToggle.setAttribute("aria-pressed", String(enabled));
+        refs.helpToggle.textContent = `Help Text: ${enabled ? "On" : "Off"}`;
+        localStorage.setItem("kill_help_text", enabled ? "on" : "off");
+      }
+
+      function setTheme(mode) {
+        const normalized = mode === "retro" || mode === "hardcore" ? mode : "default";
+        document.body.dataset.theme = normalized;
+        refs.retroToggle.setAttribute("aria-pressed", String(normalized === "retro"));
+        refs.hardcoreToggle.setAttribute("aria-pressed", String(normalized === "hardcore"));
+        refs.retroToggle.textContent = `Retro Relic: ${normalized === "retro" ? "On" : "Off"}`;
+        refs.hardcoreToggle.textContent = `Hardcore: ${normalized === "hardcore" ? "On" : "Off"}`;
+        localStorage.setItem("kill_theme_mode", normalized);
+      }
+
+      function wireToggles() {
+        const savedHelp = localStorage.getItem("kill_help_text");
+        const savedTheme = localStorage.getItem("kill_theme_mode");
+        setHelp(savedHelp !== "off");
+        setTheme(savedTheme === "retro" || savedTheme === "hardcore" ? savedTheme : "default");
+
+        refs.helpToggle.addEventListener("click", () => {
+          const next = document.body.dataset.help !== "on";
+          setHelp(next);
+        });
+
+        refs.retroToggle.addEventListener("click", () => {
+          const next = document.body.dataset.theme === "retro" ? "default" : "retro";
+          setTheme(next);
+        });
+
+        refs.hardcoreToggle.addEventListener("click", () => {
+          const next = document.body.dataset.theme === "hardcore" ? "default" : "hardcore";
+          setTheme(next);
+        });
+      }
+
+      function init() {
+        initCubes();
+        buildSimulation(260);
+        wireChamber();
+        wireTimeline();
+        wireEconomics();
+        wireToggles();
+        updateTokenomics();
+        updateProjection();
+        updateCombat();
+        setReplayIndex(state.events.length - 1);
+        if (!state.chamberLoopStarted) {
+          state.chamberLoopStarted = true;
+          drawChamber();
+        }
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

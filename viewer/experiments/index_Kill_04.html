@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KILL // AI COMMAND DASHBOARD</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pink: #ff2d75;
+            --pink-glow: rgba(255, 45, 117, 0.6);
+            --dark: #0a0a0a;
+            --panel: rgba(15, 15, 15, 0.9);
+            --terminal-green: #00ff41;
+        }
+
+        /* Glitch Effect Definitions */
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        @keyframes scanline {
+            0% { bottom: 100%; }
+            100% { bottom: 0%; }
+        }
+
+        body {
+            background-color: var(--dark);
+            color: #eee;
+            font-family: 'JetBrains Mono', monospace;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* CRT Overlay Effect */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 1000;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* Header Branding */
+        header {
+            padding: 20px 40px;
+            background: #000;
+            border-bottom: 1px solid var(--pink);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 0 30px rgba(255, 45, 117, 0.2);
+        }
+
+        .logo-group { display: flex; align-items: center; gap: 20px; }
+        .logo-group h1 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 3.5rem;
+            color: var(--pink);
+            margin: 0;
+            letter-spacing: -2px;
+            animation: glitch 5s infinite;
+        }
+
+        .status-header {
+            text-align: right;
+            border-right: 2px solid var(--pink);
+            padding-right: 20px;
+        }
+
+        /* Dashboard Layout */
+        .main-container {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            flex-grow: 1;
+            padding: 20px;
+            gap: 20px;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: rgba(255, 45, 117, 0.1);
+            padding: 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--pink);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 45, 117, 0.3);
+        }
+
+        /* Tron Grid Canvas */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #tron-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Terminal Feeds */
+        .feed-container {
+            padding: 15px;
+            font-size: 0.7rem;
+            flex-grow: 1;
+            overflow-y: hidden;
+            line-height: 1.6;
+        }
+
+        .mempool-line { color: #666; margin-bottom: 5px; }
+        .kill-line { color: var(--pink); border-left: 2px solid var(--pink); padding-left: 8px; margin-bottom: 12px; }
+
+        .tag-live {
+            background: var(--pink);
+            color: #000;
+            padding: 2px 5px;
+            font-size: 0.6rem;
+            float: right;
+        }
+
+        /* Burner Footer */
+        footer {
+            background: var(--pink);
+            color: #000;
+            padding: 15px 40px;
+            font-family: 'Oswald', sans-serif;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.5rem;
+            z-index: 1001;
+        }
+
+        .btn-connect {
+            background: var(--pink);
+            border: 2px solid var(--pink);
+            color: #fff;
+            padding: 10px 25px;
+            font-family: 'JetBrains Mono';
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-connect:hover {
+            background: transparent;
+            color: var(--pink);
+            box-shadow: 0 0 20px var(--pink-glow);
+        }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-group">
+        <h1>KILL</h1>
+        <div>
+            <div style="font-size: 0.8rem; letter-spacing: 3px;">AI COMMAND DASHBOARD</div>
+            <div style="font-size: 0.6rem; color: #555;">v2.5 // PROTOCOL: BASE // ENCRYPTED</div>
+        </div>
+    </div>
+    
+    <div style="display: flex; gap: 40px; align-items: center;">
+        <div class="status-header">
+            <div id="countdown" style="font-size: 1.8rem; color: var(--pink);">02s</div>
+            <div style="font-size: 0.5rem; letter-spacing: 2px;">NEXT RESOLUTION</div>
+        </div>
+        <button class="btn-connect">CONNECT_AGENT.exe</button>
+    </div>
+</header>
+
+<div class="main-container">
+    <div class="panel">
+        <div class="panel-header">Economic Metrics</div>
+        <div class="feed-container">
+            <div style="margin-bottom: 20px;">
+                <div style="font-size: 0.6rem; color: #555;">TREASURY (CCB)</div>
+                <div style="font-size: 1.2rem; color: #fff;">454,800,000 <span style="font-size: 0.6rem;">KILL</span></div>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <div style="font-size: 0.6rem; color: #555;">SUPPLY BURNED</div>
+                <div id="stat-burn" style="font-size: 1.2rem; color: var(--pink);">14,158,202</div>
+            </div>
+            <div style="margin-top: 40px; opacity: 0.5;">
+                <div class="panel-header" style="background: none; padding: 0;">Tactical Logic</div>
+                <pre style="font-size: 0.55rem; color: var(--pink); margin-top: 10px;">
+if (Bounty * 0.9334 > 
+   (10 * CasRate) + Gas) {
+   execute_kill(target, 
+                cube, 
+                amount, 
+                true);
+}
+                </pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="tron-canvas"></canvas>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">Mempool & Culling <span class="tag-live">LIVE</span></div>
+        <div id="main-feed" class="feed-container">
+            </div>
+    </div>
+</div>
+
+<footer>
+    <div>SYSTEM STATUS: LETHAL</div>
+    <div id="footer-burn">TOTAL BURNED: 14,158,202 KILL</div>
+</footer>
+
+<script>
+    const canvas = document.getElementById('tron-canvas');
+    const ctx = canvas.getContext('2d');
+    const feed = document.getElementById('main-feed');
+    let burnCount = 14158202;
+    let timer = 2;
+
+    // Resize
+    function resize() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Tron Isometric Cube Engine
+    function drawTronGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const time = Date.now() * 0.001;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const gridSize = 300;
+        const steps = 6;
+        const stepSize = gridSize / steps;
+
+        ctx.lineWidth = 1;
+        
+        function project(x, y, z) {
+            // Isometric math
+            const rx = (x - y) * Math.cos(0.5);
+            const ry = (x + y) * Math.sin(0.5) - z;
+            return {
+                x: centerX + rx,
+                y: centerY + ry
+            };
+        }
+
+        // Draw the 6x6x6 Wireframe
+        for (let i = 0; i <= steps; i++) {
+            for (let j = 0; j <= steps; j++) {
+                ctx.strokeStyle = `rgba(255, 45, 117, ${0.1 + Math.sin(time) * 0.05})`;
+                
+                // Vertical lines
+                let p1 = project(i * stepSize - 150, j * stepSize - 150, -100);
+                let p2 = project(i * stepSize - 150, j * stepSize - 150, 100);
+                ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+
+                // Horizontal grid
+                let p3 = project(-150, i * stepSize - 150, j * stepSize - 100);
+                let p4 = project(150, i * stepSize - 150, j * stepSize - 100);
+                ctx.beginPath(); ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.stroke();
+            }
+        }
+
+        // Random Glitch "Data Fragments"
+        if (Math.random() > 0.9) {
+            ctx.fillStyle = varColor('--pink');
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = varColor('--pink');
+            ctx.fillRect(centerX + (Math.random()-0.5)*400, centerY + (Math.random()-0.5)*400, 2, 2);
+        }
+
+        requestAnimationFrame(drawTronGrid);
+    }
+
+    function varColor(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    // Dynamic Logic
+    const addresses = ["0x88...12", "0x55...ff", "0x00...66", "0x99...aa", "0x71...2b"];
+    
+    function addFeedItem() {
+        const type = Math.random() > 0.4 ? 'MEMPOOL' : 'KILL';
+        const addr = addresses[Math.floor(Math.random()*5)];
+        const div = document.createElement('div');
+        
+        if(type === 'MEMPOOL') {
+            div.className = 'mempool-line';
+            div.innerHTML = `> [SCANNING] Incoming TX from ${addr}... <br>&nbsp;&nbsp;Gas: ${Math.floor(Math.random()*50)} gwei`;
+        } else {
+            const amount = (Math.random()*1000).toFixed(2);
+            const burn = (amount * 0.0666).toFixed(2);
+            burnCount += parseFloat(burn);
+            div.className = 'kill-line';
+            div.innerHTML = `[RESOLUTION] ${addr} culled ${amount} units.<br>> BURNED: ${burn} KILL 🔥`;
+            
+            // Trigger glitch flash
+            document.body.style.filter = "invert(0.05) hue-rotate(10deg)";
+            setTimeout(() => document.body.style.filter = "none", 50);
+        }
+
+        feed.prepend(div);
+        if(feed.childNodes.length > 15) feed.removeChild(feed.lastChild);
+        
+        // Update Stats
+        document.getElementById('stat-burn').innerText = Math.floor(burnCount).toLocaleString();
+        document.getElementById('footer-burn').innerText = `TOTAL BURNED: ${Math.floor(burnCount).toLocaleString()} KILL`;
+    }
+
+    // Resolution Timer
+    setInterval(() => {
+        timer--;
+        if (timer < 0) {
+            timer = 2;
+            addFeedItem();
+            if(Math.random() > 0.5) addFeedItem();
+        }
+        document.getElementById('countdown').innerText = `0${timer}s`;
+    }, 1000);
+
+    drawTronGrid();
+</script>
+
+</body>
+</html>

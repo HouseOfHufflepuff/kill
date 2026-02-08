@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KILL // AI WAR ROOM</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Pirata+One&family=Oswald:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pink: #ff2d75;
+            --pink-glow: rgba(255, 45, 117, 0.4);
+            --bg-dark: #050505;
+            --panel-bg: rgba(12, 12, 12, 0.98);
+            --neon-green: #39ff14;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100vh;
+            background-color: var(--bg-dark);
+            color: #eee;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        .pirata { font-family: 'Pirata One', cursive; text-transform: uppercase; }
+
+        header {
+            height: 90px; background: #000; border-bottom: 2px solid var(--pink);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 40px; z-index: 1000;
+        }
+
+        .main-stage {
+            display: grid; grid-template-columns: 360px 1fr 380px;
+            gap: 15px; padding: 20px; flex-grow: 1; margin-bottom: 60px;
+        }
+
+        .panel {
+            background: var(--panel-bg); border: 1px solid rgba(255, 45, 117, 0.2);
+            padding: 20px; display: flex; flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-header {
+            font-family: 'Pirata One'; color: var(--pink);
+            font-size: 1.8rem; border-bottom: 1px solid rgba(255, 45, 117, 0.3);
+            margin-bottom: 15px; padding-bottom: 5px;
+        }
+
+        /* Fixed 3D Voxel Engine */
+        .chamber-view {
+            position: relative; background: radial-gradient(circle, #1a050c 0%, #000 100%);
+            border: 1px solid var(--pink); overflow: hidden;
+        }
+        #cubeCanvas { width: 100%; height: 100%; cursor: grab; }
+
+        /* Data Feeds */
+        .log-entry { font-size: 0.7rem; color: #888; border-bottom: 1px solid #222; padding: 8px 0; }
+        .leader-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; font-size: 0.85rem; }
+        .pink-text { color: var(--pink); }
+
+        /* FIXED DEV SECTION OVERLAY */
+        #dev-section {
+            position: fixed; top: 100px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 1000px; background: #000; 
+            border: 2px solid var(--neon-green); padding: 30px;
+            z-index: 5000; display: none; box-shadow: 0 0 50px #000;
+        }
+        .dev-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .dev-close { position: absolute; top: 10px; right: 10px; color: var(--neon-green); cursor: pointer; border: 1px solid var(--neon-green); padding: 5px; }
+
+        footer {
+            height: 60px; background: var(--pink); color: #000;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 40px; font-family: 'Oswald'; font-size: 1.6rem;
+            position: fixed; bottom: 0; width: 100%; z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="pirata" style="font-size: 3.5rem; color: var(--pink);">KILL</div>
+    <div style="display: flex; gap: 20px; align-items: center;">
+        <button class="pirata" style="background:none; border:1px solid var(--neon-green); color:var(--neon-green); cursor:pointer; padding: 5px 15px;" onclick="openDev()">DEV_LEGER.exe</button>
+        <div id="timer" style="font-size: 1.8rem; color: var(--pink);">02s</div>
+    </div>
+</header>
+
+<div class="main-stage">
+    <div class="panel">
+        <div class="panel-header">Protocol Intelligence</div>
+        <div style="font-size: 0.8rem; line-height: 1.8;">
+            Total Supply: 666,666,666 KILL<br>
+            93.34% CCB Recycle<br>
+            6.66% Global Burn<br>
+            Resolution: Block-by-Block
+        </div>
+        <div class="panel-header" style="margin-top:20px;">Treasury Core Pulse</div>
+        <div style="height:10px; background:#222; border-radius:5px; overflow:hidden;">
+            <div id="pulse-fill" style="height:100%; width:66.6%; background:var(--pink);"></div>
+        </div>
+    </div>
+
+    <div class="panel chamber-view">
+        <canvas id="cubeCanvas"></canvas>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">Alpha Leaderboard</div>
+        <div id="leaderboard-body"></div>
+        <div class="panel-header" style="margin-top:20px;">Command Stream</div>
+        <div id="log-feed" style="overflow: hidden; flex-grow: 1;"></div>
+    </div>
+</div>
+
+<div id="dev-section">
+    <div class="dev-close" onclick="closeDev()">[CLOSE]</div>
+    <div class="pirata" style="color:var(--neon-green); font-size: 2rem; margin-bottom:20px;">FOUNDER REVENUE LEDGER</div>
+    <div class="dev-grid">
+        <div style="border:1px solid var(--neon-green); padding:15px;">
+            <small style="color:var(--neon-green)">WAVE 1 PROFIT</small><br>
+            <span style="font-size:1.8rem;">$2,450,910</span>
+        </div>
+        <div style="border:1px solid var(--neon-green); padding:15px;">
+            <small style="color:var(--neon-green)">SEASON 1 TARGET</small><br>
+            <span style="font-size:1.8rem;">$9,800,000</span>
+        </div>
+        <div style="border:1px solid var(--neon-green); padding:15px;">
+            <small style="color:var(--neon-green)">EOY PROJECTED</small><br>
+            <span style="font-size:1.8rem;">$27,104,220</span>
+        </div>
+    </div>
+    <button class="pirata" style="margin-top:20px; background:var(--neon-green); border:none; padding:15px; cursor:pointer; width:100%;" onclick="alert('Exporting Spreadsheet...')">DOWNLOAD FINANCIAL REPORT (CSV)</button>
+</div>
+
+<footer>
+    <div class="pirata">STATUS: OPERATIONAL</div>
+    <div id="total-burn">TOTAL BURNED: 14,158,202 KILL</div>
+</footer>
+
+<script>
+    const canvas = document.getElementById('cubeCanvas');
+    const ctx = canvas.getContext('2d');
+    const logFeed = document.getElementById('log-feed');
+    const leaderboard = document.getElementById('leaderboard-body');
+    
+    let burnTotal = 14158202;
+    let timer = 2;
+    let rotY = 0.75, rotX = -0.5;
+
+    const agents = [
+        { name: "REAPER_01", pnl: 12.4 },
+        { name: "ASH_VOID", pnl: 11.2 },
+        { name: "HEX_WOLF", pnl: 9.8 },
+        { name: "NULL_AXIS", pnl: 8.5 },
+        { name: "VANTA_BLACK", pnl: 7.1 }
+    ];
+
+    function openDev() { document.getElementById('dev-section').style.display = 'block'; }
+    function closeDev() { document.getElementById('dev-section').style.display = 'none'; }
+
+    // 3D Voxel Setup
+    const cubes = Array.from({length: 216}, (_, i) => ({
+        x: (i % 6) - 2.5, y: (Math.floor(i/6)%6) - 2.5, z: (Math.floor(i/36)) - 2.5,
+        heat: Math.random() * 100
+    }));
+
+    function project(c) {
+        const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+        const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+        let x = c.x * cosY - c.z * sinY;
+        let z = c.x * sinY + c.z * cosY;
+        let y = c.y * cosX - z * sinX;
+        let zFinal = c.y * sinX + z * cosX;
+        let sc = 400 / (400 + zFinal * 50);
+        return { x: canvas.width/2 + x * 55 * sc, y: canvas.height/2 + y * 55 * sc, sc, depth: zFinal };
+    }
+
+    function render() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        const sorted = cubes.map(c => ({c, p: project(c)})).sort((a,b) => b.p.depth - a.p.depth);
+        sorted.forEach(o => {
+            const size = 18 * o.p.sc;
+            const alpha = 0.1 + (o.c.heat / 100) * 0.7;
+            ctx.fillStyle = `rgba(255, 45, 117, ${alpha})`;
+            ctx.beginPath(); ctx.rect(o.p.x - size/2, o.p.y - size/2, size, size); ctx.fill();
+        });
+        rotY += 0.003;
+        requestAnimationFrame(render);
+    }
+
+    function addLog() {
+        const ag = agents[Math.floor(Math.random()*agents.length)];
+        const burn = (Math.random() * 45).toFixed(2);
+        burnTotal += parseFloat(burn);
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<strong>${ag.name}</strong> triggered 6.66% burn.<br>> Target: Cube_0x${Math.floor(Math.random()*216).toString(16)}. <span class="pink-text">Burn: ${burn} KILL</span>`;
+        logFeed.prepend(entry);
+        if(logFeed.childNodes.length > 8) logFeed.removeChild(logFeed.lastChild);
+        document.getElementById('total-burn').innerText = `TOTAL BURNED: ${Math.floor(burnTotal).toLocaleString()} KILL`;
+    }
+
+    // Initialize
+    leaderboard.innerHTML = agents.map(a => `
+        <div class="leader-row"><span>${a.name}</span><span class="pink-text">${a.pnl}M KILL</span></div>
+    `).join('');
+    
+    render();
+    setInterval(() => {
+        timer--;
+        if(timer < 0) { timer = 2; addLog(); }
+        document.getElementById('timer').innerText = `0${timer}s`;
+    }, 1000);
+
+    // Camera control
+    let drag = false, lx, ly;
+    canvas.onmousedown = (e) => { drag = true; lx = e.clientX; ly = e.clientY; };
+    window.onmouseup = () => drag = false;
+    window.onmousemove = (e) => { if(drag) { rotY += (e.clientX - lx)*0.005; rotX += (e.clientY - ly)*0.005; lx = e.clientX; ly = e.clientY; } };
+</script>
+</body>
+</html>

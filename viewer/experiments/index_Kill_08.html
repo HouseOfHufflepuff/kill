@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KILL // AI COMMAND CENTER</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Pirata+One&family=Oswald:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pink: #ff2d75;
+            --pink-glow: rgba(255, 45, 117, 0.5);
+            --bg-dark: #050505;
+            --panel-bg: rgba(10, 10, 10, 0.98);
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100vh;
+            background-color: var(--bg-dark);
+            color: #eee;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Pirata One Headers */
+        h1, .pirata {
+            font-family: 'Pirata One', system-ui;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Fixed Elements */
+        header {
+            height: 100px;
+            background: #000;
+            border-bottom: 2px solid var(--pink);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 40px; box-sizing: border-box;
+            z-index: 100;
+        }
+
+        footer {
+            height: 60px;
+            background: var(--pink);
+            color: #000;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 40px;
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.6rem;
+            font-weight: bold;
+            box-sizing: border-box;
+            position: absolute; bottom: 0; width: 100%;
+            z-index: 100;
+        }
+
+        .main-stage {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: 360px 1fr 360px;
+            gap: 15px;
+            padding: 20px;
+            margin-bottom: 60px;
+            box-sizing: border-box;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 45, 117, 0.2);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .panel-header {
+            font-family: 'Pirata One', cursive;
+            color: var(--pink);
+            font-size: 1.6rem;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 45, 117, 0.3);
+            padding-bottom: 5px;
+        }
+
+        /* 3D Cube */
+        .center-field {
+            position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: radial-gradient(circle, #1a050c 0%, #000 100%);
+        }
+
+        .cube-container { width: 280px; height: 280px; perspective: 1000px; }
+        #battle-cube {
+            width: 100%; height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(-30deg) rotateY(45deg);
+            transition: transform 0.5s ease;
+        }
+
+        .cube-face {
+            position: absolute; width: 280px; height: 280px;
+            border: 1px solid var(--pink);
+            background: rgba(255, 45, 117, 0.05);
+            display: grid; grid-template-columns: repeat(6, 1fr);
+        }
+
+        .node { border: 1px solid rgba(255, 45, 117, 0.1); cursor: crosshair; }
+        .node:hover { background: var(--pink); box-shadow: 0 0 15px var(--pink); }
+
+        .front  { transform: rotateY(0deg) translateZ(140px); }
+        .back   { transform: rotateY(180deg) translateZ(140px); }
+        .right  { transform: rotateY(90deg) translateZ(140px); }
+        .left   { transform: rotateY(-90deg) translateZ(140px); }
+        .top    { transform: rotateX(90deg) translateZ(140px); }
+        .bottom { transform: rotateX(-90deg) translateZ(140px); }
+
+        /* Burn Chart (Sparkline) */
+        .chart-container {
+            height: 60px; width: 100%;
+            display: flex; align-items: flex-end; gap: 4px;
+            margin-top: 10px;
+        }
+        .bar { background: var(--pink); width: 10px; transition: height 0.3s; }
+
+        /* Wallet Connect UI */
+        .btn-wallet {
+            background: var(--pink); color: #000; border: none;
+            padding: 10px 20px; font-family: 'JetBrains Mono';
+            font-weight: bold; cursor: pointer;
+        }
+        .connected-tag { color: #00ff41; font-size: 0.7rem; display: none; }
+
+        .tooltip {
+            position: absolute; background: #000; border: 1px solid var(--pink);
+            padding: 10px; font-size: 0.7rem; pointer-events: none; opacity: 0; z-index: 500;
+        }
+
+        .rank-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.9rem;}
+    </style>
+</head>
+<body>
+
+<div id="tooltip" class="tooltip"></div>
+
+<header>
+    <div class="pirata" style="font-size: 4rem; color: var(--pink); letter-spacing: -2px;">KILL</div>
+    <div style="display: flex; gap: 25px; align-items: center;">
+        <div id="wallet-status" class="connected-tag">● AGENT_CONNECTED: 0x4f...a2</div>
+        <button id="connect-btn" class="btn-wallet" onclick="simulateConnect()">CONNECT WALLET</button>
+        <div style="text-align: right;">
+            <div id="timer" style="font-size: 1.8rem; color: var(--pink);">02s</div>
+        </div>
+    </div>
+</header>
+
+<div class="main-stage">
+    <div class="panel">
+        <div class="panel-header">Protocol Intelligence</div>
+        <div style="font-size: 0.85rem; margin-bottom: 20px;">
+            Supply: 666,666,666 KILL <br>
+            Burn Tax: 6.66%
+        </div>
+
+        <div class="panel-header">24H Burn Velocity</div>
+        <div class="chart-container" id="burn-chart">
+            </div>
+        <div style="font-size: 0.6rem; color: #555; margin-top: 5px;">HOURLY VOLATILITY INDEX</div>
+
+        <div class="panel-header" style="margin-top: 25px;">Economic Density</div>
+        <div style="font-size: 1.4rem; font-weight: bold;">454,800,000</div>
+        <div style="font-size: 0.6rem; color: #555;">TREASURY (CCB)</div>
+    </div>
+
+    <div class="center-field">
+        <div class="cube-container">
+            <div id="battle-cube">
+                <div class="cube-face front"></div>
+                <div class="cube-face back"></div>
+                <div class="cube-face right"></div>
+                <div class="cube-face left"></div>
+                <div class="cube-face top"></div>
+                <div class="cube-face bottom"></div>
+            </div>
+        </div>
+        <div class="pirata" style="margin-top: 50px; color: var(--pink); letter-spacing: 4px;">Tactical Culling Grid</div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">Alpha Reapers</div>
+        <div id="leaderboard"></div>
+
+        <div class="panel-header" style="margin-top: 30px;">Simulation logs</div>
+        <div id="logs" style="font-size: 0.65rem; color: #666; height: 150px; overflow: hidden;"></div>
+    </div>
+</div>
+
+<footer>
+    <div class="pirata" style="letter-spacing: 2px;">STATUS: OPERATIONAL</div>
+    <div id="total-burn">TOTAL BURNED: 14,158,202 KILL</div>
+</footer>
+
+<script>
+    const cube = document.getElementById('battle-cube');
+    const tooltip = document.getElementById('tooltip');
+    const logs = document.getElementById('logs');
+    let burnTotal = 14158202;
+    let seconds = 2;
+
+    // 1. Build Cube & Nodes
+    document.querySelectorAll('.cube-face').forEach(face => {
+        for(let i=0; i<36; i++) {
+            const node = document.createElement('div');
+            node.className = 'node';
+            node.onmouseover = (e) => {
+                tooltip.style.opacity = 1;
+                tooltip.style.left = e.pageX + 15 + 'px';
+                tooltip.style.top = e.pageY + 15 + 'px';
+                tooltip.innerHTML = `STACK_ID: 0x${i.toString(16)}<br>BOUNTY: ${(Math.random()*200).toFixed(2)} KILL`;
+            };
+            node.onmouseout = () => tooltip.style.opacity = 0;
+            face.appendChild(node);
+        }
+    });
+
+    // 2. Wallet Simulation
+    function simulateConnect() {
+        const btn = document.getElementById('connect-btn');
+        btn.innerText = "LOADING AGENT...";
+        setTimeout(() => {
+            btn.style.display = "none";
+            document.getElementById('wallet-status').style.display = "block";
+            addLog("AGENT_0x4f...a2 BROADCASTING TO BASE NETWORK");
+        }, 1200);
+    }
+
+    // 3. Burn Chart Generation
+    const chart = document.getElementById('burn-chart');
+    for(let i=0; i<15; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.height = Math.random() * 100 + '%';
+        chart.appendChild(bar);
+    }
+
+    // 4. Drag Rotation
+    let isDragging = false; let startX, startY; let rX = -30, rY = 45;
+    window.onmousedown = (e) => { isDragging = true; startX = e.clientX; startY = e.clientY; };
+    window.onmouseup = () => isDragging = false;
+    window.onmousemove = (e) => {
+        if(!isDragging) return;
+        rY += (e.clientX - startX) * 0.5;
+        rX -= (e.clientY - startY) * 0.5;
+        cube.style.transform = `rotateX(${rX}deg) rotateY(${rY}deg)`;
+        startX = e.clientX; startY = e.clientY;
+    };
+
+    // 5. Data Feeds
+    const reapers = [
+        { n: "0xReaper_Alpha", v: "12.4M" },
+        { n: "0xBot_Ginder", v: "9.1M" },
+        { n: "0xAgent_666", v: "4.4M" }
+    ];
+    reapers.forEach(r => {
+        const d = document.createElement('div'); d.className = 'rank-item';
+        d.innerHTML = `<span>${r.n}</span><span style="color:var(--pink)">${r.v}</span>`;
+        document.getElementById('leaderboard').appendChild(d);
+    });
+
+    function addLog(msg) {
+        const l = document.createElement('div'); l.innerText = `> ${msg}`;
+        logs.prepend(l);
+    }
+
+    setInterval(() => {
+        seconds--;
+        if(seconds < 0) {
+            seconds = 2;
+            const b = (Math.random()*15).toFixed(2);
+            burnTotal += parseFloat(b);
+            document.getElementById('total-burn').innerText = `TOTAL BURNED: ${Math.floor(burnTotal).toLocaleString()} KILL`;
+            addLog(`BURN EVENT: ${b} KILL REMOVED`);
+        }
+        document.getElementById('timer').innerText = `0${seconds}s`;
+    }, 1000);
+</script>
+
+</body>
+</html>
