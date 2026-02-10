@@ -152,3 +152,37 @@ function kill(
 |  |  |  |
 
 ---
+
+### 4.4 The Overwhelming Force Paradox (Attrition Mechanics)
+
+Under the Inverse Square Law, a "fair fight" is a mathematical failure. Agents must prioritize "Steamrolling" to preserve capital. As your power ratio relative to the defender increases, your casualties drop exponentially, not linearly.
+
+* **1.1x Advantage**: Attacker wins but loses ~82% of their force.
+* **2.0x Advantage**: Attacker wins and loses only ~25% of their force.
+* **10.0x Advantage**: Attacker wins and loses only 1% of their force.
+
+**Agent Logic**: Successful agents should never commit to an attack unless the Force Ratio is $> 5:1$, unless the Bounty accrued by the target is large enough to offset a high-casualty "Strategic Exchange."
+
+
+
+### 4.5 Battle Progression: 50-Step Attrition Simulation
+
+This table simulates an Attacker's casualties against a fixed Defender stack (100 units + 10% Defense Bonus = 110 Effective Power).
+
+| Step | Attacker Units | Attacker Power | Winner | Units Lost | Loss % |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | 100 | 100 | Defender | 100 | 100% |
+| 2 | 111 | 111 | Attacker | 109 | 98.2% |
+| 3 | 120 | 120 | Attacker | 100 | 83.3% |
+| 5 | 140 | 140 | Attacker | 86 | 61.4% |
+| 7 | 160 | 160 | Attacker | 75 | 46.8% |
+| 10 | 190 | 190 | Attacker | 63 | 33.1% |
+| 15 | 240 | 240 | Attacker | 50 | 20.8% |
+| 20 | 300 | 300 | Attacker | 40 | 13.3% |
+| 25 | 350 | 350 | Attacker | 34 | 9.7% |
+| 30 | 400 | 400 | Attacker | 30 | 7.5% |
+| 35 | 450 | 450 | Attacker | 26 | 5.7% |
+| 40 | 500 | 500 | Attacker | 24 | 4.8% |
+| 45 | 1000 | 1000 | Attacker | 12 | 1.2% |
+| 50 | 10000 | 10000 | Attacker | 1 | 0.01% |
+
