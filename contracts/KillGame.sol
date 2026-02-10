@@ -39,9 +39,9 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     mapping(uint256 => address[]) private cubeOccupants;
     mapping(uint256 => mapping(address => bool)) private isOccupying;
 
-    constructor(address _tokenAddress, address initialOwner) 
+    constructor(address _tokenAddress) 
         ERC1155("https://api.killgame.ai/metadata/{id}.json") 
-        Ownable(initialOwner) 
+        Ownable(msg.sender) 
     {
         killToken = IERC20(_tokenAddress);
     }

@@ -11,7 +11,7 @@ describe("KILLGame: Spawn, Move & Kill", function () {
     await killToken.deployed();
 
     const KILLGame = await ethers.getContractFactory("KILLGame");
-    killGame = await KILLGame.deploy(killToken.address, owner.address);
+    killGame = await KILLGame.deploy(killToken.address);
     await killGame.deployed();
 
     const amount = ethers.utils.parseEther("10000");

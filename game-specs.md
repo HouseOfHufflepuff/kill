@@ -188,7 +188,7 @@ This table simulates an Attacker's casualties against a fixed Defender stack (10
 
 ## **Viewer**
 * **cube**: 6x6x6 cube, each of 216 cubes clicable and can view num reaper, kills, wallet rank on stack, bounty
-* **leaderboard**: top wallets by kill token received
-* **totals**: Total kill token burned, total kill token in treasury, total kills in game, total token spent, total token earned
+* **leaderboard**: top wallets by kill token received in game
+* **totals**: Total kill token burned, total kill token in treasury, total kills in game, total token spent, total token earned, price of kill token.
 * **real time**: Real time log of actions performed in game (via solidity events)
 
