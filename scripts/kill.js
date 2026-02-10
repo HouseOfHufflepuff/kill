@@ -3,78 +3,73 @@ const { ethers } = require("hardhat");
 const KILL_GAME = process.env.KILL_GAME;
 
 async function main() {
-    const [attacker] = await ethers.getSigners();
-    const KillGame = await ethers.getContractFactory("KILLGame");
-    const killGame = await KillGame.attach(KILL_GAME);
+    const [owner] = await ethers.getSigners();
+    const killGame = await (await ethers.getContractFactory("KILLGame")).attach(KILL_GAME);
 
-    // TARGET DATA
-    const targetAddress = "0xc0974aDf4d15DB9104eF68f01123d38a3a59bEc0"; // Your wallet
-    const activeCube = 2; // Where the units currently reside
+    const target = "0xc0974aDf4d15DB9104eF68f01123d38a3a59bEc0";
+    const cube = 1;
 
-    // ID Definitions based on your contract: Std = ID, Bst = ID + 216
-    const stdId = activeCube;
-    const bstId = activeCube + 216;
+    const stdId = cube;
+    const bstId = cube + 216;
 
-    console.log(`\n--- Battle Prep: Local Combat in Cube ${activeCube} ---`);
+    // 1. Fetch current balances
+    const myStd = await killGame.balanceOf(owner.address, stdId);
+    const myBst = await killGame.balanceOf(owner.address, bstId);
 
-    // 1. Check YOUR units in Cube 2
-    const myStd = await killGame.balanceOf(attacker.address, stdId);
-    const myBst = await killGame.balanceOf(attacker.address, bstId);
+    // 2. SETUP ATTACK FORCE (Limited for iteration)
+    // We send 1 Reaper if available, otherwise 0.
+    const sentStd = ethers.BigNumber.from(0); 
+    const sentBst = myBst.gt(0) ? ethers.BigNumber.from(1) : ethers.BigNumber.from(0);
 
-    // 2. Check TARGET units in Cube 2
-    const tarStd = await killGame.balanceOf(targetAddress, stdId);
-    const tarBst = await killGame.balanceOf(targetAddress, bstId);
-
-    // 3. Check Pending Bounty (Treasury Payout)
-    const pendingBounty = await killGame.getPendingBounty(targetAddress, bstId);
-
-    console.log(`Attacker Force (Cube ${activeCube}): ${myStd} Std, ${myBst} Bst`);
-    console.log(`Target Force (Cube ${activeCube}): ${tarStd} Std, ${tarBst} Bst`);
-    console.log(`Potential Bounty: ${ethers.utils.formatUnits(pendingBounty, 18)} KILL`);
-
-    if (myStd.eq(0) && myBst.eq(0)) {
-        console.log("❌ Error: You still have no units in Cube 2. Check your balance on BaseScan.");
+    if (sentBst.eq(0) && sentStd.eq(0)) {
+        console.log("❌ Error: You have no units in this cube to attack with.");
         return;
     }
 
-    // 4. Execution - Sending all your local Reapers
-    const sentStd = 0;
-    const sentBst = myBst; 
+    // 3. Calculate Powers (Mirroring Solidity)
+    const atkPower = sentStd.add(sentBst.mul(666));
+    
+    let defStd = await killGame.balanceOf(target, stdId);
+    let defBst = await killGame.balanceOf(target, bstId);
 
-    console.log(`\nInitiating combat with ${sentBst} Reaper(s) against target...`);
+    // Self-attack logic check
+    if (owner.address.toLowerCase() === target.toLowerCase()) {
+        defStd = defStd.sub(sentStd);
+        defBst = defBst.sub(sentBst);
+    }
 
+    const baseDefPower = defStd.add(defBst.mul(666));
+    // Mirroring the contract's new fallback: if def is 0, it treats it as 1
+    const defPower = baseDefPower.gt(0) ? baseDefPower.mul(110).div(100) : ethers.BigNumber.from(1);
+
+    console.log(`\n--- Battle Simulation ---`);
+    console.log(`Current Balance: ${myStd} Std, ${myBst} Bst`);
+    console.log(`Sending Attack: ${sentStd} Std, ${sentBst} Bst`);
+    console.log(`Attacker Power: ${atkPower.toString()}`);
+    console.log(`Defender Power: ${defPower.toString()} (inc. 10% buff)`);
+
+    if (atkPower.gt(defPower)) {
+        console.log("✅ RESULT: VICTORY PREDICTED.");
+    } else {
+        console.log("⚠️ RESULT: DEFEAT/ATTRITION PREDICTED.");
+    }
+
+    // 4. Execution
     try {
-        // kill(address target, uint16 cube, uint256 sentStd, uint256 sentBst)
-        const killTx = await killGame.kill(
-            targetAddress,
-            activeCube,
-            sentStd,
-            sentBst,
-            { gasLimit: 1200000 } // Quadratic attrition + bounty transfers require significant gas
-        );
-
-        console.log("Attack Transaction sent! Hash:", killTx.hash);
-        const receipt = await killTx.wait(1);
-
-        // Find the Killed event
+        const tx = await killGame.kill(target, cube, sentStd, sentBst, { gasLimit: 1000000 });
+        console.log("Transaction sent! Hash:", tx.hash);
+        const receipt = await tx.wait();
+        
+        // Find Killed event
         const event = receipt.events?.find(e => e.event === 'Killed');
         if (event) {
-            const [atk, trg, cb, aStdL, aBstL, tStdL, tBstL, bounty] = event.args;
-            console.log("------------------------------------------");
-            console.log("BATTLE RESULTS:");
-            console.log(`Attacker Lost: ${aStdL} Std, ${aBstL} Bst`);
-            console.log(`Target Lost: ${tStdL} Std, ${tBstL} Bst`);
-            console.log(`Bounty Claimed: ${ethers.utils.formatUnits(bounty, 18)} KILL`);
-            console.log("------------------------------------------");
+            console.log("\n--- Real-time Losses ---");
+            console.log(`Attacker Lost: ${event.args.attackerStdLost} Std, ${event.args.attackerBstLost} Bst`);
+            console.log(`Target Lost: ${event.args.targetStdLost} Std, ${event.args.targetBstLost} Bst`);
         }
-
-    } catch (error) {
-        console.error("\nCombat failed!");
-        console.error(error.reason || error.message);
+    } catch (e) {
+        console.error("Attack failed:", e.reason || e.message);
     }
 }
 
-main().catch((error) => {
-    console.error(error);
-    process.exit(1);
-});
+main().catch(console.error);

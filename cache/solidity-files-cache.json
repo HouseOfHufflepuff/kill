@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/houseofhufflepuff/Development/kill/contracts/KillGame.sol": {
-      "lastModificationDate": 1770750854232,
-      "contentHash": "1f6cf5da8f76de90bf669a7a23c0683c",
+      "lastModificationDate": 1770764548189,
+      "contentHash": "85d8ad65af918313906b5f1262366aec",
       "sourceName": "contracts/KillGame.sol",
       "solcConfig": {
         "version": "0.8.24",

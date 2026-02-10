@@ -48,26 +48,39 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     /**
      * @dev Quadratic Attrition Battle Logic
-     * Formula: Winner Loss = Sent * (LoserPower / WinnerPower)^2
+     * Refactored to avoid "Stack too deep" by using scoped blocks and struct member access.
      */
     function kill(address target, uint16 cube, uint256 sentStd, uint256 sentBst) external nonReentrant returns (uint256 netBounty) {
         uint256 stdId = uint256(cube);
         uint256 bstId = stdId + 216;
 
-        uint256 atkPower = sentStd + (sentBst * 666);
-        require(atkPower > 0, "No force");
         require(balanceOf(msg.sender, stdId) >= sentStd && balanceOf(msg.sender, bstId) >= sentBst, "Lack units");
 
-        uint256 defPower = ((balanceOf(target, stdId) + (balanceOf(target, bstId) * 666)) * 110) / 100;
-        require(defPower > 0, "No target");
-
         LossReport memory loss;
+        uint256 atkPower = sentStd + (sentBst * 666);
+        require(atkPower > 0, "No force");
+
+        // Use a scope to calculate defPower and clear stack space
+        uint256 defPower;
+        {
+            uint256 effDefStd = balanceOf(target, stdId);
+            uint256 effDefBst = balanceOf(target, bstId);
+            
+            if (msg.sender == target) {
+                effDefStd -= sentStd;
+                effDefBst -= sentBst;
+            }
+
+            uint256 baseDefPower = effDefStd + (effDefBst * 666);
+            defPower = baseDefPower > 0 ? (baseDefPower * 110) / 100 : 1;
+            
+            // Temporary assignments to loss struct to keep stack clean
+            loss.tStd = effDefStd;
+            loss.tBst = effDefBst;
+        }
 
         if (atkPower > defPower) {
-            loss.tStd = balanceOf(target, stdId);
-            loss.tBst = balanceOf(target, bstId);
-            
-            // Attrition math: loss is proportional to (Def/Atk)^2
+            // Winner's attrition loss
             loss.aStd = (sentStd * (defPower * defPower)) / (atkPower * atkPower);
             loss.aBst = (sentBst * (defPower * defPower)) / (atkPower * atkPower);
 
@@ -84,14 +97,18 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
             loss.aStd = sentStd;
             loss.aBst = sentBst;
 
-            loss.tStd = (balanceOf(target, stdId) * (atkPower * atkPower)) / (defPower * defPower);
-            loss.tBst = (balanceOf(target, bstId) * (atkPower * atkPower)) / (defPower * defPower);
+            // Loser's attrition loss (re-calculating into the struct)
+            uint256 tStdTotal = loss.tStd;
+            uint256 tBstTotal = loss.tBst;
+            loss.tStd = (tStdTotal * (atkPower * atkPower)) / (defPower * defPower);
+            loss.tBst = (tBstTotal * (atkPower * atkPower)) / (defPower * defPower);
             netBounty = 0;
             
-            if (balanceOf(target, stdId) == loss.tStd) isOccupying[stdId][target] = false;
-            if (balanceOf(target, bstId) == loss.tBst) isOccupying[bstId][target] = false;
+            if (tStdTotal == loss.tStd) isOccupying[stdId][target] = false;
+            if (tBstTotal == loss.tBst) isOccupying[bstId][target] = false;
         }
 
+        // Finalize state changes
         if (loss.tStd > 0) _burn(target, stdId, loss.tStd);
         if (loss.tBst > 0) _burn(target, bstId, loss.tBst);
         if (loss.aStd > 0) _burn(msg.sender, stdId, loss.aStd);
@@ -117,7 +134,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     }
 
     function move(uint16 fromCube, uint16 toCube, uint256 stdUnits, uint256 bstUnits) external {
-        // FIX: Ensure IDs are valid and adjacent
         require(fromCube > 0 && fromCube <= 216, "Invalid From");
         require(toCube > 0 && toCube <= 216 && _isAdjacent(fromCube, toCube), "Bad move");
         
@@ -136,15 +152,8 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         }
     }
 
-    /**
-     * @dev Logic fix: We use _burn and _mint (internal) to bypass the ERC1155 
-     * onERC1155Received check since we are just moving units within the owner's 
-     * account across different cube IDs.
-     */
     function _moveLogic(uint256 fId, uint256 tId, uint256 amt) internal {
         require(balanceOf(msg.sender, fId) >= amt, "Insufficient units");
-        
-        // Use internal _burn and _mint to move "locally" without safe checks
         _burn(msg.sender, fId, amt);
         _mint(msg.sender, tId, amt, "");
 

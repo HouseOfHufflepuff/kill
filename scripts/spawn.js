@@ -16,7 +16,7 @@ async function main() {
     const KillGame = await ethers.getContractFactory("KILLGame");
     const killGame = await KillGame.attach(KILL_GAME);
 
-    const unitsToSpawn = 666;
+    const unitsToSpawn = 1332;
     const costPerUnit = ethers.utils.parseUnits("10", 18);
     const totalCost = costPerUnit.mul(unitsToSpawn);
 
