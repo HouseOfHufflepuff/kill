@@ -1,5 +1,6 @@
 :root {
     --pink: #ff2d75;
+    --cyan: #00f0ff;
     --dark: #121212;
     --bg: #0a0a0a;
 }
@@ -20,47 +21,22 @@ header {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba(255, 45, 117, 0.3);
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    z-index: 100;
-    position: relative;
 }
 
-.logo-container {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.logo-text {
-    font-family: 'Oswald', sans-serif;
-    font-size: 3.5rem;
-    color: var(--pink);
-    letter-spacing: -2px;
-    line-height: 0.8;
-    text-shadow: 0 0 15px rgba(255, 45, 117, 0.5);
-}
-
-.scythes-icon {
-    font-size: 1.2rem;
-    color: var(--pink);
-    text-align: center;
-    margin-top: 5px;
-}
+.logo-text { font-family: 'Oswald', sans-serif; font-size: 3rem; color: var(--pink); }
 
 .dashboard {
     display: grid;
-    grid-template-columns: 350px 1fr 350px;
-    height: calc(100vh - 130px); /* Header + Footer offset */
+    grid-template-columns: 320px 1fr 320px;
+    height: calc(100vh - 130px);
 }
 
 .panel {
     padding: 20px;
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
     background: rgba(18, 18, 18, 0.6);
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Important for internal scrolling */
+    overflow: hidden;
 }
 
 .panel-header {
@@ -68,75 +44,55 @@ header {
     text-transform: uppercase;
     color: var(--pink);
     margin-bottom: 15px;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
     border-left: 3px solid var(--pink);
     padding-left: 10px;
-    flex-shrink: 0;
 }
 
-/* Battle Sim Styling */
-.battle-container {
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-#battle-canvas {
-    max-width: 100%;
-    max-height: 100%;
-}
-
-.overlay-text {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.2);
-}
-
-/* Feed & Scroll Logic */
-#feed {
-    font-size: 0.75rem;
-    color: #888;
-    overflow-y: auto;
-    flex-grow: 1;
-    padding-right: 10px;
-}
-
-#feed::-webkit-scrollbar {
-    width: 4px;
-}
-
-#feed::-webkit-scrollbar-thumb {
-    background: var(--pink);
-}
-
-.kill-line {
+/* Fix: Preventing Leaderboard Wrapping */
+.rank-item {
     margin-bottom: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rank-addr { font-size: 0.75rem; color: var(--pink); }
+.rank-score { font-size: 0.8rem; color: #fff; font-weight: bold; }
+
+/* Ripe List */
+.ripe-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    padding: 6px 0;
+    border-bottom: 1px solid #222;
+}
+
+/* Restoring Log Colors */
+#feed {
+    flex-grow: 1;
+    overflow-y: auto;
+    font-size: 0.75rem;
+}
+.kill-line {
+    margin-bottom: 10px;
     padding: 8px;
     background: rgba(255, 255, 255, 0.02);
     border-left: 2px solid #333;
-    animation: flash 0.5s ease-out;
 }
+.entry-kill { border-left-color: var(--pink); }
+.entry-spawn { border-left-color: var(--cyan); }
 
 .pink-text { color: var(--pink); }
-
-@keyframes flash {
-    0% { background: rgba(255, 45, 117, 0.2); }
-    100% { background: rgba(255, 255, 255, 0.02); }
-}
+.cyan-text { color: var(--cyan); }
 
 .burn-footer {
     height: 50px;
     background: var(--pink);
     color: #000;
     padding: 0 40px;
-    font-family: 'Oswald', sans-serif;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 1.2rem;
-    z-index: 100;
+    font-family: 'Oswald';
 }

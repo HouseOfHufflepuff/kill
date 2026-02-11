@@ -4,45 +4,33 @@ const canvas = document.getElementById('battle-canvas');
 const ctx = canvas.getContext('2d');
 const feed = document.getElementById('feed');
 const leaderboardEl = document.getElementById('leaderboard');
+const ripeStacksEl = document.getElementById('ripe-stacks');
 const footerBlock = document.getElementById('footer-block');
 const blockTimer = document.getElementById('block-timer');
 
-const BLOCK_SPEED = 2;
-let countdown = BLOCK_SPEED;
 let knownIds = new Set();
 let hunterStats = {};
+let countdown = 2;
 
-// --- Responsive Sim Scaling ---
 function resize() {
-    const container = canvas.parentElement;
-    // Set internal resolution to match displayed size
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
 }
 window.addEventListener('resize', resize);
 resize();
 
 function drawGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    // Scale grid size based on smallest dimension
     const size = Math.min(canvas.width, canvas.height) * 0.5;
-    const rotation = Date.now() * 0.0005;
-
+    const rot = Date.now() * 0.0005;
     ctx.strokeStyle = 'rgba(255, 45, 117, 0.2)';
-    ctx.lineWidth = 1;
-
     for (let i = -3; i <= 3; i++) {
         for (let j = -3; j <= 3; j++) {
-            let x = i * (size / 3);
-            let y = j * (size / 3);
-            let rx = x * Math.cos(rotation) - y * Math.sin(rotation);
-            let ry = x * Math.sin(rotation) + y * Math.cos(rotation);
-
+            let rx = (i * (size/3)) * Math.cos(rot) - (j * (size/3)) * Math.sin(rot);
+            let ry = (i * (size/3)) * Math.sin(rot) + (j * (size/3)) * Math.cos(rot);
             ctx.beginPath();
-            ctx.moveTo(centerX + rx, centerY + ry * 0.5 - (size / 2));
-            ctx.lineTo(centerX + rx, centerY + ry * 0.5 + (size / 2));
+            ctx.moveTo(canvas.width/2 + rx, canvas.height/2 + ry * 0.5 - (size/2));
+            ctx.lineTo(canvas.width/2 + rx, canvas.height/2 + ry * 0.5 + (size/2));
             ctx.stroke();
         }
     }
@@ -50,116 +38,90 @@ function drawGrid() {
 }
 drawGrid();
 
-// --- Battlefield Logic ---
+// --- API: Ripe Stacks ---
+async function updateRipeStacks() {
+    try {
+        // Updated mock data with cubeId
+        const mockData = {
+            cubes: [122, 45, 89, 201, 15],
+            addresses: ["0x71...66", "0x32...11", "0xaf...90", "0xde...44", "0x11...22"],
+            kills: [450, 320, 210, 150, 90]
+        };
+
+        ripeStacksEl.innerHTML = mockData.addresses.map((addr, i) => `
+            <div class="ripe-item">
+                <span>CUBE_${mockData.cubes[i]} // ${addr}</span>
+                <span class="pink-text">${mockData.kills[i]} KILL</span>
+            </div>
+        `).join('');
+    } catch (err) { console.error(err); }
+}
+
+// --- Subgraph ---
 async function syncBattlefield() {
-    const query = `
-    {
-      killeds(first: 30, orderBy: block_number, orderDirection: desc) {
-        id
-        attacker
-        target
-        targetStdLost
-        block_number
+    const query = `{
+      killeds(first: 20, orderBy: block_number, orderDirection: desc) {
+        id, attacker, target, targetStdLost, block_number
       }
       spawneds(first: 10, orderBy: block_number, orderDirection: desc) {
-        id
-        cube
-        block_number
+        id, cube, block_number
       }
     }`;
-
     try {
         const response = await fetch(SUBGRAPH_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ query })
         });
-
         const result = await response.json();
-        if (result.errors) throw new Error(result.errors[0].message);
-
         const { killeds, spawneds } = result.data;
-        let allEvents = [];
 
-        if (killeds) killeds.forEach(k => allEvents.push({...k, type: 'KILL'}));
-        if (spawneds) spawneds.forEach(s => allEvents.push({...s, type: 'SPAWN'}));
+        let all = [];
+        if (killeds) killeds.forEach(k => all.push({...k, type: 'KILL'}));
+        if (spawneds) spawneds.forEach(s => all.push({...s, type: 'SPAWN'}));
+        all.sort((a,b) => a.block_number - b.block_number);
 
-        // Sort ascending (oldest to newest) to append to bottom
-        allEvents.sort((a, b) => a.block_number - b.block_number);
-
-        if (allEvents.length > 0) {
-            footerBlock.innerText = `BLOCK: ${allEvents[allEvents.length - 1].block_number}`;
-            
-            allEvents.forEach(evt => {
-                if (!knownIds.has(evt.id)) {
-                    addLogEntry(evt);
-                    knownIds.add(evt.id);
-                    if (evt.type === 'KILL') updateStats(evt);
-                }
-            });
-            renderLeaderboard();
-        }
-    } catch (err) {
-        console.error("Sync Error:", err.message);
-    }
+        all.forEach(evt => {
+            if (!knownIds.has(evt.id)) {
+                addLogEntry(evt);
+                knownIds.add(evt.id);
+                if (evt.type === 'KILL') hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + parseInt(evt.targetStdLost);
+            }
+        });
+        renderLeaderboard();
+        if(killeds.length) footerBlock.innerText = `BLOCK: ${killeds[0].block_number}`;
+    } catch (err) { console.error(err); }
 }
 
 function addLogEntry(evt) {
     const div = document.createElement('div');
-    div.className = 'kill-line';
+    // Restore Color Logic
+    div.className = `kill-line ${evt.type === 'KILL' ? 'entry-kill' : 'entry-spawn'}`;
     
     if (evt.type === 'KILL') {
-        const std = Math.floor(evt.targetStdLost || 0);
-        div.innerHTML = `
-            <span class="pink-text">[TERMINATION]</span><br>
-            ATK: ${evt.attacker.substring(0,8)}...<br>
-            CULLED: <span style="color:#fff">${std} UNITS</span> FROM ${evt.target.substring(0,8)}...
-        `;
+        div.innerHTML = `<span class="pink-text">[TERMINATION]</span><br>${evt.attacker.substring(0,8)}... CULLED ${evt.targetStdLost} KILL`;
     } else {
-        div.innerHTML = `
-            <span style="color:#00f0ff">[DEPLOYMENT]</span><br>
-            AGENT_SPAWN IN <span style="color:#fff">CUBE_${evt.cube}</span><br>
-            STATUS: ACTIVE
-        `;
+        div.innerHTML = `<span class="cyan-text">[DEPLOYMENT]</span><br>AGENT SPAWNED IN CUBE_${evt.cube}`;
     }
-    
     feed.appendChild(div);
-    
-    // Auto-scroll to bottom
     feed.scrollTop = feed.scrollHeight;
-
-    // Prune old logs to maintain performance
-    if(feed.childNodes.length > 50) feed.removeChild(feed.firstChild);
-}
-
-function updateStats(kill) {
-    const atk = kill.attacker;
-    const score = parseInt(kill.targetStdLost || 0);
-    hunterStats[atk] = (hunterStats[atk] || 0) + score;
 }
 
 function renderLeaderboard() {
-    const sorted = Object.entries(hunterStats)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 10);
-
+    const sorted = Object.entries(hunterStats).sort(([,a], [,b]) => b - a).slice(0, 5);
     leaderboardEl.innerHTML = sorted.map(([addr, score], i) => `
-        <div style="margin-bottom: 15px;">
-            <div style="font-size: 0.6rem; color: #555;">RANK 0${i+1}</div>
-            <div class="pink-text">${addr.substring(0,12)}...</div>
-            <div style="color: #fff; font-weight: bold;">${score.toLocaleString()} PTS</div>
+        <div class="rank-item">
+            <div class="rank-addr">RANK 0${i+1} // ${addr.substring(0,10)}...</div>
+            <div class="rank-score">${score.toLocaleString()} KILL</div>
         </div>
     `).join('');
 }
 
-// Timer Loop
 setInterval(() => {
     countdown--;
-    if (countdown < 0) {
-        countdown = BLOCK_SPEED;
-        syncBattlefield();
-    }
+    if (countdown < 0) { countdown = 2; syncBattlefield(); updateRipeStacks(); }
     blockTimer.innerText = `0${countdown}s`;
 }, 1000);
 
 syncBattlefield();
+updateRipeStacks();

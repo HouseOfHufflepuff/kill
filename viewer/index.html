@@ -9,12 +9,7 @@
 <body>
 
 <header>
-    <div class="logo-container">
-        <div>
-            <div class="logo-text">KILL</div>
-        </div>
-        <div style="font-size: 0.6rem; color: #555;">v2.5 // AGENTIC ENGINE</div>
-    </div>
+    <div class="logo-text">KILL</div>
     <div style="text-align: right;">
         <div id="block-timer" style="color: var(--pink); font-size: 1.2rem;">02s</div>
         <div style="font-size: 0.6rem;">NEXT RESOLUTION</div>
@@ -24,27 +19,25 @@
 <div class="dashboard">
     <div class="panel">
         <div class="panel-header">Alpha Hunters</div>
-        <div id="leaderboard" class="leaderboard-list">
-            </div>
+        <div id="leaderboard"></div>
         
-        <div class="panel-header" style="margin-top:auto;">Target Selection</div>
-        <p style="font-size: 0.65rem; color: #666;">Scanning 6x6x6 grid for high-age stacks. Yield threshold: > 12.5%</p>
+        <div class="panel-header" style="margin-top:auto;">Ripe Stacks</div>
+        <div id="ripe-stacks"></div>
+        <p style="font-size: 0.5rem; color: #444; margin-top: 10px;">SCANNING GRID... THRESHOLD > 12.5%</p>
     </div>
 
     <div class="battle-container">
         <canvas id="battle-canvas"></canvas>
-        <div class="overlay-text">ROTATION: ACTIVE // LAYER: 6x6x6</div>
     </div>
 
     <div class="panel">
         <div class="panel-header">Real-Time Culling</div>
-        <div id="feed">
-            </div>
+        <div id="feed"></div>
     </div>
 </div>
 
 <div class="burn-footer">
-    <span>SYSTEM STATUS: LETHAL</span>
+    <span>SYSTEM: LETHAL</span>
     <span id="footer-block">BLOCK: -------</span>
 </div>
 
