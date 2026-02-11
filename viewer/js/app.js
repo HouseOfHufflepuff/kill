@@ -96,10 +96,10 @@ async function syncData() {
         const currentBlock = Number(blockResponse); 
         footerBlock.innerText = `BLOCK: ${currentBlock}`;
 
-        // Handle Block Heartbeat in Log
+        // Updated Heartbeat Message
         if (currentBlock > lastBlock) {
             if (lastBlock !== 0) {
-                addLog(currentBlock, "NETWORK_HEARTBEAT // NEW_BLOCK_CONFIRMED", "log-block-change");
+                addLog(currentBlock, "[BLOCK] Network resolution confirmed.", "log-block-change");
             }
             lastBlock = currentBlock;
         }
