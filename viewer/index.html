@@ -16,47 +16,36 @@
         <div style="font-size: 0.6rem; color: #555;">v2.5 // AGENTIC ENGINE</div>
     </div>
     <div style="text-align: right;">
-        <div id="block-timer" style="color: var(--pink); font-size: 1.2rem;">--s</div>
-        <div style="font-size: 0.6rem;">SUBGRAPH SYNC</div>
+        <div id="block-timer" style="color: var(--pink); font-size: 1.2rem;">02s</div>
+        <div style="font-size: 0.6rem;">NEXT RESOLUTION</div>
     </div>
 </header>
 
 <div class="dashboard">
     <div class="panel">
-        <div class="panel-header">Economic Metrics</div>
-        <div class="stat-box">
-            <div class="stat-label">TREASURY (CCB)</div>
-            <div class="stat-value">454,800,000 <small style="font-size: 0.7rem;">KILL</small></div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">SUPPLY BURNED</div>
-            <div class="stat-value pink-text" id="stat-burned">0</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">LAST BLOCK</div>
-            <div class="stat-value" id="last-block">-------</div>
-        </div>
+        <div class="panel-header">Alpha Hunters</div>
+        <div id="leaderboard" class="leaderboard-list">
+            </div>
         
         <div class="panel-header" style="margin-top:auto;">Target Selection</div>
         <p style="font-size: 0.65rem; color: #666;">Scanning 6x6x6 grid for high-age stacks. Yield threshold: > 12.5%</p>
     </div>
 
-    <div style="position: relative;">
+    <div class="battle-container">
         <canvas id="battle-canvas"></canvas>
-        <div style="position: absolute; bottom: 20px; left: 20px; font-size: 0.7rem; color: rgba(255,255,255,0.2);">
-            ROTATION: ACTIVE // LAYER: 6x6x6
-        </div>
+        <div class="overlay-text">ROTATION: ACTIVE // LAYER: 6x6x6</div>
     </div>
 
     <div class="panel">
         <div class="panel-header">Real-Time Culling</div>
-        <div id="feed"></div>
+        <div id="feed">
+            </div>
     </div>
 </div>
 
 <div class="burn-footer">
     <span>SYSTEM STATUS: LETHAL</span>
-    <span id="footer-burn">SYNCING AGENTIC DATA...</span>
+    <span id="footer-block">BLOCK: -------</span>
 </div>
 
 <script src="js/app.js"></script>

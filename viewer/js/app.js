@@ -3,16 +3,21 @@ const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901
 const canvas = document.getElementById('battle-canvas');
 const ctx = canvas.getContext('2d');
 const feed = document.getElementById('feed');
+const leaderboardEl = document.getElementById('leaderboard');
+const footerBlock = document.getElementById('footer-block');
 const blockTimer = document.getElementById('block-timer');
-const lastBlockEl = document.getElementById('last-block');
 
-let time = 5; // Poll every 5 seconds
-let knownKillIds = new Set();
+const BLOCK_SPEED = 2;
+let countdown = BLOCK_SPEED;
+let knownIds = new Set();
+let hunterStats = {};
 
-// --- 3D Grid Animation ---
+// --- Responsive Sim Scaling ---
 function resize() {
-    canvas.width = canvas.parentElement.clientWidth;
-    canvas.height = canvas.parentElement.clientHeight;
+    const container = canvas.parentElement;
+    // Set internal resolution to match displayed size
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
 }
 window.addEventListener('resize', resize);
 resize();
@@ -21,7 +26,8 @@ function drawGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const size = 180;
+    // Scale grid size based on smallest dimension
+    const size = Math.min(canvas.width, canvas.height) * 0.5;
     const rotation = Date.now() * 0.0005;
 
     ctx.strokeStyle = 'rgba(255, 45, 117, 0.2)';
@@ -35,28 +41,29 @@ function drawGrid() {
             let ry = x * Math.sin(rotation) + y * Math.cos(rotation);
 
             ctx.beginPath();
-            ctx.moveTo(centerX + rx, centerY + ry * 0.5 - 100);
-            ctx.lineTo(centerX + rx, centerY + ry * 0.5 + 100);
+            ctx.moveTo(centerX + rx, centerY + ry * 0.5 - (size / 2));
+            ctx.lineTo(centerX + rx, centerY + ry * 0.5 + (size / 2));
             ctx.stroke();
         }
-    }
-    
-    if (Math.random() > 0.95) {
-        ctx.fillStyle = 'rgba(255, 45, 117, 0.6)';
-        ctx.fillRect(centerX + (Math.random()-0.5)*200, centerY + (Math.random()-0.5)*100, 10, 10);
     }
     requestAnimationFrame(drawGrid);
 }
 drawGrid();
 
-// --- Subgraph Data Fetching ---
-async function fetchKills() {
+// --- Battlefield Logic ---
+async function syncBattlefield() {
     const query = `
     {
-      killeds(first: 10, orderBy: block_number, orderDirection: desc) {
+      killeds(first: 30, orderBy: block_number, orderDirection: desc) {
         id
         attacker
         target
+        targetStdLost
+        block_number
+      }
+      spawneds(first: 10, orderBy: block_number, orderDirection: desc) {
+        id
+        cube
         block_number
       }
     }`;
@@ -69,49 +76,90 @@ async function fetchKills() {
         });
 
         const result = await response.json();
-        const killeds = result.data.killeds;
+        if (result.errors) throw new Error(result.errors[0].message);
 
-        if (killeds && killeds.length > 0) {
-            lastBlockEl.innerText = killeds[0].block_number;
-            // Process new kills only
-            killeds.reverse().forEach(kill => {
-                if (!knownKillIds.has(kill.id)) {
-                    addEventToFeed(kill);
-                    knownKillIds.add(kill.id);
+        const { killeds, spawneds } = result.data;
+        let allEvents = [];
+
+        if (killeds) killeds.forEach(k => allEvents.push({...k, type: 'KILL'}));
+        if (spawneds) spawneds.forEach(s => allEvents.push({...s, type: 'SPAWN'}));
+
+        // Sort ascending (oldest to newest) to append to bottom
+        allEvents.sort((a, b) => a.block_number - b.block_number);
+
+        if (allEvents.length > 0) {
+            footerBlock.innerText = `BLOCK: ${allEvents[allEvents.length - 1].block_number}`;
+            
+            allEvents.forEach(evt => {
+                if (!knownIds.has(evt.id)) {
+                    addLogEntry(evt);
+                    knownIds.add(evt.id);
+                    if (evt.type === 'KILL') updateStats(evt);
                 }
             });
+            renderLeaderboard();
         }
     } catch (err) {
-        console.error("Subgraph sync failed:", err);
+        console.error("Sync Error:", err.message);
     }
 }
 
-function addEventToFeed(kill) {
+function addLogEntry(evt) {
     const div = document.createElement('div');
     div.className = 'kill-line';
     
-    const shortAtk = `${kill.attacker.substring(0,6)}...${kill.attacker.substring(38)}`;
-    const shortTgt = `${kill.target.substring(0,6)}...${kill.target.substring(38)}`;
+    if (evt.type === 'KILL') {
+        const std = Math.floor(evt.targetStdLost || 0);
+        div.innerHTML = `
+            <span class="pink-text">[TERMINATION]</span><br>
+            ATK: ${evt.attacker.substring(0,8)}...<br>
+            CULLED: <span style="color:#fff">${std} UNITS</span> FROM ${evt.target.substring(0,8)}...
+        `;
+    } else {
+        div.innerHTML = `
+            <span style="color:#00f0ff">[DEPLOYMENT]</span><br>
+            AGENT_SPAWN IN <span style="color:#fff">CUBE_${evt.cube}</span><br>
+            STATUS: ACTIVE
+        `;
+    }
     
-    div.innerHTML = `
-        <span class="pink-text">${shortAtk}</span> <br>
-        CULLED UNITS FROM <span style="color:#fff">${shortTgt}</span><br>
-        > BLOCK: ${kill.block_number} 💀
-    `;
+    feed.appendChild(div);
     
-    feed.prepend(div);
-    if(feed.childNodes.length > 15) feed.removeChild(feed.lastChild);
+    // Auto-scroll to bottom
+    feed.scrollTop = feed.scrollHeight;
+
+    // Prune old logs to maintain performance
+    if(feed.childNodes.length > 50) feed.removeChild(feed.firstChild);
 }
 
-// --- Timer Loop ---
+function updateStats(kill) {
+    const atk = kill.attacker;
+    const score = parseInt(kill.targetStdLost || 0);
+    hunterStats[atk] = (hunterStats[atk] || 0) + score;
+}
+
+function renderLeaderboard() {
+    const sorted = Object.entries(hunterStats)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10);
+
+    leaderboardEl.innerHTML = sorted.map(([addr, score], i) => `
+        <div style="margin-bottom: 15px;">
+            <div style="font-size: 0.6rem; color: #555;">RANK 0${i+1}</div>
+            <div class="pink-text">${addr.substring(0,12)}...</div>
+            <div style="color: #fff; font-weight: bold;">${score.toLocaleString()} PTS</div>
+        </div>
+    `).join('');
+}
+
+// Timer Loop
 setInterval(() => {
-    time--;
-    if (time < 0) {
-        time = 5;
-        fetchKills();
+    countdown--;
+    if (countdown < 0) {
+        countdown = BLOCK_SPEED;
+        syncBattlefield();
     }
-    blockTimer.innerText = `${time}s`;
+    blockTimer.innerText = `0${countdown}s`;
 }, 1000);
 
-// Initial Load
-fetchKills();
+syncBattlefield();

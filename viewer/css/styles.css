@@ -13,9 +13,9 @@ body {
     background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #0a0a0a 100%);
 }
 
-/* Branding Header */
 header {
-    padding: 25px 40px;
+    height: 80px;
+    padding: 0 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -48,11 +48,10 @@ header {
     margin-top: 5px;
 }
 
-/* Grid Layout */
 .dashboard {
     display: grid;
     grid-template-columns: 350px 1fr 350px;
-    height: calc(100vh - 120px);
+    height: calc(100vh - 130px); /* Header + Footer offset */
 }
 
 .panel {
@@ -61,6 +60,7 @@ header {
     background: rgba(18, 18, 18, 0.6);
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* Important for internal scrolling */
 }
 
 .panel-header {
@@ -71,65 +71,72 @@ header {
     letter-spacing: 2px;
     border-left: 3px solid var(--pink);
     padding-left: 10px;
+    flex-shrink: 0;
 }
 
-/* 3D Battlefield */
+/* Battle Sim Styling */
+.battle-container {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 #battle-canvas {
-    width: 100%;
-    height: 100%;
-    cursor: crosshair;
+    max-width: 100%;
+    max-height: 100%;
 }
 
-/* Live Feed */
+.overlay-text {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.2);
+}
+
+/* Feed & Scroll Logic */
 #feed {
     font-size: 0.75rem;
     color: #888;
-    overflow-y: hidden;
+    overflow-y: auto;
     flex-grow: 1;
+    padding-right: 10px;
+}
+
+#feed::-webkit-scrollbar {
+    width: 4px;
+}
+
+#feed::-webkit-scrollbar-thumb {
+    background: var(--pink);
 }
 
 .kill-line {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 2px solid #333;
     animation: flash 0.5s ease-out;
-    border-bottom: 1px solid #222;
-    padding-bottom: 5px;
 }
 
-.pink-text {
-    color: var(--pink);
-}
+.pink-text { color: var(--pink); }
 
 @keyframes flash {
     0% { background: rgba(255, 45, 117, 0.2); }
-    100% { background: transparent; }
-}
-
-/* UI Elements */
-.stat-box {
-    margin-bottom: 25px;
-}
-
-.stat-label {
-    font-size: 0.6rem;
-    color: #555;
-}
-
-.stat-value {
-    font-size: 1.4rem;
-    color: #eee;
-    font-weight: bold;
+    100% { background: rgba(255, 255, 255, 0.02); }
 }
 
 .burn-footer {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
+    height: 50px;
     background: var(--pink);
     color: #000;
-    padding: 10px 40px;
-    font-family: 'Oswald';
+    padding: 0 40px;
+    font-family: 'Oswald', sans-serif;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 1.2rem;
+    z-index: 100;
 }
