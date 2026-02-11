@@ -38,26 +38,26 @@ function drawGrid() {
 }
 drawGrid();
 
-// --- API: Ripe Stacks ---
 async function updateRipeStacks() {
     try {
-        // Updated mock data with cubeId
         const mockData = {
             cubes: [122, 45, 89, 201, 15],
             addresses: ["0x71...66", "0x32...11", "0xaf...90", "0xde...44", "0x11...22"],
-            kills: [450, 320, 210, 150, 90]
+            kills: [550, 320, 210, 150, 90] // High values trigger warning
         };
 
-        ripeStacksEl.innerHTML = mockData.addresses.map((addr, i) => `
-            <div class="ripe-item">
-                <span>CUBE_${mockData.cubes[i]} // ${addr}</span>
-                <span class="pink-text">${mockData.kills[i]} KILL</span>
-            </div>
-        `).join('');
+        ripeStacksEl.innerHTML = mockData.addresses.map((addr, i) => {
+            const isCritical = mockData.kills[i] > 400; // Trigger threshold
+            return `
+                <div class="ripe-item ${isCritical ? 'warning-flash' : ''}">
+                    <span style="color:#555">CUBE_${mockData.cubes[i]} // ${addr}</span>
+                    <span class="${isCritical ? 'pink-text' : ''}" style="font-weight:bold;">${mockData.kills[i]} KILL</span>
+                </div>
+            `;
+        }).join('');
     } catch (err) { console.error(err); }
 }
 
-// --- Subgraph ---
 async function syncBattlefield() {
     const query = `{
       killeds(first: 20, orderBy: block_number, orderDirection: desc) {
@@ -95,9 +95,7 @@ async function syncBattlefield() {
 
 function addLogEntry(evt) {
     const div = document.createElement('div');
-    // Restore Color Logic
     div.className = `kill-line ${evt.type === 'KILL' ? 'entry-kill' : 'entry-spawn'}`;
-    
     if (evt.type === 'KILL') {
         div.innerHTML = `<span class="pink-text">[TERMINATION]</span><br>${evt.attacker.substring(0,8)}... CULLED ${evt.targetStdLost} KILL`;
     } else {
