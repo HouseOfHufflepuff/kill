@@ -1,138 +1,129 @@
 const ALCHEMY_URL = "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs";
 const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.0/gn";
-
-// Initialize Ethers Provider
 const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
 
-const canvas = document.getElementById('battle-canvas');
-const ctx = canvas.getContext('2d');
-const feed = document.getElementById('feed');
+const cube = document.getElementById('battle-cube');
 const leaderboardEl = document.getElementById('leaderboard');
+const logFeed = document.getElementById('log-feed');
 const ripeStacksEl = document.getElementById('ripe-stacks');
 const footerBlock = document.getElementById('footer-block');
-const blockTimer = document.getElementById('block-timer');
+const timerEl = document.getElementById('timer');
 
 let knownIds = new Set();
 let hunterStats = {};
-let countdown = 2;
+let seconds = 2;
 
-// --- Ethers Block Polling ---
-async function pollBlock() {
-    try {
-        const blockNumber = await provider.getBlockNumber();
-        footerBlock.innerText = `BLOCK: ${blockNumber}`;
-    } catch (err) {
-        console.error("Alchemy Sync Error:", err);
+// Initialize Cube Faces
+document.querySelectorAll('.cube-face').forEach(face => {
+    for(let i=0; i<36; i++) {
+        const node = document.createElement('div');
+        node.className = 'node';
+        face.appendChild(node);
     }
+});
+
+function updateRipeStacks() {
+    const mockRipe = [
+        { cube: 14, addr: "0x71...ea", kill: 842 },
+        { cube: 102, addr: "0x32...01", kill: 615 },
+        { cube: 89, addr: "0xaf...99", kill: 420 },
+        { cube: 22, addr: "0xde...cc", kill: 190 }
+    ];
+
+    ripeStacksEl.innerHTML = mockRipe.map(item => `
+        <div class="ripe-item" style="display:flex; justify-content:space-between; font-size:0.7rem; border-bottom:1px solid #222; padding:4px 0;">
+            <span style="color:#666;">CUBE_${item.cube} // ${item.addr}</span>
+            <span style="color:var(--pink); font-weight:bold;">${item.kill} KILL</span>
+        </div>
+    `).join('');
 }
 
-// --- Sim Animation ---
-function resize() {
-    canvas.width = canvas.parentElement.clientWidth;
-    canvas.height = canvas.parentElement.clientHeight;
-}
-window.addEventListener('resize', resize);
-resize();
-
-function drawGrid() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const size = Math.min(canvas.width, canvas.height) * 0.5;
-    const rot = Date.now() * 0.0005;
-    ctx.strokeStyle = 'rgba(255, 45, 117, 0.2)';
-    for (let i = -3; i <= 3; i++) {
-        for (let j = -3; j <= 3; j++) {
-            let rx = (i * (size/3)) * Math.cos(rot) - (j * (size/3)) * Math.sin(rot);
-            let ry = (i * (size/3)) * Math.sin(rot) + (j * (size/3)) * Math.cos(rot);
-            ctx.beginPath();
-            ctx.moveTo(canvas.width/2 + rx, canvas.height/2 + ry * 0.5 - (size/2));
-            ctx.lineTo(canvas.width/2 + rx, canvas.height/2 + ry * 0.5 + (size/2));
-            ctx.stroke();
-        }
-    }
-    requestAnimationFrame(drawGrid);
-}
-drawGrid();
-
-// --- API: Ripe Stacks ---
-async function updateRipeStacks() {
+async function syncData() {
     try {
-        const mockData = {
-            cubes: [122, 45, 89, 201, 15],
-            addresses: ["0x71...66", "0x32...11", "0xaf...90", "0xde...44", "0x11...22"],
-            kills: [550, 320, 210, 150, 90] 
-        };
+        const block = await provider.getBlockNumber();
+        footerBlock.innerText = `BLOCK: ${block}`;
 
-        ripeStacksEl.innerHTML = mockData.addresses.map((addr, i) => {
-            const isCritical = mockData.kills[i] > 400;
-            return `
-                <div class="ripe-item ${isCritical ? 'warning-flash' : ''}">
-                    <span style="color:#555">CUBE_${mockData.cubes[i]} // ${addr}</span>
-                    <span class="${isCritical ? 'pink-text' : ''}" style="font-weight:bold;">${mockData.kills[i]} KILL</span>
-                </div>
-            `;
-        }).join('');
-    } catch (err) { console.error(err); }
-}
+        const query = `{
+          killeds(first: 15, orderBy: block_number, orderDirection: desc) { id, attacker, targetStdLost, block_number }
+          spawneds(first: 10, orderBy: block_number, orderDirection: desc) { id, cube, block_number }
+        }`;
 
-// --- Subgraph Sync ---
-async function syncBattlefield() {
-    const query = `{
-      killeds(first: 20, orderBy: block_number, orderDirection: desc) {
-        id, attacker, target, targetStdLost, block_number
-      }
-    }`;
-    try {
-        const response = await fetch(SUBGRAPH_URL, {
+        const resp = await fetch(SUBGRAPH_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ query })
         });
-        const result = await response.json();
-        const killeds = result.data.killeds;
+        
+        const result = await resp.json();
+        if (result.errors) throw new Error(result.errors[0].message);
+        
+        const { killeds, spawneds } = result.data;
 
-        killeds.sort((a,b) => a.block_number - b.block_number).forEach(evt => {
+        // Combine and Sort by Block (Descending)
+        const allEvents = [
+            ...spawneds.map(s => ({...s, type: 'spawn'})),
+            ...killeds.map(k => ({...k, type: 'kill'}))
+        ].sort((a, b) => b.block_number - a.block_number);
+
+        allEvents.forEach(evt => {
             if (!knownIds.has(evt.id)) {
-                addLogEntry(evt);
+                if (evt.type === 'spawn') {
+                    addLog(evt.block_number, `[SPAWN] Agent deployed to CUBE_${evt.cube}`, 'log-spawn');
+                } else {
+                    addLog(evt.block_number, `[KILL] ${evt.attacker.substring(0,8)}... Reaped ${evt.targetStdLost} KILL`, 'log-kill');
+                    hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + parseInt(evt.targetStdLost);
+                }
                 knownIds.add(evt.id);
-                hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + parseInt(evt.targetStdLost);
             }
         });
+
         renderLeaderboard();
-    } catch (err) { console.error(err); }
+    } catch (e) { 
+        console.error("Sync Failure:", e.message); 
+    }
 }
 
-function addLogEntry(evt) {
-    const div = document.createElement('div');
-    div.className = 'kill-line entry-kill';
-    div.innerHTML = `<span style="color:var(--pink)">[TERMINATION]</span><br>${evt.attacker.substring(0,8)}... CULLED ${evt.targetStdLost} KILL`;
-    feed.appendChild(div);
-    feed.scrollTop = feed.scrollHeight;
+function addLog(blockNum, msg, className) {
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${className}`;
+    entry.innerHTML = `<span class="log-block">${blockNum}</span> > ${msg}`;
+    logFeed.prepend(entry); // Newest at top
+    if (logFeed.childNodes.length > 50) logFeed.removeChild(logFeed.lastChild);
 }
 
 function renderLeaderboard() {
     const sorted = Object.entries(hunterStats).sort(([,a], [,b]) => b - a).slice(0, 10);
     leaderboardEl.innerHTML = sorted.map(([addr, score]) => `
         <div class="rank-item">
-            <span class="rank-addr">${addr.substring(0,10)}...</span>
+            <span class="rank-addr">${addr.substring(0,12)}...</span>
             <span class="rank-sep">//</span>
             <span class="rank-score">${score.toLocaleString()} KILL</span>
         </div>
     `).join('');
 }
 
-// Main Loop
+// Rotation Interaction
+let isDragging = false, startX, startY, rotateX = -30, rotateY = 45;
+window.onmousedown = (e) => { isDragging = true; startX = e.clientX; startY = e.clientY; };
+window.onmouseup = () => isDragging = false;
+window.onmousemove = (e) => {
+    if(!isDragging) return;
+    rotateY += (e.clientX - startX) * 0.5;
+    rotateX -= (e.clientY - startY) * 0.5;
+    cube.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    startX = e.clientX; startY = e.clientY;
+};
+
+// Cycle Initialization
 setInterval(() => {
-    countdown--;
-    if (countdown < 0) { 
-        countdown = 2; 
-        syncBattlefield(); 
-        updateRipeStacks();
-        pollBlock(); // Direct Ethers call
+    seconds--;
+    if(seconds < 0) { 
+        seconds = 2; 
+        syncData(); 
+        updateRipeStacks(); 
     }
-    blockTimer.innerText = `0${countdown}s`;
+    timerEl.innerText = `0${seconds}s`;
 }, 1000);
 
-// Initial Load
-pollBlock();
-syncBattlefield();
+syncData();
 updateRipeStacks();

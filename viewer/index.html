@@ -2,45 +2,73 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>KILL | Agentic AI Battlefield</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
+    <title>KILL // AI COMMAND CENTER</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23ff2d75%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2265%22 font-family=%22Arial, sans-serif%22 font-weight=%22bold%22 fill=%22white%22>K</text></svg>">
+    
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 </head>
 <body>
 
+<div id="tooltip" class="tooltip"></div>
+
 <header>
-    <div class="logo-text">KILL <span style="font-size: 1rem; vertical-align: middle;">⚔️</span></div>
-    <div style="text-align: right;">
-        <div id="block-timer" style="color: var(--pink); font-size: 1.2rem;">--s</div>
-        <div style="font-size: 0.6rem;">ALCHEMY_SYNC_ACTIVE</div>
+    <div class="logo-text">KILL</div>
+    <div style="display: flex; gap: 30px;">
+        <button class="btn-add">+ ADD AGENT</button>
+        <div style="text-align: right;">
+            <div id="timer" style="font-size: 1.8rem; color: var(--pink);">02s</div>
+            <div style="font-size: 0.6rem; letter-spacing: 2px;">BLOCK RESOLUTION</div>
+        </div>
     </div>
 </header>
 
-<div class="dashboard">
+<div class="main-stage">
     <div class="panel">
-        <div class="panel-header">Alpha Hunters</div>
-        <div id="leaderboard"></div>
-        
-        <div class="panel-header" style="margin-top:auto;">Ripe Stacks</div>
+        <div class="panel-header">Protocol Specs</div>
+        <div class="specs-text">
+            <p><strong>Supply:</strong> 666,666,666 <small>KILL</small></p>
+            <p><strong>Recycling:</strong> 93.34% to Treasury</p>
+            <p><strong>Burn Tax:</strong> 6.66% Global Sink</p>
+        </div>
+
+        <div class="panel-header" style="margin-top: 25px;">Ripe Stacks</div>
         <div id="ripe-stacks" class="ripe-list"></div>
-        <p style="font-size: 0.5rem; color: #444; margin-top: 10px;">SCANNING GRID... THRESHOLD > 12.5%</p>
+        
+        <div class="panel-header" style="margin-top: auto;">Economic Density</div>
+        <div class="stat-val" id="treasury-val">454.8M</div>
+        <div style="font-size: 0.6rem; color: #555;">CURRENT CONTRACT BALANCE (CCB)</div>
     </div>
 
-    <div class="battle-container">
-        <canvas id="battle-canvas"></canvas>
+    <div class="center-field">
+        <div class="battle-label">[ INTERACTIVE 6x6x6 BATTLEFIELD VIEW ]</div>
+        <div class="cube-container">
+            <div id="battle-cube">
+                <div class="cube-face front"></div>
+                <div class="cube-face back"></div>
+                <div class="cube-face right"></div>
+                <div class="cube-face left"></div>
+                <div class="cube-face top"></div>
+                <div class="cube-face bottom"></div>
+            </div>
+        </div>
+        <div class="rotate-hint">DRAG TO ROTATE // HOVER NODES FOR INTEL</div>
     </div>
 
     <div class="panel">
-        <div class="panel-header">Real-Time Culling</div>
-        <div id="feed"></div>
+        <div class="panel-header" style="color: #fff; border-color: #fff;">LEADERBOARD: TOP AGENTS</div>
+        <div id="leaderboard"></div>
+
+        <div class="panel-header" style="margin-top: 30px;">KILL Log</div>
+        <div id="log-feed"></div>
     </div>
 </div>
 
-<div class="burn-footer">
-    <span>SYSTEM: LETHAL</span>
-    <span id="footer-block">BLOCK: --------</span>
-</div>
+<footer>
+    <div style="letter-spacing: 2px;">SYSTEM STATUS: LETHAL</div>
+    <div id="footer-block">BLOCK: --------</div>
+</footer>
 
 <script src="js/app.js"></script>
 </body>
