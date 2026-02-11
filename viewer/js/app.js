@@ -1,5 +1,5 @@
 const ALCHEMY_URL = "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs";
-const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.0/gn";
+const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph-base-sepolia/1.0.1/gn";
 const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
 
 const stack = document.getElementById('battle-stack');
@@ -51,11 +51,12 @@ function showTooltip(e, id) {
 }
 
 function updateRipeStacks() {
+    // Restored Mock Ripe Stacks Functionality
     const mockRipe = [
-        { cube: 14, addr: "0x71...ea", kill: 842 },
-        { cube: 102, addr: "0x32...01", kill: 615 },
-        { cube: 189, addr: "0xaf...99", kill: 420 },
-        { cube: 215, addr: "0xde...cc", kill: 190 }
+        { cube: 42, addr: "0x88...12", kill: 1250 },
+        { cube: 156, addr: "0x44...ff", kill: 980 },
+        { cube: 12, addr: "0xee...aa", kill: 450 },
+        { cube: 201, addr: "0x12...bc", kill: 320 }
     ];
     ripeStacksEl.innerHTML = mockRipe.map(item => `
         <div class="ripe-item" style="display:flex; justify-content:space-between; font-size:0.7rem; border-bottom:1px solid #222; padding:4px 0;">
@@ -73,14 +74,15 @@ async function syncData() {
 
         if (currentBlock > lastBlock) {
             if (lastBlock !== 0) {
-                addLog(currentBlock, "[NETWORK] Block resolution confirmed.", "log-network");
+                addLog(currentBlock, "[NETWORK] Block resolution.", "log-network");
             }
             lastBlock = currentBlock;
         }
 
         const query = `{
           killeds(first: 20, orderBy: block_number, orderDirection: desc) { id, attacker, targetStdLost, block_number }
-          spawneds(first: 20, orderBy: block_number, orderDirection: desc) { id, cube, block_number }
+          spawneds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, cube, block_number }
+          moveds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, fromCube, toCube, block_number }
         }`;
         
         const resp = await fetch(SUBGRAPH_URL, {
@@ -90,25 +92,27 @@ async function syncData() {
         });
         
         const result = await resp.json();
-        if (!result.data) {
-            console.error("Subgraph Query Failed:", result.errors);
-            return;
-        }
+        if (!result.data) return;
 
-        const { killeds, spawneds } = result.data;
+        const { killeds, spawneds, moveds } = result.data;
         
         const allEvents = [
             ...spawneds.map(s => ({...s, type: 'spawn'})), 
-            ...killeds.map(k => ({...k, type: 'kill'}))
+            ...killeds.map(k => ({...k, type: 'kill'})),
+            ...moveds.map(m => ({...m, type: 'move'}))
         ].sort((a, b) => Number(a.block_number) - Number(b.block_number));
 
         allEvents.forEach(evt => {
             if (!knownIds.has(evt.id)) {
                 if (evt.type === 'spawn') {
-                    addLog(evt.block_number, `[SPAWN] Agent deployed to CUBE_${evt.cube}`, 'log-spawn');
+                    addLog(evt.block_number, `[SPAWN] Agent ${evt.agent.substring(0,6)} @ CUBE_${evt.cube}`, 'log-spawn');
+                } else if (evt.type === 'move') {
+                    // NEW COLOR: CYAN
+                    addLog(evt.block_number, `[MOVE] Agent ${evt.agent.substring(0,6)}: ${evt.fromCube} -> ${evt.toCube}`, 'log-move');
                 } else {
                     const amount = parseInt(evt.targetStdLost);
                     addLog(evt.block_number, `[KILL] ${evt.attacker.substring(0,8)}... Reaped ${amount} KILL`, 'log-kill');
+                    // Persistence: Update hunter stats
                     hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + amount;
                 }
                 knownIds.add(evt.id);
@@ -128,6 +132,10 @@ function addLog(blockNum, msg, className) {
 
 function renderLeaderboard() {
     const sorted = Object.entries(hunterStats).sort(([,a], [,b]) => b - a).slice(0, 10);
+    if (sorted.length === 0) {
+        leaderboardEl.innerHTML = '<div style="font-size:0.7rem; color:#444;">WAITING FOR DATA...</div>';
+        return;
+    }
     leaderboardEl.innerHTML = sorted.map(([addr, score]) => `
         <div class="rank-item">
             <span class="rank-addr">${addr.substring(0,12)}...</span>
@@ -153,7 +161,11 @@ window.onmousemove = (e) => {
 
 setInterval(() => {
     seconds--;
-    if(seconds < 0) { seconds = 2; syncData(); updateRipeStacks(); }
+    if(seconds < 0) { 
+        seconds = 2; 
+        syncData(); 
+        updateRipeStacks(); // Restore interval update for ripe stacks
+    }
     timerEl.innerText = `0${seconds}s`;
 }, 1000);
 
