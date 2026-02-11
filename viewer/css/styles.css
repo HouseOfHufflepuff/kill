@@ -3,6 +3,7 @@
     --cyan: #00f0ff;
     --bg-dark: #050505;
     --panel-bg: rgba(10, 10, 10, 0.98);
+    --gray-text: #888;
 }
 
 body, html {
@@ -18,34 +19,30 @@ body, html {
 header {
     height: 90px; border-bottom: 2px solid var(--pink);
     display: flex; justify-content: space-between; align-items: center;
-    padding: 0 40px; flex-shrink: 0;
-    background: #000;
+    padding: 0 40px; flex-shrink: 0; background: #000;
 }
 
 .logo-text { font-family: 'Oswald', sans-serif; font-size: 3.5rem; color: var(--pink); letter-spacing: -2px; }
 
-/* Fixed Add Agent Button Style */
 .btn-add {
-    background: transparent; 
-    border: 2px solid var(--pink);
-    color: var(--pink); 
-    padding: 12px 24px; 
-    cursor: pointer; 
-    font-family: 'JetBrains Mono'; 
-    font-weight: bold;
-    font-size: 0.8rem;
-    letter-spacing: 1px;
-    transition: 0.3s;
+    background: #000; border: 2px solid var(--pink);
+    color: var(--pink); padding: 12px 24px; cursor: pointer; 
+    font-family: 'JetBrains Mono'; font-weight: bold; font-size: 0.8rem;
+    letter-spacing: 1px; transition: 0.3s;
+}
+.btn-add:hover { background: var(--pink); color: #000; box-shadow: 0 0 15px var(--pink); }
+
+.about-text { 
+    font-size: 0.9rem; 
+    color: #fff; 
+    line-height: 1.4; 
+    letter-spacing: 1px; 
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    padding: 5px 0;
 }
 
-.btn-add:hover { 
-    background: var(--pink); 
-    color: #000; 
-    box-shadow: 0 0 15px var(--pink);
-}
-
-.specs-text { font-size: 0.8rem; line-height: 1.4; color: #ccc; }
-.specs-text strong { color: #fff; }
+.specs-text { font-size: 0.75rem; line-height: 1.4; color: #ccc; }
 
 .main-stage {
     flex-grow: 1; display: grid; grid-template-columns: 360px 1fr 360px;
@@ -63,22 +60,69 @@ header {
     padding-bottom: 5px; flex-shrink: 0;
 }
 
-.center-field { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #1a050c 0%, #000 100%); }
-.battle-label { font-size: 0.7rem; color: var(--pink); margin-bottom: 30px; letter-spacing: 3px; }
+.visibility-panel {
+    margin-bottom: 20px; display: flex; align-items: center; gap: 15px;
+    font-size: 0.7rem; color: var(--gray-text);
+    position: relative;
+    z-index: 9999; /* Ensure interaction over 3D objects */
+}
+
+.radio-container { position: relative; cursor: pointer; display: flex; align-items: center; }
+.radio-container input { position: absolute; opacity: 0; cursor: pointer; }
+
+.custom-radio {
+    background: #222; color: var(--gray-text); padding: 4px 10px;
+    border: 1px solid #333; transition: 0.2s; font-weight: bold;
+}
+
+.radio-container:hover .custom-radio { background: #333; color: #fff; }
+.radio-container input:checked ~ .custom-radio {
+    background: var(--gray-text); color: #000; border-color: var(--gray-text);
+}
+
+.center-field { 
+    flex-grow: 1; display: flex; flex-direction: column; 
+    align-items: center; justify-content: center; 
+    background: radial-gradient(circle, #1a050c 0%, #000 100%); 
+}
+
+.scene {
+    width: 400px; height: 450px; perspective: 1200px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    z-index: 1;
+}
+
+.stack {
+    width: 300px; height: 300px; position: relative;
+    transform-style: preserve-3d; transform: rotateX(60deg) rotateZ(-45deg);
+    transition: transform 0.1s linear;
+}
+
+.layer {
+    position: absolute; width: 300px; height: 300px;
+    display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr);
+    background: rgba(255, 45, 117, 0.03); border: 2px solid rgba(255, 45, 117, 0.4);
+    transform-style: preserve-3d; transition: opacity 0.4s ease, border 0.3s ease;
+}
+
+.layer.active-layer {
+    border: 2px solid var(--pink);
+    box-shadow: 0 0 20px rgba(255, 45, 117, 0.4);
+    background: rgba(255, 45, 117, 0.1);
+}
+
+.node {
+    border: 1px solid rgba(255, 45, 117, 0.3); width: 100%; height: 100%;
+    cursor: crosshair; transition: 0.15s;
+}
+
+.node:hover {
+    background: var(--pink); box-shadow: 0 0 15px var(--pink); z-index: 100;
+}
+
+.battle-label { font-size: 0.7rem; color: var(--pink); margin-bottom: 20px; letter-spacing: 3px; }
 .rotate-hint { margin-top: 40px; font-size: 0.7rem; color: #444; }
-
-.cube-container { width: 300px; height: 300px; perspective: 1000px; }
-#battle-cube { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transform: rotateX(-30deg) rotateY(45deg); transition: transform 0.1s linear; }
-.cube-face { position: absolute; width: 300px; height: 300px; border: 1px solid var(--pink); background: rgba(255, 45, 117, 0.05); display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); }
-.node { border: 1px solid rgba(255, 45, 117, 0.1); }
-.node:hover { background: var(--pink); box-shadow: 0 0 15px var(--pink); }
-
-.front { transform: rotateY(0deg) translateZ(150px); }
-.back { transform: rotateY(180deg) translateZ(150px); }
-.right { transform: rotateY(90deg) translateZ(150px); }
-.left { transform: rotateY(-90deg) translateZ(150px); }
-.top { transform: rotateX(90deg) translateZ(150px); }
-.bottom { transform: rotateX(-90deg) translateZ(150px); }
 
 .rank-item { display: flex; align-items: baseline; padding: 6px 0; border-bottom: 1px solid #222; font-size: 0.8rem; }
 .rank-addr { color: #fff; }
@@ -94,7 +138,7 @@ header {
 .tooltip {
     position: absolute; background: #000; border: 1px solid var(--pink);
     padding: 12px; font-size: 0.75rem; pointer-events: none; opacity: 0;
-    transition: opacity 0.2s; z-index: 500;
+    transition: opacity 0.2s; z-index: 10000;
 }
 
 footer {

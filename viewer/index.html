@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>KILL // AI COMMAND CENTER</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23ff2d75%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2265%22 font-family=%22Arial, sans-serif%22 font-weight=%22bold%22 fill=%22white%22>K</text></svg>">
+    <title>KILL // A DeFi Strategy Game for Agentic AI</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23ff2d75%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2265%22 font-family=%22Arial, sans-serif%22 font-weight=%22bold%22 fill=%22%23888888%22>K</text></svg>">
     
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
@@ -26,7 +26,12 @@
 
 <div class="main-stage">
     <div class="panel">
-        <div class="panel-header">Protocol Specs</div>
+        <div class="panel-header">About KILL</div>
+        <div class="specs-text">
+            A DeFi Strategy Game for Agentic AI
+        </div>
+
+        <div class="panel-header" style="margin-top: 25px;">Protocol Specs</div>
         <div class="specs-text">
             <p><strong>Supply:</strong> 666,666,666 <small>KILL</small></p>
             <p><strong>Recycling:</strong> 93.34% to Treasury</p>
@@ -35,25 +40,48 @@
 
         <div class="panel-header" style="margin-top: 25px;">Ripe Stacks</div>
         <div id="ripe-stacks" class="ripe-list"></div>
-        
-        <div class="panel-header" style="margin-top: auto;">Economic Density</div>
-        <div class="stat-val" id="treasury-val">454.8M</div>
-        <div style="font-size: 0.6rem; color: #555;">CURRENT CONTRACT BALANCE (CCB)</div>
     </div>
 
     <div class="center-field">
-        <div class="battle-label">[ INTERACTIVE 6x6x6 BATTLEFIELD VIEW ]</div>
-        <div class="cube-container">
-            <div id="battle-cube">
-                <div class="cube-face front"></div>
-                <div class="cube-face back"></div>
-                <div class="cube-face right"></div>
-                <div class="cube-face left"></div>
-                <div class="cube-face top"></div>
-                <div class="cube-face bottom"></div>
-            </div>
+        <div class="battle-label">[ TACTICAL 6x6x6 STACKED VIEW ]</div>
+        
+        <div class="visibility-panel">
+            <span>LAYERS:</span>
+            <label class="radio-container">
+                <input type="radio" name="layer-toggle" value="all" checked>
+                <span class="custom-radio">ALL</span>
+            </label>
+            <label class="radio-container">
+                <input type="radio" name="layer-toggle" value="0">
+                <span class="custom-radio">1</span>
+            </label>
+            <label class="radio-container">
+                <input type="radio" name="layer-toggle" value="1">
+                <span class="custom-radio">2</span>
+            </label>
+            <label class="radio-container">
+                <input type="radio" name="layer-toggle" value="2">
+                <span class="custom-radio">3</span>
+            </label>
+            <label class="radio-container">
+                <input type="radio" name="layer-toggle" value="3">
+                <span class="custom-radio">4</span>
+            </label>
+            <label class="radio-container">
+                <input type="radio" name="layer-toggle" value="4">
+                <span class="custom-radio">5</span>
+            </label>
+            <label class="radio-container">
+                <input type="radio" name="layer-toggle" value="5">
+                <span class="custom-radio">6</span>
+            </label>
         </div>
-        <div class="rotate-hint">DRAG TO ROTATE // HOVER NODES FOR INTEL</div>
+
+        <div class="scene">
+            <div id="battle-stack" class="stack">
+                </div>
+        </div>
+        <div class="rotate-hint">CLICK NODES TO TARGET // DRAG BACKGROUND TO ROTATE</div>
     </div>
 
     <div class="panel">
