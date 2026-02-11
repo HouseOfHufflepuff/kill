@@ -8,12 +8,9 @@
 
 body, html {
     margin: 0; padding: 0; height: 100vh;
-    background-color: var(--bg-dark);
-    color: #eee;
-    font-family: 'JetBrains Mono', monospace;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    background-color: var(--bg-dark); color: #eee;
+    font-family: 'JetBrains Mono', monospace; overflow: hidden;
+    display: flex; flex-direction: column;
 }
 
 header {
@@ -25,22 +22,12 @@ header {
 .logo-text { font-family: 'Oswald', sans-serif; font-size: 3.5rem; color: var(--pink); letter-spacing: -2px; }
 
 .btn-add {
-    background: #000; border: 2px solid var(--pink);
-    color: var(--pink); padding: 12px 24px; cursor: pointer; 
-    font-family: 'JetBrains Mono'; font-weight: bold; font-size: 0.8rem;
-    letter-spacing: 1px; transition: 0.3s;
+    background: #000; border: 2px solid var(--pink); color: var(--pink);
+    padding: 12px 24px; cursor: pointer; font-family: 'JetBrains Mono';
+    font-weight: bold; font-size: 0.8rem; letter-spacing: 1px; transition: 0.3s;
 }
-.btn-add:hover { background: var(--pink); color: #000; box-shadow: 0 0 15px var(--pink); }
 
-.about-text { 
-    font-size: 0.9rem; 
-    color: #fff; 
-    line-height: 1.4; 
-    letter-spacing: 1px; 
-    text-transform: uppercase;
-    margin-bottom: 20px;
-    padding: 5px 0;
-}
+.btn-add:hover { background: var(--pink); color: #000; box-shadow: 0 0 15px var(--pink); }
 
 .specs-text { font-size: 0.75rem; line-height: 1.4; color: #ccc; }
 
@@ -60,66 +47,25 @@ header {
     padding-bottom: 5px; flex-shrink: 0;
 }
 
-.visibility-panel {
-    margin-bottom: 20px; display: flex; align-items: center; gap: 15px;
-    font-size: 0.7rem; color: var(--gray-text);
-    position: relative;
-    z-index: 9999; /* Ensure interaction over 3D objects */
-}
+.visibility-panel { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; font-size: 0.7rem; color: var(--gray-text); position: relative; z-index: 9999; }
 
 .radio-container { position: relative; cursor: pointer; display: flex; align-items: center; }
 .radio-container input { position: absolute; opacity: 0; cursor: pointer; }
 
-.custom-radio {
-    background: #222; color: var(--gray-text); padding: 4px 10px;
-    border: 1px solid #333; transition: 0.2s; font-weight: bold;
-}
+.custom-radio { background: #222; color: var(--gray-text); padding: 4px 10px; border: 1px solid #333; transition: 0.2s; font-weight: bold; }
+.radio-container input:checked ~ .custom-radio { background: var(--gray-text); color: #000; border-color: var(--gray-text); }
 
-.radio-container:hover .custom-radio { background: #333; color: #fff; }
-.radio-container input:checked ~ .custom-radio {
-    background: var(--gray-text); color: #000; border-color: var(--gray-text);
-}
+.center-field { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #1a050c 0%, #000 100%); }
 
-.center-field { 
-    flex-grow: 1; display: flex; flex-direction: column; 
-    align-items: center; justify-content: center; 
-    background: radial-gradient(circle, #1a050c 0%, #000 100%); 
-}
+.scene { width: 400px; height: 450px; perspective: 1200px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
 
-.scene {
-    width: 400px; height: 450px; perspective: 1200px;
-    display: flex; align-items: center; justify-content: center;
-    position: relative;
-    z-index: 1;
-}
+.stack { width: 300px; height: 300px; position: relative; transform-style: preserve-3d; transform: rotateX(60deg) rotateZ(-45deg); transition: transform 0.1s linear; }
 
-.stack {
-    width: 300px; height: 300px; position: relative;
-    transform-style: preserve-3d; transform: rotateX(60deg) rotateZ(-45deg);
-    transition: transform 0.1s linear;
-}
+.layer { position: absolute; width: 300px; height: 300px; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); background: rgba(255, 45, 117, 0.03); border: 2px solid rgba(255, 45, 117, 0.4); transform-style: preserve-3d; transition: opacity 0.4s ease; }
+.layer.active-layer { border: 2px solid var(--pink); background: rgba(255, 45, 117, 0.1); }
 
-.layer {
-    position: absolute; width: 300px; height: 300px;
-    display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr);
-    background: rgba(255, 45, 117, 0.03); border: 2px solid rgba(255, 45, 117, 0.4);
-    transform-style: preserve-3d; transition: opacity 0.4s ease, border 0.3s ease;
-}
-
-.layer.active-layer {
-    border: 2px solid var(--pink);
-    box-shadow: 0 0 20px rgba(255, 45, 117, 0.4);
-    background: rgba(255, 45, 117, 0.1);
-}
-
-.node {
-    border: 1px solid rgba(255, 45, 117, 0.3); width: 100%; height: 100%;
-    cursor: crosshair; transition: 0.15s;
-}
-
-.node:hover {
-    background: var(--pink); box-shadow: 0 0 15px var(--pink); z-index: 100;
-}
+.node { border: 1px solid rgba(255, 45, 117, 0.3); width: 100%; height: 100%; cursor: crosshair; }
+.node:hover { background: var(--pink); box-shadow: 0 0 15px var(--pink); }
 
 .battle-label { font-size: 0.7rem; color: var(--pink); margin-bottom: 20px; letter-spacing: 3px; }
 .rotate-hint { margin-top: 40px; font-size: 0.7rem; color: #444; }
@@ -129,20 +75,13 @@ header {
 .rank-sep { color: #444; margin: 0 6px; }
 .rank-score { color: var(--pink); font-size: 0.75rem; }
 
-#log-feed { font-size: 0.62rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; }
+#log-feed { font-size: 0.62rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; color: #eee; scroll-behavior: smooth; }
 .log-entry { margin-bottom: 6px; border-left: 2px solid transparent; padding-left: 8px; line-height: 1.4; }
-.log-kill { border-left-color: var(--pink); color: #eee; }
+.log-kill { border-left-color: var(--pink); }
 .log-spawn { border-left-color: var(--cyan); color: var(--cyan); }
+.log-block-change { border-left-color: #555; color: #888; font-style: italic; background: rgba(255,255,255,0.02); }
 .log-block { color: #555; font-size: 0.55rem; margin-right: 5px; }
 
-.tooltip {
-    position: absolute; background: #000; border: 1px solid var(--pink);
-    padding: 12px; font-size: 0.75rem; pointer-events: none; opacity: 0;
-    transition: opacity 0.2s; z-index: 10000;
-}
+.tooltip { position: absolute; background: #000; border: 1px solid var(--pink); padding: 12px; font-size: 0.75rem; pointer-events: none; opacity: 0; z-index: 10000; transition: opacity 0.2s; }
 
-footer {
-    height: 60px; background: var(--pink); color: #000;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 40px; font-family: 'Oswald', sans-serif; font-size: 1.6rem; font-weight: bold; flex-shrink: 0;
-}
+footer { height: 60px; background: var(--pink); color: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; font-family: 'Oswald', sans-serif; font-size: 1.6rem; font-weight: bold; flex-shrink: 0; }

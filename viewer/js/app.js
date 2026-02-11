@@ -12,6 +12,7 @@ const tooltip = document.getElementById('tooltip');
 
 let knownIds = new Set();
 let hunterStats = {};
+let lastBlock = 0;
 let seconds = 2;
 
 function initStack() {
@@ -29,7 +30,6 @@ function initStack() {
             
             node.onclick = (e) => {
                 e.stopPropagation();
-                // Placeholder for unit data until API integration
                 const units = Math.floor(Math.random() * 20);
                 const boosted = Math.floor(Math.random() * 5);
                 alert(`SECTOR: CUBE #${cubeId}\nUNITS: ${units}\nBOOSTED: ${boosted}`);
@@ -92,39 +92,64 @@ function updateRipeStacks() {
 
 async function syncData() {
     try {
-        const block = await provider.getBlockNumber();
-        footerBlock.innerText = `BLOCK: ${block}`;
+        const blockResponse = await provider.send("eth_blockNumber", []);
+        const currentBlock = Number(blockResponse); 
+        footerBlock.innerText = `BLOCK: ${currentBlock}`;
+
+        // Handle Block Heartbeat in Log
+        if (currentBlock > lastBlock) {
+            if (lastBlock !== 0) {
+                addLog(currentBlock, "NETWORK_HEARTBEAT // NEW_BLOCK_CONFIRMED", "log-block-change");
+            }
+            lastBlock = currentBlock;
+        }
+
         const query = `{
           killeds(first: 15, orderBy: block_number, orderDirection: desc) { id, attacker, targetStdLost, block_number }
           spawneds(first: 10, orderBy: block_number, orderDirection: desc) { id, cube, block_number }
         }`;
+        
         const resp = await fetch(SUBGRAPH_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ query })
         });
+        
         const result = await resp.json();
+        if (!result.data) return;
+
         const { killeds, spawneds } = result.data;
-        const allEvents = [...spawneds.map(s => ({...s, type: 'spawn'})), ...killeds.map(k => ({...k, type: 'kill'}))].sort((a, b) => b.block_number - a.block_number);
+        
+        // Merge and sort ascending (oldest to newest) to append correctly
+        const allEvents = [...spawneds.map(s => ({...s, type: 'spawn'})), ...killeds.map(k => ({...k, type: 'kill'}))]
+            .sort((a, b) => Number(a.block_number) - Number(b.block_number));
+
         allEvents.forEach(evt => {
             if (!knownIds.has(evt.id)) {
-                if (evt.type === 'spawn') addLog(evt.block_number, `[SPAWN] Agent deployed to CUBE_${evt.cube}`, 'log-spawn');
-                else {
-                    addLog(evt.block_number, `[KILL] ${evt.attacker.substring(0,8)}... Reaped ${evt.targetStdLost} KILL`, 'log-kill');
-                    hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + parseInt(evt.targetStdLost);
+                if (evt.type === 'spawn') {
+                    addLog(evt.block_number, `[SPAWN] Agent deployed to CUBE_${evt.cube}`, 'log-spawn');
+                } else {
+                    const amount = parseInt(evt.targetStdLost);
+                    addLog(evt.block_number, `[KILL] ${evt.attacker.substring(0,8)}... Reaped ${amount} KILL`, 'log-kill');
+                    hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + amount;
                 }
                 knownIds.add(evt.id);
             }
         });
         renderLeaderboard();
-    } catch (e) { console.error("Sync Error", e); }
+    } catch (e) { console.error("Sync Error:", e); }
 }
 
 function addLog(blockNum, msg, className) {
     const entry = document.createElement('div');
     entry.className = `log-entry ${className}`;
     entry.innerHTML = `<span class="log-block">${blockNum}</span> > ${msg}`;
-    logFeed.prepend(entry);
+    
+    // Append to bottom
+    logFeed.appendChild(entry);
+    
+    // Auto-scroll to bottom
+    logFeed.scrollTop = logFeed.scrollHeight;
 }
 
 function renderLeaderboard() {
@@ -140,7 +165,7 @@ function renderLeaderboard() {
 
 let isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 window.onmousedown = (e) => {
-    if (e.target.className === 'node' || e.target.closest('.visibility-panel')) return;
+    if (e.target.className === 'node' || e.target.closest('.visibility-panel') || e.target.closest('.panel')) return;
     isDragging = true; startX = e.clientX; startY = e.clientY;
 };
 window.onmouseup = () => isDragging = false;

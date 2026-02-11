@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>KILL // A DeFi Strategy Game for Agentic AI</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23ff2d75%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2265%22 font-family=%22Arial, sans-serif%22 font-weight=%22bold%22 fill=%22%23ffffff%22>K</text></svg>">
-    
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
@@ -51,35 +50,16 @@
                 <input type="radio" name="layer-toggle" value="all" checked>
                 <span class="custom-radio">ALL</span>
             </label>
-            <label class="radio-container">
-                <input type="radio" name="layer-toggle" value="0">
-                <span class="custom-radio">1</span>
-            </label>
-            <label class="radio-container">
-                <input type="radio" name="layer-toggle" value="1">
-                <span class="custom-radio">2</span>
-            </label>
-            <label class="radio-container">
-                <input type="radio" name="layer-toggle" value="2">
-                <span class="custom-radio">3</span>
-            </label>
-            <label class="radio-container">
-                <input type="radio" name="layer-toggle" value="3">
-                <span class="custom-radio">4</span>
-            </label>
-            <label class="radio-container">
-                <input type="radio" name="layer-toggle" value="4">
-                <span class="custom-radio">5</span>
-            </label>
-            <label class="radio-container">
-                <input type="radio" name="layer-toggle" value="5">
-                <span class="custom-radio">6</span>
-            </label>
+            <label class="radio-container"><input type="radio" name="layer-toggle" value="0"><span class="custom-radio">1</span></label>
+            <label class="radio-container"><input type="radio" name="layer-toggle" value="1"><span class="custom-radio">2</span></label>
+            <label class="radio-container"><input type="radio" name="layer-toggle" value="2"><span class="custom-radio">3</span></label>
+            <label class="radio-container"><input type="radio" name="layer-toggle" value="3"><span class="custom-radio">4</span></label>
+            <label class="radio-container"><input type="radio" name="layer-toggle" value="4"><span class="custom-radio">5</span></label>
+            <label class="radio-container"><input type="radio" name="layer-toggle" value="5"><span class="custom-radio">6</span></label>
         </div>
 
         <div class="scene">
-            <div id="battle-stack" class="stack">
-                </div>
+            <div id="battle-stack" class="stack"></div>
         </div>
         <div class="rotate-hint">CLICK NODES TO TARGET // DRAG BACKGROUND TO ROTATE</div>
     </div>
