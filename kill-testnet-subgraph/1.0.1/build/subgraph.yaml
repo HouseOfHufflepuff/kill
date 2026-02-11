@@ -1,0 +1,32 @@
+specVersion: 0.0.5
+schema:
+  file: schema.graphql
+dataSources:
+  - kind: ethereum
+    name: killgame
+    network: base-sepolia
+    source:
+      address: "0xCd98ffeB3d542E996a08e2B2617776BD2F0e5aA2"
+      abi: killgame
+      startBlock: 37502048
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Spawned
+        - Moved
+        - Killed
+        - Cube
+      abis:
+        - name: killgame
+          file: killgame/killgame.json
+      eventHandlers:
+        - event: Spawned(indexed address,indexed uint256,uint256)
+          handler: handleSpawned
+        - event: Moved(indexed address,uint16,uint16,uint256,uint256)
+          handler: handleMoved
+        - event: Killed(indexed address,indexed address,indexed
+            uint16,uint256,uint256,uint256,uint256,uint256)
+          handler: handleKilled
+      file: killgame/killgame.wasm

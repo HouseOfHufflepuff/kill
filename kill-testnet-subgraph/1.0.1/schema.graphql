@@ -1,0 +1,33 @@
+type Spawned @entity(immutable: true) {
+  id: ID!
+  agent: Bytes!
+  cube: BigInt!
+  units: BigInt!
+  block_number: BigInt!
+}
+
+type Moved @entity(immutable: true) {
+  id: ID!
+  agent: Bytes!
+  fromCube: Int!
+  toCube: Int!
+  standardUnits: BigInt!
+  boostedUnits: BigInt!
+  block_number: BigInt!
+}
+
+type Killed @entity(immutable: true) {
+  id: ID!
+  attacker: Bytes!
+  target: Bytes!
+  cube: Int!
+  targetStdLost: BigInt!
+  targetBstLost: BigInt!
+  block_number: BigInt!
+}
+
+type Cube @entity(immutable: false) {
+  id: ID!
+  totalStandardUnits: BigInt!
+  totalBoostedUnits: BigInt!
+}
