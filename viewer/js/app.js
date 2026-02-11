@@ -21,23 +21,13 @@ function initStack() {
         layer.className = 'layer';
         layer.dataset.layerIndex = l;
         layer.style.transform = `translateZ(${l * 45}px)`;
-
         for (let i = 0; i < 36; i++) {
             const cubeId = (l * 36) + i;
             const node = document.createElement('div');
             node.className = 'node';
             node.dataset.id = cubeId;
-            
-            node.onclick = (e) => {
-                e.stopPropagation();
-                const units = Math.floor(Math.random() * 20);
-                const boosted = Math.floor(Math.random() * 5);
-                alert(`SECTOR: CUBE #${cubeId}\nUNITS: ${units}\nBOOSTED: ${boosted}`);
-            };
-            
             node.onmouseover = (e) => showTooltip(e, cubeId);
             node.onmouseout = () => tooltip.style.opacity = 0;
-
             layer.appendChild(node);
         }
         stack.appendChild(layer);
@@ -46,24 +36,9 @@ function initStack() {
 
 document.querySelectorAll('input[name="layer-toggle"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
-        const selected = e.target.value;
-        const layers = document.querySelectorAll('.layer');
-        layers.forEach(layer => {
-            const idx = layer.dataset.layerIndex;
-            layer.classList.remove('active-layer');
-            if (selected === 'all') {
-                layer.style.opacity = '1';
-                layer.style.pointerEvents = 'auto';
-            } else {
-                if (idx === selected) {
-                    layer.style.opacity = '1';
-                    layer.style.pointerEvents = 'auto';
-                    layer.classList.add('active-layer');
-                } else {
-                    layer.style.opacity = '0';
-                    layer.style.pointerEvents = 'none';
-                }
-            }
+        const val = e.target.value;
+        document.querySelectorAll('.layer').forEach(l => {
+            l.style.opacity = (val === 'all' || l.dataset.layerIndex === val) ? "1" : "0";
         });
     });
 });
@@ -96,17 +71,16 @@ async function syncData() {
         const currentBlock = Number(blockResponse); 
         footerBlock.innerText = `BLOCK: ${currentBlock}`;
 
-        // Updated Heartbeat Message
         if (currentBlock > lastBlock) {
             if (lastBlock !== 0) {
-                addLog(currentBlock, "[BLOCK] Network resolution confirmed.", "log-block-change");
+                addLog(currentBlock, "[NETWORK] Block resolution confirmed.", "log-network");
             }
             lastBlock = currentBlock;
         }
 
         const query = `{
-          killeds(first: 15, orderBy: block_number, orderDirection: desc) { id, attacker, targetStdLost, block_number }
-          spawneds(first: 10, orderBy: block_number, orderDirection: desc) { id, cube, block_number }
+          killeds(first: 20, orderBy: block_number, orderDirection: desc) { id, attacker, targetStdLost, block_number }
+          spawneds(first: 20, orderBy: block_number, orderDirection: desc) { id, cube, block_number }
         }`;
         
         const resp = await fetch(SUBGRAPH_URL, {
@@ -116,13 +90,17 @@ async function syncData() {
         });
         
         const result = await resp.json();
-        if (!result.data) return;
+        if (!result.data) {
+            console.error("Subgraph Query Failed:", result.errors);
+            return;
+        }
 
         const { killeds, spawneds } = result.data;
         
-        // Merge and sort ascending (oldest to newest) to append correctly
-        const allEvents = [...spawneds.map(s => ({...s, type: 'spawn'})), ...killeds.map(k => ({...k, type: 'kill'}))]
-            .sort((a, b) => Number(a.block_number) - Number(b.block_number));
+        const allEvents = [
+            ...spawneds.map(s => ({...s, type: 'spawn'})), 
+            ...killeds.map(k => ({...k, type: 'kill'}))
+        ].sort((a, b) => Number(a.block_number) - Number(b.block_number));
 
         allEvents.forEach(evt => {
             if (!knownIds.has(evt.id)) {
@@ -144,11 +122,7 @@ function addLog(blockNum, msg, className) {
     const entry = document.createElement('div');
     entry.className = `log-entry ${className}`;
     entry.innerHTML = `<span class="log-block">${blockNum}</span> > ${msg}`;
-    
-    // Append to bottom
     logFeed.appendChild(entry);
-    
-    // Auto-scroll to bottom
     logFeed.scrollTop = logFeed.scrollHeight;
 }
 
@@ -165,7 +139,7 @@ function renderLeaderboard() {
 
 let isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 window.onmousedown = (e) => {
-    if (e.target.className === 'node' || e.target.closest('.visibility-panel') || e.target.closest('.panel')) return;
+    if (e.target.className === 'node' || e.target.closest('.panel')) return;
     isDragging = true; startX = e.clientX; startY = e.clientY;
 };
 window.onmouseup = () => isDragging = false;

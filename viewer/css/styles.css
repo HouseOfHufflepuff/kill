@@ -77,9 +77,12 @@ header {
 
 #log-feed { font-size: 0.62rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; color: #eee; scroll-behavior: smooth; }
 .log-entry { margin-bottom: 6px; border-left: 2px solid transparent; padding-left: 8px; line-height: 1.4; }
-.log-kill { border-left-color: var(--pink); }
+
+/* Log Styles */
+.log-kill { border-left-color: var(--pink); color: var(--pink); }
 .log-spawn { border-left-color: var(--cyan); color: var(--cyan); }
-.log-block-change { border-left-color: #555; color: #888; font-style: italic; background: rgba(255,255,255,0.02); }
+.log-network { border-left-color: #fff; color: #fff; font-style: italic; background: rgba(255,255,255,0.05); }
+
 .log-block { color: #555; font-size: 0.55rem; margin-right: 5px; }
 
 .tooltip { position: absolute; background: #000; border: 1px solid var(--pink); padding: 12px; font-size: 0.75rem; pointer-events: none; opacity: 0; z-index: 10000; transition: opacity 0.2s; }
