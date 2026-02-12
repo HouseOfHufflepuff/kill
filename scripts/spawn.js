@@ -46,7 +46,7 @@ async function main() {
 
     // 3. Final Execution
     console.log("\n--- Execution ---");
-    const cubeId = 1;
+    const cubeId = 210;
     console.log(`Spawning ${unitsToSpawn} units in Cube ${cubeId}...`);
 
     try {

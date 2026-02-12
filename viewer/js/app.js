@@ -1,24 +1,36 @@
+const NETWORK = "Base Sepolia";
 const ALCHEMY_URL = "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs";
 const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.1/gn";
+const KILL_TOKEN_ADDR = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const KILL_GAME_ADDR = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+
 const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
+const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
+const killTokenContract = new ethers.Contract(KILL_TOKEN_ADDR, tokenAbi, provider);
 
 const battleField = document.getElementById('battle-stack');
 const leaderboardEl = document.getElementById('leaderboard');
 const logFeed = document.getElementById('log-feed');
 const topStacksEl = document.getElementById('ripe-stacks');
-const footerBlock = document.getElementById('footer-block');
-const timerEl = document.getElementById('timer');
+const headerBlock = document.getElementById('header-block');
+const networkLabel = document.getElementById('network-label');
 const tooltip = document.getElementById('tooltip');
 const agentModal = document.getElementById('agent-modal');
 const unitsKilledEl = document.getElementById('stat-units-killed');
 const reaperKilledEl = document.getElementById('stat-reaper-killed');
 const killBurnedEl = document.getElementById('stat-kill-burned');
+const statusEl = document.getElementById('system-status');
 
 let knownIds = new Set();
 let hunterStats = {};
 let lastBlock = 0;
-let seconds = 2;
+let syncCounter = 2;
 let stackRegistry = {}; 
+
+/**
+ * Initialize Network Name in UI
+ */
+if (networkLabel) networkLabel.innerText = NETWORK.toUpperCase();
 
 async function updateHeartbeat() {
     try {
@@ -27,10 +39,10 @@ async function updateHeartbeat() {
         if (currentBlock !== lastBlock && lastBlock !== 0) {
             addLog(currentBlock, "BLOCK SYNC: RESOLVED", "log-network");
         }
-        footerBlock.innerText = `BLOCK: ${currentBlock}`;
+        headerBlock.innerText = currentBlock;
         lastBlock = currentBlock;
     } catch (e) {
-        footerBlock.innerText = "BLOCK: SYNCING...";
+        headerBlock.innerText = "SYNCING...";
     }
 }
 
@@ -67,10 +79,7 @@ function showTooltip(e, id) {
         UNITS: ${u.toLocaleString()}<br>
         REAPER: ${r.toLocaleString()}<br>
         <hr style="border:0; border-top:1px solid #333; margin:5px 0;">
-        <span style="color:var(--pink)">KILL FACTOR: x${killFactor}</span><br>
-        <div style="font-size:0.6rem; color:#888; margin-top:4px; line-height:1.2;">
-            The Maturity Multiplier. Units on this stack generate a ${killFactor}x bonus to yield lethality based on time-weighted density.
-        </div>
+        <span style="color:var(--pink)">KILL FACTOR: x${killFactor}</span>
     `;
 }
 
@@ -125,11 +134,19 @@ async function syncData() {
 
         const { globalStat, killeds = [], spawneds = [], stacks = [] } = result.data;
         
+        // Update System Status based on kill presence
+        if (killeds.length > 0) {
+            statusEl.innerText = "SYSTEM STATUS: LETHAL";
+            statusEl.style.color = "#000"; // Keep black contrast on pink footer
+        } else {
+            statusEl.innerText = "SYSTEM STATUS: OPERATIONAL";
+        }
+
         if (globalStat) {
             unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
             reaperKilledEl.innerText = parseInt(globalStat.totalReaperKilled).toLocaleString();
             const burned = ethers.formatEther(globalStat.killBurned || "0");
-            killBurnedEl.innerText = `${parseFloat(burned).toLocaleString()} KILL`;
+            killBurnedEl.innerText = `${parseFloat(burned).toLocaleString(undefined, {minimumFractionDigits: 3})} KILL`;
         }
 
         updateTopStacks(stacks);
@@ -191,15 +208,6 @@ function copyCommand() {
 document.querySelector('.btn-add').onclick = () => toggleModal(true);
 function clearLog() { logFeed.innerHTML = ''; knownIds.clear(); }
 
-document.querySelectorAll('input[name="layer-toggle"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        const val = e.target.value;
-        document.querySelectorAll('.layer').forEach(l => {
-            l.style.opacity = (val === 'all' || l.dataset.layerIndex === val) ? "1" : "0";
-        });
-    });
-});
-
 let isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 window.onmousedown = (e) => {
     if (e.target.className === 'node' || e.target.closest('.panel') || e.target.closest('.modal-content')) return;
@@ -215,9 +223,8 @@ window.onmousemove = (e) => {
 };
 
 setInterval(() => {
-    seconds--;
-    if(seconds < 0) { seconds = 2; syncData(); }
-    timerEl.innerText = `0${seconds}s`;
+    syncCounter--;
+    if(syncCounter < 0) { syncCounter = 2; syncData(); }
 }, 1000);
 
 initBattlefield();

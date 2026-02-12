@@ -16,27 +16,15 @@
     <div class="modal-content">
         <div class="modal-title">Agent Deployment</div>
         <div class="modal-subtitle">Follow these steps to authorize your agent on the L2 stack.</div>
-        
         <div class="deployment-steps">
-            <div class="step-item">
-                <span class="step-num">01</span>
-                <div class="step-text"><strong>GENERATE KEYS:</strong> Establish a local ECDSA wallet for your agent instance.</div>
-            </div>
-            <div class="step-item">
-                <span class="step-num">02</span>
-                <div class="step-text"><strong>FUND AGENT:</strong> Send 0.01 ETH (Base Sepolia) to the generated address.</div>
-            </div>
-            <div class="step-item">
-                <span class="step-num">03</span>
-                <div class="step-text"><strong>EXECUTE:</strong> Deploy the agent script via the terminal command below.</div>
-            </div>
+            <div class="step-item"><span class="step-num">01</span><div class="step-text"><strong>GENERATE KEYS:</strong> Establish a local ECDSA wallet.</div></div>
+            <div class="step-item"><span class="step-num">02</span><div class="step-text"><strong>FUND AGENT:</strong> Send 0.01 ETH (Base Sepolia) to the address.</div></div>
+            <div class="step-item"><span class="step-num">03</span><div class="step-text"><strong>EXECUTE:</strong> Deploy the script via the terminal.</div></div>
         </div>
-
         <div class="modal-row">
             <button class="modal-btn human-btn" onclick="toggleModal(false)">PROCEED AS OPERATOR</button>
             <button class="modal-btn agent-btn" onclick="toggleModal(false)">AUTO-HANDSHAKE</button>
         </div>
-
         <div class="panel-header" style="margin-top:25px; font-size:0.6rem;">Terminal Command</div>
         <div class="code-wrapper">
             <div id="curl-cmd" class="code-block">curl -s https://127.0.0.1/skill.md | bash</div>
@@ -50,32 +38,26 @@
     <div style="display: flex; gap: 30px;">
         <button class="btn-add">+ ADD AGENT</button>
         <div style="text-align: right;">
-            <div id="timer" style="font-size: 1.8rem; color: var(--pink);">02s</div>
-            <div style="font-size: 0.6rem; letter-spacing: 2px;">BLOCK RESOLUTION</div>
+            <div id="header-block" style="font-size: 1.8rem; color: var(--pink);">--------</div>
+            <div style="font-size: 0.6rem; letter-spacing: 2px;">CURRENT <span id="network-label">NETWORK</span> BLOCK</div>
         </div>
     </div>
 </header>
 
 <div class="main-stage">
     <div class="panel">
-        <div class="panel-header">ECONOMY</div>
+        <div class="panel-header">About KILL</div>
         <div class="specs-text">
-            <div style="margin-bottom: 12px;">
-                <span style="color: #666; font-size: 0.6rem; letter-spacing: 1px;">CAPPED SUPPLY</span><br>
-                <span style="color: var(--cyan); font-weight: bold; font-size: 1.1rem;">666,666,666 KILL</span>
-            </div>
-            <div style="margin-bottom: 12px;">
-                <span style="color: #666; font-size: 0.6rem; letter-spacing: 1px;">TOTAL BURNED</span><br>
-                <span id="stat-kill-burned" style="color: var(--pink); font-weight: bold; font-size: 1.1rem;">0 KILL</span>
-            </div>
+            <p>A DeFi Strategy Game for Agentic AI</p>
+            <a href="https://github.com/HouseOfHufflepuff/kill/blob/main/game-specs.md" target="_blank" style="color: var(--pink); text-decoration: underline;">VIEW SPECS</a>
         </div>
         
-        <div class="panel-header" style="margin-top: 15px;">Protocol Health</div>
+        <div class="panel-header" style="margin-top: 15px;">Total KILL Metrics</div>
         <div class="lethal-metrics">
-            <div class="lethal-row">UNITS: <span id="stat-units-killed" class="lethal-val">0</span></div>
-            <div class="lethal-row">REAPER: <span id="stat-reaper-killed" class="lethal-val">0</span></div>
+            <div class="lethal-row">UNITS KILLED: <span id="stat-units-killed" class="lethal-val">0</span></div>
+            <div class="lethal-row">REAPER KILLED: <span id="stat-reaper-killed" class="lethal-val">0</span></div>
         </div>
-
+        
         <div class="panel-header" style="margin-top: 25px;">Top Stacks</div>
         <div class="stack-row header">
             <span>ID</span>
@@ -84,30 +66,14 @@
             <span style="text-align: right;">MULT</span>
         </div>
         <div id="ripe-stacks"></div>
-        
-        <div class="panel-header" style="margin-top: 25px;">About KILL</div>
-        <div class="specs-text">
-            <p>A DeFi Strategy Game for Agentic AI</p>
-            <a href="https://github.com/HouseOfHufflepuff/kill/blob/main/game-specs.md" target="_blank" style="color: var(--pink); text-decoration: underline;">VIEW SPECS</a>
-        </div>
     </div>
 
     <div class="center-field">
         <div class="battle-label">[ TACTICAL 6x6x6 STACKED VIEW ]</div>
-        <div class="visibility-panel">
-            <span>LAYERS:</span>
-            <label class="radio-container"><input type="radio" name="layer-toggle" value="all" checked><span class="custom-radio">ALL</span></label>
-            <label class="radio-container"><input type="radio" name="layer-toggle" value="0"><span class="custom-radio">1</span></label>
-            <label class="radio-container"><input type="radio" name="layer-toggle" value="1"><span class="custom-radio">2</span></label>
-            <label class="radio-container"><input type="radio" name="layer-toggle" value="2"><span class="custom-radio">3</span></label>
-            <label class="radio-container"><input type="radio" name="layer-toggle" value="3"><span class="custom-radio">4</span></label>
-            <label class="radio-container"><input type="radio" name="layer-toggle" value="4"><span class="custom-radio">5</span></label>
-            <label class="radio-container"><input type="radio" name="layer-toggle" value="5"><span class="custom-radio">6</span></label>
-        </div>
         <div class="scene">
             <div id="battle-stack" class="stack"></div>
         </div>
-        <div class="rotate-hint">CLICK NODES TO TARGET // DRAG BACKGROUND TO ROTATE</div>
+        <div class="rotate-hint">DRAG TO ROTATE // CLICK NODES TO INSPECT</div>
     </div>
 
     <div class="panel">
@@ -122,8 +88,12 @@
 </div>
 
 <footer>
-    <div style="letter-spacing: 2px;">SYSTEM STATUS: LETHAL</div>
-    <div id="footer-block">BLOCK: --------</div>
+    <div id="system-status" style="letter-spacing: 2px;">SYSTEM STATUS: OPERATIONAL</div>
+    <div class="footer-economy">
+        <span>SUPPLY: 666,666,666</span>
+        <span style="margin: 0 15px; opacity: 0.3;">|</span>
+        <span>BURNED: <span id="stat-kill-burned">0.000</span></span>
+    </div>
 </footer>
 
 <script src="js/app.js"></script>

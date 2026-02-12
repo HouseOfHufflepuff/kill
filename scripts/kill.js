@@ -10,7 +10,7 @@ async function main() {
     const killGame = await ethers.getContractAt("KILLGame", KILL_GAME);
 
     const target = "0xc0974aDf4d15DB9104eF68f01123d38a3a59bEc0";
-    const stackId = 1; 
+    const stackId = 210; 
 
     const stdId = BigInt(stackId);
     const bstId = BigInt(stackId) + 216n;
