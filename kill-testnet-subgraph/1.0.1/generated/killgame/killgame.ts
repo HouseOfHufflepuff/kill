@@ -36,6 +36,40 @@ export class ApprovalForAll__Params {
   }
 }
 
+export class GlobalStats extends ethereum.Event {
+  get params(): GlobalStats__Params {
+    return new GlobalStats__Params(this);
+  }
+}
+
+export class GlobalStats__Params {
+  _event: GlobalStats;
+
+  constructor(event: GlobalStats) {
+    this._event = event;
+  }
+
+  get totalUnitsKilled(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get totalReaperKilled(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get killAdded(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+
+  get killExtracted(): BigInt {
+    return this._event.parameters[3].value.toBigInt();
+  }
+
+  get killBurned(): BigInt {
+    return this._event.parameters[4].value.toBigInt();
+  }
+}
+
 export class Killed extends ethereum.Event {
   get params(): Killed__Params {
     return new Killed__Params(this);
@@ -61,19 +95,19 @@ export class Killed__Params {
     return this._event.parameters[2].value.toI32();
   }
 
-  get attackerStdLost(): BigInt {
+  get attackerUnitsLost(): BigInt {
     return this._event.parameters[3].value.toBigInt();
   }
 
-  get attackerBstLost(): BigInt {
+  get attackerReaperLost(): BigInt {
     return this._event.parameters[4].value.toBigInt();
   }
 
-  get targetStdLost(): BigInt {
+  get targetUnitsLost(): BigInt {
     return this._event.parameters[5].value.toBigInt();
   }
 
-  get targetBstLost(): BigInt {
+  get targetReaperLost(): BigInt {
     return this._event.parameters[6].value.toBigInt();
   }
 
@@ -107,11 +141,11 @@ export class Moved__Params {
     return this._event.parameters[2].value.toI32();
   }
 
-  get standardUnits(): BigInt {
+  get units(): BigInt {
     return this._event.parameters[3].value.toBigInt();
   }
 
-  get boostedUnits(): BigInt {
+  get reaper(): BigInt {
     return this._event.parameters[4].value.toBigInt();
   }
 }
@@ -282,25 +316,6 @@ export class killgame__getRipeStacksResult {
 export class killgame extends ethereum.SmartContract {
   static bind(address: Address): killgame {
     return new killgame("killgame", address);
-  }
-
-  BOOST_REQUIRED(): BigInt {
-    let result = super.call("BOOST_REQUIRED", "BOOST_REQUIRED():(uint256)", []);
-
-    return result[0].toBigInt();
-  }
-
-  try_BOOST_REQUIRED(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "BOOST_REQUIRED",
-      "BOOST_REQUIRED():(uint256)",
-      [],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   BURN_BPS(): BigInt {
@@ -545,15 +560,20 @@ export class killgame extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
-  kill(target: Address, cube: i32, sentStd: BigInt, sentBst: BigInt): BigInt {
+  kill(
+    target: Address,
+    cube: i32,
+    sentUnits: BigInt,
+    sentReaper: BigInt,
+  ): BigInt {
     let result = super.call(
       "kill",
       "kill(address,uint16,uint256,uint256):(uint256)",
       [
         ethereum.Value.fromAddress(target),
         ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(cube)),
-        ethereum.Value.fromUnsignedBigInt(sentStd),
-        ethereum.Value.fromUnsignedBigInt(sentBst),
+        ethereum.Value.fromUnsignedBigInt(sentUnits),
+        ethereum.Value.fromUnsignedBigInt(sentReaper),
       ],
     );
 
@@ -563,8 +583,8 @@ export class killgame extends ethereum.SmartContract {
   try_kill(
     target: Address,
     cube: i32,
-    sentStd: BigInt,
-    sentBst: BigInt,
+    sentUnits: BigInt,
+    sentReaper: BigInt,
   ): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
       "kill",
@@ -572,8 +592,8 @@ export class killgame extends ethereum.SmartContract {
       [
         ethereum.Value.fromAddress(target),
         ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(cube)),
-        ethereum.Value.fromUnsignedBigInt(sentStd),
-        ethereum.Value.fromUnsignedBigInt(sentBst),
+        ethereum.Value.fromUnsignedBigInt(sentUnits),
+        ethereum.Value.fromUnsignedBigInt(sentReaper),
       ],
     );
     if (result.reverted) {
@@ -634,6 +654,98 @@ export class killgame extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  totalKillBurned(): BigInt {
+    let result = super.call(
+      "totalKillBurned",
+      "totalKillBurned():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_totalKillBurned(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "totalKillBurned",
+      "totalKillBurned():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  totalKillExtracted(): BigInt {
+    let result = super.call(
+      "totalKillExtracted",
+      "totalKillExtracted():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_totalKillExtracted(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "totalKillExtracted",
+      "totalKillExtracted():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  totalReaperKilled(): BigInt {
+    let result = super.call(
+      "totalReaperKilled",
+      "totalReaperKilled():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_totalReaperKilled(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "totalReaperKilled",
+      "totalReaperKilled():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  totalUnitsKilled(): BigInt {
+    let result = super.call(
+      "totalUnitsKilled",
+      "totalUnitsKilled():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_totalUnitsKilled(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "totalUnitsKilled",
+      "totalUnitsKilled():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   totalUnitsMinted(): BigInt {
@@ -787,11 +899,11 @@ export class KillCall__Inputs {
     return this._call.inputValues[1].value.toI32();
   }
 
-  get sentStd(): BigInt {
+  get sentUnits(): BigInt {
     return this._call.inputValues[2].value.toBigInt();
   }
 
-  get sentBst(): BigInt {
+  get sentReaper(): BigInt {
     return this._call.inputValues[3].value.toBigInt();
   }
 }
@@ -833,11 +945,11 @@ export class MoveCall__Inputs {
     return this._call.inputValues[1].value.toI32();
   }
 
-  get stdUnits(): BigInt {
+  get units(): BigInt {
     return this._call.inputValues[2].value.toBigInt();
   }
 
-  get bstUnits(): BigInt {
+  get reaper(): BigInt {
     return this._call.inputValues[3].value.toBigInt();
   }
 }
@@ -1023,7 +1135,7 @@ export class SpawnCall__Inputs {
     return this._call.inputValues[0].value.toI32();
   }
 
-  get units(): BigInt {
+  get amount(): BigInt {
     return this._call.inputValues[1].value.toBigInt();
   }
 }

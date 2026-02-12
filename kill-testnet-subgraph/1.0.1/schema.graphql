@@ -11,8 +11,8 @@ type Moved @entity(immutable: true) {
   agent: Bytes!
   fromCube: Int!
   toCube: Int!
-  standardUnits: BigInt!
-  boostedUnits: BigInt!
+  units: BigInt!
+  reaper: BigInt!
   block_number: BigInt!
 }
 
@@ -21,8 +21,11 @@ type Killed @entity(immutable: true) {
   attacker: Bytes!
   target: Bytes!
   cube: Int!
-  targetStdLost: BigInt!
-  targetBstLost: BigInt!
+  attackerUnitsLost: BigInt!
+  attackerReaperLost: BigInt!
+  targetUnitsLost: BigInt!
+  targetReaperLost: BigInt!
+  netBounty: BigInt!
   block_number: BigInt!
 }
 
@@ -30,4 +33,13 @@ type Cube @entity(immutable: false) {
   id: ID!
   totalStandardUnits: BigInt!
   totalBoostedUnits: BigInt!
+}
+
+type GlobalStat @entity(immutable: false) {
+  id: ID!
+  totalUnitsKilled: BigInt!
+  totalReaperKilled: BigInt!
+  killAdded: BigInt!
+  killExtracted: BigInt!
+  killBurned: BigInt!
 }

@@ -182,8 +182,8 @@ export class Moved extends Entity {
     this.set("toCube", Value.fromI32(value));
   }
 
-  get standardUnits(): BigInt {
-    let value = this.get("standardUnits");
+  get units(): BigInt {
+    let value = this.get("units");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -191,12 +191,12 @@ export class Moved extends Entity {
     }
   }
 
-  set standardUnits(value: BigInt) {
-    this.set("standardUnits", Value.fromBigInt(value));
+  set units(value: BigInt) {
+    this.set("units", Value.fromBigInt(value));
   }
 
-  get boostedUnits(): BigInt {
-    let value = this.get("boostedUnits");
+  get reaper(): BigInt {
+    let value = this.get("reaper");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -204,8 +204,8 @@ export class Moved extends Entity {
     }
   }
 
-  set boostedUnits(value: BigInt) {
-    this.set("boostedUnits", Value.fromBigInt(value));
+  set reaper(value: BigInt) {
+    this.set("reaper", Value.fromBigInt(value));
   }
 
   get block_number(): BigInt {
@@ -300,8 +300,8 @@ export class Killed extends Entity {
     this.set("cube", Value.fromI32(value));
   }
 
-  get targetStdLost(): BigInt {
-    let value = this.get("targetStdLost");
+  get attackerUnitsLost(): BigInt {
+    let value = this.get("attackerUnitsLost");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -309,12 +309,12 @@ export class Killed extends Entity {
     }
   }
 
-  set targetStdLost(value: BigInt) {
-    this.set("targetStdLost", Value.fromBigInt(value));
+  set attackerUnitsLost(value: BigInt) {
+    this.set("attackerUnitsLost", Value.fromBigInt(value));
   }
 
-  get targetBstLost(): BigInt {
-    let value = this.get("targetBstLost");
+  get attackerReaperLost(): BigInt {
+    let value = this.get("attackerReaperLost");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -322,8 +322,47 @@ export class Killed extends Entity {
     }
   }
 
-  set targetBstLost(value: BigInt) {
-    this.set("targetBstLost", Value.fromBigInt(value));
+  set attackerReaperLost(value: BigInt) {
+    this.set("attackerReaperLost", Value.fromBigInt(value));
+  }
+
+  get targetUnitsLost(): BigInt {
+    let value = this.get("targetUnitsLost");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set targetUnitsLost(value: BigInt) {
+    this.set("targetUnitsLost", Value.fromBigInt(value));
+  }
+
+  get targetReaperLost(): BigInt {
+    let value = this.get("targetReaperLost");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set targetReaperLost(value: BigInt) {
+    this.set("targetReaperLost", Value.fromBigInt(value));
+  }
+
+  get netBounty(): BigInt {
+    let value = this.get("netBounty");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set netBounty(value: BigInt) {
+    this.set("netBounty", Value.fromBigInt(value));
   }
 
   get block_number(): BigInt {
@@ -403,5 +442,110 @@ export class Cube extends Entity {
 
   set totalBoostedUnits(value: BigInt) {
     this.set("totalBoostedUnits", Value.fromBigInt(value));
+  }
+}
+
+export class GlobalStat extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save GlobalStat entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type GlobalStat must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("GlobalStat", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): GlobalStat | null {
+    return changetype<GlobalStat | null>(store.get_in_block("GlobalStat", id));
+  }
+
+  static load(id: string): GlobalStat | null {
+    return changetype<GlobalStat | null>(store.get("GlobalStat", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get totalUnitsKilled(): BigInt {
+    let value = this.get("totalUnitsKilled");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalUnitsKilled(value: BigInt) {
+    this.set("totalUnitsKilled", Value.fromBigInt(value));
+  }
+
+  get totalReaperKilled(): BigInt {
+    let value = this.get("totalReaperKilled");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalReaperKilled(value: BigInt) {
+    this.set("totalReaperKilled", Value.fromBigInt(value));
+  }
+
+  get killAdded(): BigInt {
+    let value = this.get("killAdded");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set killAdded(value: BigInt) {
+    this.set("killAdded", Value.fromBigInt(value));
+  }
+
+  get killExtracted(): BigInt {
+    let value = this.get("killExtracted");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set killExtracted(value: BigInt) {
+    this.set("killExtracted", Value.fromBigInt(value));
+  }
+
+  get killBurned(): BigInt {
+    let value = this.get("killBurned");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set killBurned(value: BigInt) {
+    this.set("killBurned", Value.fromBigInt(value));
   }
 }

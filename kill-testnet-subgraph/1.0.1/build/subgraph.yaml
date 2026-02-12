@@ -1,4 +1,4 @@
-specVersion: 0.0.5
+specVersion: 0.0.4
 schema:
   file: schema.graphql
 dataSources:
@@ -6,17 +6,18 @@ dataSources:
     name: killgame
     network: base-sepolia
     source:
-      address: "0xCd98ffeB3d542E996a08e2B2617776BD2F0e5aA2"
+      address: "0x09b772957Cff809c2d6C55323DEb89978C5262e6"
       abi: killgame
-      startBlock: 37502048
+      startBlock: 0
     mapping:
       kind: ethereum/events
-      apiVersion: 0.0.7
+      apiVersion: 0.0.6
       language: wasm/assemblyscript
       entities:
         - Spawned
         - Moved
         - Killed
+        - GlobalStat
         - Cube
       abis:
         - name: killgame
@@ -29,4 +30,6 @@ dataSources:
         - event: Killed(indexed address,indexed address,indexed
             uint16,uint256,uint256,uint256,uint256,uint256)
           handler: handleKilled
+        - event: GlobalStats(uint256,uint256,uint256,uint256,uint256)
+          handler: handleGlobalStats
       file: killgame/killgame.wasm
