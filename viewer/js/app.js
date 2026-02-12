@@ -27,7 +27,11 @@ let lastBlock = 0;
 let syncCounter = 2;
 let stackRegistry = {}; 
 
+/**
+ * Sync NETWORK variable to UI elements
+ */
 if (networkLabel) networkLabel.innerText = NETWORK.toUpperCase();
+document.querySelectorAll('.net-var').forEach(el => el.innerText = NETWORK);
 
 async function updateHeartbeat() {
     try {
@@ -66,8 +70,6 @@ function showTooltip(e, id) {
     const data = stackRegistry[id] || { units: "0", reaper: "0", birthBlock: "0" };
     const u = parseInt(data.units);
     const r = parseInt(data.reaper);
-    
-    // Exact contract calculation based on birthBlock
     const age = (lastBlock > 0 && data.birthBlock !== "0") ? (lastBlock - parseInt(data.birthBlock)) : 0;
     const bountyMultiplier = (1 + (age / 1000)).toFixed(2);
 
@@ -161,10 +163,8 @@ async function syncData() {
         
         if (killeds.length > 0) {
             statusEl.innerText = "SYSTEM STATUS: LETHAL";
-            statusEl.style.color = "#000";
         } else {
             statusEl.innerText = "SYSTEM STATUS: OPERATIONAL";
-            statusEl.style.color = "#000";
         }
 
         if (globalStat) {
@@ -223,16 +223,30 @@ function showAddrTooltip(e, addr) {
     tooltip.innerHTML = `<span style="color:var(--pink)">FULL ADDR:</span><br><span style="font-size:0.6rem;">${addr}</span>`;
 }
 
-function toggleModal(show) { agentModal.style.display = show ? 'flex' : 'none'; }
+/**
+ * Modal Management
+ */
+function toggleModal(show) { 
+    agentModal.style.display = show ? 'flex' : 'none'; 
+}
+
+// Close when clicking background
+window.addEventListener('click', (e) => {
+    if (e.target === agentModal) toggleModal(false);
+});
+
 function copyCommand() {
     navigator.clipboard.writeText(document.getElementById('curl-cmd').innerText);
     const btn = document.querySelector('.btn-copy');
     btn.innerText = 'COPIED';
     setTimeout(() => btn.innerText = 'COPY', 2000);
 }
-document.querySelector('.btn-add').onclick = () => toggleModal(true);
+
 function clearLog() { logFeed.innerHTML = ''; knownIds.clear(); }
 
+/**
+ * Battlefield Controls
+ */
 let isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 window.onmousedown = (e) => {
     if (e.target.className === 'node' || e.target.closest('.panel') || e.target.closest('.modal-content')) return;

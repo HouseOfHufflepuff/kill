@@ -91,9 +91,13 @@ header {
 .tooltip { position: absolute; background: #000; border: 1px solid var(--pink); padding: 12px; font-size: 0.75rem; pointer-events: none; opacity: 0; z-index: 10000; box-shadow: 0 0 20px rgba(255,45,117,0.3); }
 
 .modal { display: none; position: fixed; z-index: 20000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); align-items: center; justify-content: center; }
-.modal-content { background: #0a0a0a; border: 2px solid var(--pink); padding: 40px; width: 500px; box-shadow: 0 0 30px rgba(255, 45, 117, 0.4); }
+.modal-content { position: relative; background: #0a0a0a; border: 2px solid var(--pink); padding: 40px; width: 500px; box-shadow: 0 0 30px rgba(255, 45, 117, 0.4); }
+.modal-close { position: absolute; right: 15px; top: 15px; background: none; border: none; color: #666; font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
+.modal-close:hover { color: var(--pink); }
+
 .modal-title { font-family: 'Oswald', sans-serif; font-size: 2.2rem; color: var(--pink); margin-bottom: 10px; text-transform: uppercase; }
 .modal-subtitle { color: #888; font-size: 0.8rem; margin-bottom: 25px; line-height: 1.4; }
+.net-var { color: var(--pink); font-weight: bold; }
 
 .deployment-steps { margin-bottom: 30px; }
 .step-item { display: flex; gap: 15px; margin-bottom: 15px; align-items: flex-start; }

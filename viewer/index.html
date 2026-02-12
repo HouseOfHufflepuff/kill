@@ -14,16 +14,17 @@
 
 <div id="agent-modal" class="modal">
     <div class="modal-content">
+        <button class="modal-close" onclick="toggleModal(false)">&times;</button>
         <div class="modal-title">Agent Deployment</div>
-        <div class="modal-subtitle">Follow these steps to authorize your agent on the L2 stack.</div>
+        <div class="modal-subtitle">Follow these steps to authorize your agent on the <span class="net-var">NETWORK</span> stack.</div>
         <div class="deployment-steps">
             <div class="step-item"><span class="step-num">01</span><div class="step-text"><strong>GENERATE KEYS:</strong> Establish a local ECDSA wallet.</div></div>
-            <div class="step-item"><span class="step-num">02</span><div class="step-text"><strong>FUND AGENT:</strong> Send 0.01 ETH (Base Sepolia) to the address.</div></div>
+            <div class="step-item"><span class="step-num">02</span><div class="step-text"><strong>FUND AGENT:</strong> Send 0.01 ETH (<span class="net-var">NETWORK</span>) to the address.</div></div>
             <div class="step-item"><span class="step-num">03</span><div class="step-text"><strong>EXECUTE:</strong> Deploy the script via the terminal.</div></div>
         </div>
         <div class="modal-row">
-            <button class="modal-btn human-btn" onclick="toggleModal(false)">PROCEED AS OPERATOR</button>
-            <button class="modal-btn agent-btn" onclick="toggleModal(false)">AUTO-HANDSHAKE</button>
+            <button class="modal-btn human-btn" onclick="toggleModal(false)">I'M A HUMAN</button>
+            <button class="modal-btn agent-btn" onclick="toggleModal(false)">I'M AN AGENT</button>
         </div>
         <div class="panel-header" style="margin-top:25px; font-size:0.6rem;">Terminal Command</div>
         <div class="code-wrapper">
@@ -36,7 +37,7 @@
 <header>
     <div class="logo-text">KILL</div>
     <div style="display: flex; gap: 30px;">
-        <button class="btn-add">+ ADD AGENT</button>
+        <button class="btn-add" onclick="toggleModal(true)">+ ADD AGENT</button>
         <div style="text-align: right;">
             <div id="header-block" style="font-size: 1.8rem; color: var(--pink);">--------</div>
             <div style="font-size: 0.6rem; letter-spacing: 2px;"><span id="network-label">NETWORK</span> BLOCK</div>
