@@ -25,3 +25,18 @@ npx hardhat verify --network base --constructor-args scripts/verify/meh-store-v1
 
 ```
 
+
+## graphql indexer
+```
+cd kill-testnet-subgraph/1.0.1
+npm init -y
+npm install @graphprotocol/graph-ts
+npm install -g @graphprotocol/graph-cli
+
+graph codegen
+graph build
+
+goldsky login
+goldsky subgraph deploy kill-testnet-subgraph/1.0.1 --path ./build
+
+```

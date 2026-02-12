@@ -1,5 +1,5 @@
 const ALCHEMY_URL = "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs";
-const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph-base-sepolia/1.0.1/gn";
+const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.1/gn";
 const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
 
 const stack = document.getElementById('battle-stack');
@@ -14,6 +14,7 @@ let knownIds = new Set();
 let hunterStats = {};
 let lastBlock = 0;
 let seconds = 2;
+let cubeRegistry = {}; 
 
 function initStack() {
     for (let l = 0; l < 6; l++) {
@@ -44,24 +45,30 @@ document.querySelectorAll('input[name="layer-toggle"]').forEach(radio => {
 });
 
 function showTooltip(e, id) {
+    const units = cubeRegistry[id] || 0;
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
-    tooltip.innerHTML = `<strong>CUBE_${id}</strong><br>LAYER: ${Math.floor(id/36) + 1}`;
+    tooltip.innerHTML = `
+        <strong>CUBE_${id}</strong><br>
+        LAYER: ${Math.floor(id/36) + 1}<br>
+        <span style="color:var(--pink)">UNITS: ${parseInt(units).toLocaleString()}</span>
+    `;
 }
 
-function updateRipeStacks() {
-    // Restored Mock Ripe Stacks Functionality
-    const mockRipe = [
-        { cube: 42, addr: "0x88...12", kill: 1250 },
-        { cube: 156, addr: "0x44...ff", kill: 980 },
-        { cube: 12, addr: "0xee...aa", kill: 450 },
-        { cube: 201, addr: "0x12...bc", kill: 320 }
-    ];
-    ripeStacksEl.innerHTML = mockRipe.map(item => `
+function updateRipeStacks(cubes) {
+    cubeRegistry = {};
+    cubes.forEach(c => { cubeRegistry[c.id] = c.totalStandardUnits; });
+
+    const activeCubes = cubes.filter(c => parseInt(c.totalStandardUnits) > 0);
+    if (activeCubes.length === 0) {
+        ripeStacksEl.innerHTML = '<div style="font-size:0.7rem; color:#444;">ARENA EMPTY...</div>';
+        return;
+    }
+    ripeStacksEl.innerHTML = activeCubes.map(item => `
         <div class="ripe-item" style="display:flex; justify-content:space-between; font-size:0.7rem; border-bottom:1px solid #222; padding:4px 0;">
-            <span style="color:#666;">CUBE_${item.cube} // ${item.addr}</span>
-            <span style="color:var(--pink); font-weight:bold;">${item.kill} KILL</span>
+            <span style="color:#666;">CUBE_${item.id}</span>
+            <span style="color:var(--pink); font-weight:bold;">${parseInt(item.totalStandardUnits).toLocaleString()} KILL</span>
         </div>
     `).join('');
 }
@@ -72,14 +79,14 @@ async function syncData() {
         const currentBlock = Number(blockResponse); 
         footerBlock.innerText = `BLOCK: ${currentBlock}`;
 
+        // Network Resolution Log
         if (currentBlock > lastBlock) {
-            if (lastBlock !== 0) {
-                addLog(currentBlock, "[NETWORK] Block resolution.", "log-network");
-            }
+            if (lastBlock !== 0) addLog(currentBlock, "[NETWORK] Block resolution.", "log-network");
             lastBlock = currentBlock;
         }
 
         const query = `{
+          cubes(orderBy: totalStandardUnits, orderDirection: desc, first: 10) { id, totalStandardUnits }
           killeds(first: 20, orderBy: block_number, orderDirection: desc) { id, attacker, targetStdLost, block_number }
           spawneds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, cube, block_number }
           moveds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, fromCube, toCube, block_number }
@@ -92,27 +99,29 @@ async function syncData() {
         });
         
         const result = await resp.json();
-        if (!result.data) return;
+        if (!result || !result.data) return;
 
-        const { killeds, spawneds, moveds } = result.data;
+        const { killeds = [], spawneds = [], moveds = [], cubes = [] } = result.data;
         
+        updateRipeStacks(cubes);
+
+        // Combine and Sort all events by block number
         const allEvents = [
             ...spawneds.map(s => ({...s, type: 'spawn'})), 
             ...killeds.map(k => ({...k, type: 'kill'})),
             ...moveds.map(m => ({...m, type: 'move'}))
         ].sort((a, b) => Number(a.block_number) - Number(b.block_number));
 
+        // Process only new IDs
         allEvents.forEach(evt => {
             if (!knownIds.has(evt.id)) {
                 if (evt.type === 'spawn') {
                     addLog(evt.block_number, `[SPAWN] Agent ${evt.agent.substring(0,6)} @ CUBE_${evt.cube}`, 'log-spawn');
                 } else if (evt.type === 'move') {
-                    // NEW COLOR: CYAN
                     addLog(evt.block_number, `[MOVE] Agent ${evt.agent.substring(0,6)}: ${evt.fromCube} -> ${evt.toCube}`, 'log-move');
-                } else {
+                } else if (evt.type === 'kill') {
                     const amount = parseInt(evt.targetStdLost);
                     addLog(evt.block_number, `[KILL] ${evt.attacker.substring(0,8)}... Reaped ${amount} KILL`, 'log-kill');
-                    // Persistence: Update hunter stats
                     hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + amount;
                 }
                 knownIds.add(evt.id);
@@ -127,6 +136,8 @@ function addLog(blockNum, msg, className) {
     entry.className = `log-entry ${className}`;
     entry.innerHTML = `<span class="log-block">${blockNum}</span> > ${msg}`;
     logFeed.appendChild(entry);
+    // Keep log height manageable
+    if (logFeed.childNodes.length > 50) logFeed.removeChild(logFeed.firstChild);
     logFeed.scrollTop = logFeed.scrollHeight;
 }
 
@@ -164,11 +175,9 @@ setInterval(() => {
     if(seconds < 0) { 
         seconds = 2; 
         syncData(); 
-        updateRipeStacks(); // Restore interval update for ripe stacks
     }
     timerEl.innerText = `0${seconds}s`;
 }, 1000);
 
 initStack();
 syncData();
-updateRipeStacks();
