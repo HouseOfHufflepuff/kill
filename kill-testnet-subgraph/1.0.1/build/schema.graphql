@@ -1,18 +1,20 @@
 type Spawned @entity(immutable: true) {
   id: ID!
   agent: Bytes!
-  cube: BigInt!
+  stackId: BigInt!
   units: BigInt!
+  birthBlock: BigInt!
   block_number: BigInt!
 }
 
 type Moved @entity(immutable: true) {
   id: ID!
   agent: Bytes!
-  fromCube: Int!
-  toCube: Int!
+  fromStack: Int!
+  toStack: Int!
   units: BigInt!
   reaper: BigInt!
+  birthBlock: BigInt!
   block_number: BigInt!
 }
 
@@ -20,19 +22,29 @@ type Killed @entity(immutable: true) {
   id: ID!
   attacker: Bytes!
   target: Bytes!
-  cube: Int!
+  stackId: Int!
   attackerUnitsLost: BigInt!
   attackerReaperLost: BigInt!
   targetUnitsLost: BigInt!
   targetReaperLost: BigInt!
   netBounty: BigInt!
+  targetBirthBlock: BigInt!
   block_number: BigInt!
 }
 
-type Cube @entity(immutable: false) {
-  id: ID!
+type Stack @entity(immutable: false) {
+  id: ID! # The coordinate ID (1-216)
   totalStandardUnits: BigInt!
   totalBoostedUnits: BigInt!
+}
+
+type AgentStack @entity(immutable: false) {
+  id: ID! # Set as AgentAddress-StackID
+  agent: Bytes!
+  stackId: Int!
+  birthBlock: BigInt!
+  units: BigInt!
+  reaper: BigInt!
 }
 
 type GlobalStat @entity(immutable: false) {

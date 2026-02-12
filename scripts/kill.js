@@ -5,51 +5,53 @@ const KILL_GAME = process.env.KILL_GAME;
 // hardhat run scripts/kill.js --network basesepolia
 async function main() {
     const [owner] = await ethers.getSigners();
-    const killGame = await (await ethers.getContractFactory("KILLGame")).attach(KILL_GAME);
+    
+    // Attach to the contract
+    const killGame = await ethers.getContractAt("KILLGame", KILL_GAME);
 
     const target = "0xc0974aDf4d15DB9104eF68f01123d38a3a59bEc0";
-    const cube = 1;
+    const stackId = 1; 
 
-    const stdId = cube;
-    const bstId = cube + 216;
+    const stdId = BigInt(stackId);
+    const bstId = BigInt(stackId) + 216n;
 
-    // 1. Fetch current balances
-    const myStd = await killGame.balanceOf(owner.address, stdId);
-    const myBst = await killGame.balanceOf(owner.address, bstId);
+    // 1. Fetch current balances and explicitly cast to BigInt
+    const myStd = BigInt(await killGame.balanceOf(owner.address, stdId));
+    const myBst = BigInt(await killGame.balanceOf(owner.address, bstId));
 
-    // 2. SETUP ATTACK FORCE (Limited for iteration)
-    // We send 1 Reaper if available, otherwise 0.
-    const sentStd = ethers.BigNumber.from(0); 
-    const sentBst = myBst.gt(0) ? ethers.BigNumber.from(1) : ethers.BigNumber.from(0);
+    // 2. SETUP ATTACK FORCE
+    const sentStd = 0n; 
+    const sentBst = myBst > 0n ? 1n : 0n;
 
-    if (sentBst.eq(0) && sentStd.eq(0)) {
-        console.log("❌ Error: You have no units in this cube to attack with.");
+    if (sentBst === 0n && sentStd === 0n) {
+        console.log("❌ Error: You have no units on this stack to attack with.");
         return;
     }
 
     // 3. Calculate Powers (Mirroring Solidity)
-    const atkPower = sentStd.add(sentBst.mul(666));
+    const atkPower = sentStd + (sentBst * 666n);
     
-    let defStd = await killGame.balanceOf(target, stdId);
-    let defBst = await killGame.balanceOf(target, bstId);
+    let defStd = BigInt(await killGame.balanceOf(target, stdId));
+    let defBst = BigInt(await killGame.balanceOf(target, bstId));
 
     // Self-attack logic check
     if (owner.address.toLowerCase() === target.toLowerCase()) {
-        defStd = defStd.sub(sentStd);
-        defBst = defBst.sub(sentBst);
+        defStd = defStd - sentStd;
+        defBst = defBst - sentBst;
     }
 
-    const baseDefPower = defStd.add(defBst.mul(666));
-    // Mirroring the contract's new fallback: if def is 0, it treats it as 1
-    const defPower = baseDefPower.gt(0) ? baseDefPower.mul(110).div(100) : ethers.BigNumber.from(1);
+    const baseDefPower = defStd + (defBst * 666n);
+    
+    // Fallback: if def is 0, it treats it as 1
+    const defPower = baseDefPower > 0n ? (baseDefPower * 110n) / 100n : 1n;
 
     console.log(`\n--- Battle Simulation ---`);
-    console.log(`Current Balance: ${myStd} Std, ${myBst} Bst`);
-    console.log(`Sending Attack: ${sentStd} Std, ${sentBst} Bst`);
+    console.log(`Current Balance: ${myStd.toString()} Std, ${myBst.toString()} Bst`);
+    console.log(`Sending Attack: ${sentStd.toString()} Std, ${sentBst.toString()} Bst`);
     console.log(`Attacker Power: ${atkPower.toString()}`);
     console.log(`Defender Power: ${defPower.toString()} (inc. 10% buff)`);
 
-    if (atkPower.gt(defPower)) {
+    if (atkPower > defPower) {
         console.log("✅ RESULT: VICTORY PREDICTED.");
     } else {
         console.log("⚠️ RESULT: DEFEAT/ATTRITION PREDICTED.");
@@ -57,19 +59,35 @@ async function main() {
 
     // 4. Execution
     try {
-        const tx = await killGame.kill(target, cube, sentStd, sentBst, { gasLimit: 1000000 });
+        // Passing the values to the contract. Ethers v6 handles BigInt automatically here.
+        const tx = await killGame.kill(target, stackId, sentStd, sentBst);
         console.log("Transaction sent! Hash:", tx.hash);
+        
         const receipt = await tx.wait();
         
-        // Find Killed event
-        const event = receipt.events?.find(e => e.event === 'Killed');
-        if (event) {
+        // Find Killed event in Ethers v6
+        const killedEvent = receipt.logs
+            .map((log) => {
+                try { return killGame.interface.parseLog(log); } catch (e) { return null; }
+            })
+            .find((event) => event && event.name === 'Killed');
+
+        if (killedEvent) {
+            const args = killedEvent.args;
             console.log("\n--- Real-time Losses ---");
-            console.log(`Attacker Lost: ${event.args.attackerStdLost} Std, ${event.args.attackerBstLost} Bst`);
-            console.log(`Target Lost: ${event.args.targetStdLost} Std, ${event.args.targetBstLost} Bst`);
+            // Mapping to your Solidity event: 
+            // attackerUnitsLost, attackerReaperLost, targetUnitsLost, targetReaperLost
+            console.log(`Attacker Lost: ${args.attackerUnitsLost.toString()} Std, ${args.attackerReaperLost.toString()} Bst`);
+            console.log(`Target Lost: ${args.targetUnitsLost.toString()} Std, ${args.targetReaperLost.toString()} Bst`);
+            
+            if (args.netBounty > 0n) {
+                console.log(`Net Bounty: ${ethers.formatEther(args.netBounty)} KILL`);
+            }
+        } else {
+            console.log("\n⚠️ Transaction succeeded but 'Killed' event not found.");
         }
     } catch (e) {
-        console.error("Attack failed:", e.reason || e.message);
+        console.error("\n❌ Attack failed:", e.reason || e.message);
     }
 }
 

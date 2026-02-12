@@ -219,7 +219,7 @@
       {
         "indexed": true,
         "internalType": "uint16",
-        "name": "cube",
+        "name": "stackId",
         "type": "uint16"
       },
       {
@@ -251,6 +251,12 @@
         "internalType": "uint256",
         "name": "netBounty",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "targetBirthBlock",
+        "type": "uint256"
       }
     ],
     "name": "Killed",
@@ -268,13 +274,13 @@
       {
         "indexed": false,
         "internalType": "uint16",
-        "name": "fromCube",
+        "name": "fromStack",
         "type": "uint16"
       },
       {
         "indexed": false,
         "internalType": "uint16",
-        "name": "toCube",
+        "name": "toStack",
         "type": "uint16"
       },
       {
@@ -287,6 +293,12 @@
         "indexed": false,
         "internalType": "uint256",
         "name": "reaper",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "birthBlock",
         "type": "uint256"
       }
     ],
@@ -324,13 +336,19 @@
       {
         "indexed": true,
         "internalType": "uint256",
-        "name": "cube",
+        "name": "stackId",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
         "name": "units",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "birthBlock",
         "type": "uint256"
       }
     ],
@@ -582,7 +600,7 @@
     "inputs": [
       {
         "internalType": "uint16",
-        "name": "cube",
+        "name": "stackId",
         "type": "uint16"
       },
       {
@@ -640,7 +658,7 @@
       },
       {
         "internalType": "uint16",
-        "name": "cube",
+        "name": "stackId",
         "type": "uint16"
       },
       {
@@ -682,12 +700,12 @@
     "inputs": [
       {
         "internalType": "uint16",
-        "name": "fromCube",
+        "name": "fromStack",
         "type": "uint16"
       },
       {
         "internalType": "uint16",
-        "name": "toCube",
+        "name": "toStack",
         "type": "uint16"
       },
       {
@@ -814,7 +832,7 @@
     "inputs": [
       {
         "internalType": "uint16",
-        "name": "cube",
+        "name": "stackId",
         "type": "uint16"
       },
       {

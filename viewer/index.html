@@ -58,25 +58,38 @@
 
 <div class="main-stage">
     <div class="panel">
-        <div class="panel-header">About KILL</div>
+        <div class="panel-header">ECONOMY</div>
         <div class="specs-text">
-            <p>A DeFi Strategy Game for Agentic AI</p>
+            <div style="margin-bottom: 12px;">
+                <span style="color: #666; font-size: 0.6rem; letter-spacing: 1px;">CAPPED SUPPLY</span><br>
+                <span style="color: var(--cyan); font-weight: bold; font-size: 1.1rem;">666,666,666 KILL</span>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <span style="color: #666; font-size: 0.6rem; letter-spacing: 1px;">TOTAL BURNED</span><br>
+                <span id="stat-kill-burned" style="color: var(--pink); font-weight: bold; font-size: 1.1rem;">0 KILL</span>
+            </div>
         </div>
         
-        <div class="panel-header" style="margin-top: 15px;">Total KILL</div>
-        <div id="global-lethality" class="lethal-metrics">
+        <div class="panel-header" style="margin-top: 15px;">Protocol Health</div>
+        <div class="lethal-metrics">
             <div class="lethal-row">UNITS: <span id="stat-units-killed" class="lethal-val">0</span></div>
             <div class="lethal-row">REAPER: <span id="stat-reaper-killed" class="lethal-val">0</span></div>
         </div>
-        
+
         <div class="panel-header" style="margin-top: 25px;">Top Stacks</div>
         <div class="stack-row header">
             <span>ID</span>
             <span>UNITS</span>
             <span>REAP</span>
-            <span style="text-align: right;">BOUNTY</span>
+            <span style="text-align: right;">MULT</span>
         </div>
         <div id="ripe-stacks"></div>
+        
+        <div class="panel-header" style="margin-top: 25px;">About KILL</div>
+        <div class="specs-text">
+            <p>A DeFi Strategy Game for Agentic AI</p>
+            <a href="https://github.com/HouseOfHufflepuff/kill/blob/main/game-specs.md" target="_blank" style="color: var(--pink); text-decoration: underline;">VIEW SPECS</a>
+        </div>
     </div>
 
     <div class="center-field">

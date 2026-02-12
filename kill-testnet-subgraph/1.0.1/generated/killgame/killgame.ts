@@ -91,7 +91,7 @@ export class Killed__Params {
     return this._event.parameters[1].value.toAddress();
   }
 
-  get cube(): i32 {
+  get stackId(): i32 {
     return this._event.parameters[2].value.toI32();
   }
 
@@ -114,6 +114,10 @@ export class Killed__Params {
   get netBounty(): BigInt {
     return this._event.parameters[7].value.toBigInt();
   }
+
+  get targetBirthBlock(): BigInt {
+    return this._event.parameters[8].value.toBigInt();
+  }
 }
 
 export class Moved extends ethereum.Event {
@@ -133,11 +137,11 @@ export class Moved__Params {
     return this._event.parameters[0].value.toAddress();
   }
 
-  get fromCube(): i32 {
+  get fromStack(): i32 {
     return this._event.parameters[1].value.toI32();
   }
 
-  get toCube(): i32 {
+  get toStack(): i32 {
     return this._event.parameters[2].value.toI32();
   }
 
@@ -147,6 +151,10 @@ export class Moved__Params {
 
   get reaper(): BigInt {
     return this._event.parameters[4].value.toBigInt();
+  }
+
+  get birthBlock(): BigInt {
+    return this._event.parameters[5].value.toBigInt();
   }
 }
 
@@ -189,12 +197,16 @@ export class Spawned__Params {
     return this._event.parameters[0].value.toAddress();
   }
 
-  get cube(): BigInt {
+  get stackId(): BigInt {
     return this._event.parameters[1].value.toBigInt();
   }
 
   get units(): BigInt {
     return this._event.parameters[2].value.toBigInt();
+  }
+
+  get birthBlock(): BigInt {
+    return this._event.parameters[3].value.toBigInt();
   }
 }
 
@@ -488,12 +500,12 @@ export class killgame extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
-  getRipeStacks(cube: i32, b: boolean): killgame__getRipeStacksResult {
+  getRipeStacks(stackId: i32, b: boolean): killgame__getRipeStacksResult {
     let result = super.call(
       "getRipeStacks",
       "getRipeStacks(uint16,bool):(address[],uint256[])",
       [
-        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(cube)),
+        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(stackId)),
         ethereum.Value.fromBoolean(b),
       ],
     );
@@ -505,14 +517,14 @@ export class killgame extends ethereum.SmartContract {
   }
 
   try_getRipeStacks(
-    cube: i32,
+    stackId: i32,
     b: boolean,
   ): ethereum.CallResult<killgame__getRipeStacksResult> {
     let result = super.tryCall(
       "getRipeStacks",
       "getRipeStacks(uint16,bool):(address[],uint256[])",
       [
-        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(cube)),
+        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(stackId)),
         ethereum.Value.fromBoolean(b),
       ],
     );
@@ -562,7 +574,7 @@ export class killgame extends ethereum.SmartContract {
 
   kill(
     target: Address,
-    cube: i32,
+    stackId: i32,
     sentUnits: BigInt,
     sentReaper: BigInt,
   ): BigInt {
@@ -571,7 +583,7 @@ export class killgame extends ethereum.SmartContract {
       "kill(address,uint16,uint256,uint256):(uint256)",
       [
         ethereum.Value.fromAddress(target),
-        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(cube)),
+        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(stackId)),
         ethereum.Value.fromUnsignedBigInt(sentUnits),
         ethereum.Value.fromUnsignedBigInt(sentReaper),
       ],
@@ -582,7 +594,7 @@ export class killgame extends ethereum.SmartContract {
 
   try_kill(
     target: Address,
-    cube: i32,
+    stackId: i32,
     sentUnits: BigInt,
     sentReaper: BigInt,
   ): ethereum.CallResult<BigInt> {
@@ -591,7 +603,7 @@ export class killgame extends ethereum.SmartContract {
       "kill(address,uint16,uint256,uint256):(uint256)",
       [
         ethereum.Value.fromAddress(target),
-        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(cube)),
+        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(stackId)),
         ethereum.Value.fromUnsignedBigInt(sentUnits),
         ethereum.Value.fromUnsignedBigInt(sentReaper),
       ],
@@ -895,7 +907,7 @@ export class KillCall__Inputs {
     return this._call.inputValues[0].value.toAddress();
   }
 
-  get cube(): i32 {
+  get stackId(): i32 {
     return this._call.inputValues[1].value.toI32();
   }
 
@@ -937,11 +949,11 @@ export class MoveCall__Inputs {
     this._call = call;
   }
 
-  get fromCube(): i32 {
+  get fromStack(): i32 {
     return this._call.inputValues[0].value.toI32();
   }
 
-  get toCube(): i32 {
+  get toStack(): i32 {
     return this._call.inputValues[1].value.toI32();
   }
 
@@ -1131,7 +1143,7 @@ export class SpawnCall__Inputs {
     this._call = call;
   }
 
-  get cube(): i32 {
+  get stackId(): i32 {
     return this._call.inputValues[0].value.toI32();
   }
 

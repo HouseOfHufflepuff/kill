@@ -12,6 +12,7 @@ const tooltip = document.getElementById('tooltip');
 const agentModal = document.getElementById('agent-modal');
 const unitsKilledEl = document.getElementById('stat-units-killed');
 const reaperKilledEl = document.getElementById('stat-reaper-killed');
+const killBurnedEl = document.getElementById('stat-kill-burned');
 
 let knownIds = new Set();
 let hunterStats = {};
@@ -23,17 +24,12 @@ async function updateHeartbeat() {
     try {
         const hexBlock = await provider.send("eth_blockNumber", []);
         const currentBlock = parseInt(hexBlock, 16);
-        //console.log("Heartbeat Sync:", currentBlock); 
-        
-        // FIX: If the block has changed, trigger a log entry
         if (currentBlock !== lastBlock && lastBlock !== 0) {
             addLog(currentBlock, "BLOCK SYNC: RESOLVED", "log-network");
         }
-        
         footerBlock.innerText = `BLOCK: ${currentBlock}`;
         lastBlock = currentBlock;
     } catch (e) {
-        console.error("Heartbeat Error:", e);
         footerBlock.innerText = "BLOCK: SYNCING...";
     }
 }
@@ -109,14 +105,14 @@ async function syncData() {
     await updateHeartbeat();
     try {
         const query = `{
-          globalStat(id: "current") { totalUnitsKilled, totalReaperKilled }
-          cubes(orderBy: totalStandardUnits, orderDirection: desc, first: 10) { 
+          globalStat(id: "current") { totalUnitsKilled, totalReaperKilled, killBurned }
+          stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 10) { 
             id, totalStandardUnits, totalBoostedUnits 
           }
           killeds(first: 20, orderBy: block_number, orderDirection: desc) { 
-            id, attacker, targetUnitsLost, block_number, cube 
+            id, attacker, targetUnitsLost, block_number, stackId 
           }
-          spawneds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, cube, block_number }
+          spawneds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, stackId, block_number }
         }`;
         
         const resp = await fetch(SUBGRAPH_URL, {
@@ -127,23 +123,24 @@ async function syncData() {
         const result = await resp.json();
         if (!result || !result.data) return;
 
-        const { globalStat, killeds = [], spawneds = [], cubes = [] } = result.data;
+        const { globalStat, killeds = [], spawneds = [], stacks = [] } = result.data;
         
         if (globalStat) {
             unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
             reaperKilledEl.innerText = parseInt(globalStat.totalReaperKilled).toLocaleString();
+            const burned = ethers.formatEther(globalStat.killBurned || "0");
+            killBurnedEl.innerText = `${parseFloat(burned).toLocaleString()} KILL`;
         }
 
-        updateTopStacks(cubes);
+        updateTopStacks(stacks);
 
         const events = [
-            ...spawneds.map(s => ({...s, type: 'spawn', stackId: s.cube})),
-            ...killeds.map(k => ({...k, type: 'kill', stackId: k.cube}))
+            ...spawneds.map(s => ({...s, type: 'spawn'})),
+            ...killeds.map(k => ({...k, type: 'kill'}))
         ].sort((a, b) => Number(a.block_number) - Number(b.block_number));
 
         events.forEach(evt => {
             if (!knownIds.has(evt.id)) {
-                console.log(`Processing Event [${evt.type}] at Block:`, evt.block_number);
                 if (evt.type === 'spawn') {
                     addLog(evt.block_number, `[SPAWN] Agent ${evt.agent.substring(0,6)} @ STACK_${evt.stackId}`, 'log-spawn');
                 } else if (evt.type === 'kill') {

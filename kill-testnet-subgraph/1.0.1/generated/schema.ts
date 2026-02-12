@@ -64,8 +64,8 @@ export class Spawned extends Entity {
     this.set("agent", Value.fromBytes(value));
   }
 
-  get cube(): BigInt {
-    let value = this.get("cube");
+  get stackId(): BigInt {
+    let value = this.get("stackId");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -73,8 +73,8 @@ export class Spawned extends Entity {
     }
   }
 
-  set cube(value: BigInt) {
-    this.set("cube", Value.fromBigInt(value));
+  set stackId(value: BigInt) {
+    this.set("stackId", Value.fromBigInt(value));
   }
 
   get units(): BigInt {
@@ -88,6 +88,19 @@ export class Spawned extends Entity {
 
   set units(value: BigInt) {
     this.set("units", Value.fromBigInt(value));
+  }
+
+  get birthBlock(): BigInt {
+    let value = this.get("birthBlock");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set birthBlock(value: BigInt) {
+    this.set("birthBlock", Value.fromBigInt(value));
   }
 
   get block_number(): BigInt {
@@ -156,8 +169,8 @@ export class Moved extends Entity {
     this.set("agent", Value.fromBytes(value));
   }
 
-  get fromCube(): i32 {
-    let value = this.get("fromCube");
+  get fromStack(): i32 {
+    let value = this.get("fromStack");
     if (!value || value.kind == ValueKind.NULL) {
       return 0;
     } else {
@@ -165,12 +178,12 @@ export class Moved extends Entity {
     }
   }
 
-  set fromCube(value: i32) {
-    this.set("fromCube", Value.fromI32(value));
+  set fromStack(value: i32) {
+    this.set("fromStack", Value.fromI32(value));
   }
 
-  get toCube(): i32 {
-    let value = this.get("toCube");
+  get toStack(): i32 {
+    let value = this.get("toStack");
     if (!value || value.kind == ValueKind.NULL) {
       return 0;
     } else {
@@ -178,8 +191,8 @@ export class Moved extends Entity {
     }
   }
 
-  set toCube(value: i32) {
-    this.set("toCube", Value.fromI32(value));
+  set toStack(value: i32) {
+    this.set("toStack", Value.fromI32(value));
   }
 
   get units(): BigInt {
@@ -206,6 +219,19 @@ export class Moved extends Entity {
 
   set reaper(value: BigInt) {
     this.set("reaper", Value.fromBigInt(value));
+  }
+
+  get birthBlock(): BigInt {
+    let value = this.get("birthBlock");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set birthBlock(value: BigInt) {
+    this.set("birthBlock", Value.fromBigInt(value));
   }
 
   get block_number(): BigInt {
@@ -287,8 +313,8 @@ export class Killed extends Entity {
     this.set("target", Value.fromBytes(value));
   }
 
-  get cube(): i32 {
-    let value = this.get("cube");
+  get stackId(): i32 {
+    let value = this.get("stackId");
     if (!value || value.kind == ValueKind.NULL) {
       return 0;
     } else {
@@ -296,8 +322,8 @@ export class Killed extends Entity {
     }
   }
 
-  set cube(value: i32) {
-    this.set("cube", Value.fromI32(value));
+  set stackId(value: i32) {
+    this.set("stackId", Value.fromI32(value));
   }
 
   get attackerUnitsLost(): BigInt {
@@ -365,6 +391,19 @@ export class Killed extends Entity {
     this.set("netBounty", Value.fromBigInt(value));
   }
 
+  get targetBirthBlock(): BigInt {
+    let value = this.get("targetBirthBlock");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set targetBirthBlock(value: BigInt) {
+    this.set("targetBirthBlock", Value.fromBigInt(value));
+  }
+
   get block_number(): BigInt {
     let value = this.get("block_number");
     if (!value || value.kind == ValueKind.NULL) {
@@ -379,7 +418,7 @@ export class Killed extends Entity {
   }
 }
 
-export class Cube extends Entity {
+export class Stack extends Entity {
   constructor(id: string) {
     super();
     this.set("id", Value.fromString(id));
@@ -387,22 +426,22 @@ export class Cube extends Entity {
 
   save(): void {
     let id = this.get("id");
-    assert(id != null, "Cannot save Cube entity without an ID");
+    assert(id != null, "Cannot save Stack entity without an ID");
     if (id) {
       assert(
         id.kind == ValueKind.STRING,
-        `Entities of type Cube must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+        `Entities of type Stack must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
       );
-      store.set("Cube", id.toString(), this);
+      store.set("Stack", id.toString(), this);
     }
   }
 
-  static loadInBlock(id: string): Cube | null {
-    return changetype<Cube | null>(store.get_in_block("Cube", id));
+  static loadInBlock(id: string): Stack | null {
+    return changetype<Stack | null>(store.get_in_block("Stack", id));
   }
 
-  static load(id: string): Cube | null {
-    return changetype<Cube | null>(store.get("Cube", id));
+  static load(id: string): Stack | null {
+    return changetype<Stack | null>(store.get("Stack", id));
   }
 
   get id(): string {
@@ -442,6 +481,111 @@ export class Cube extends Entity {
 
   set totalBoostedUnits(value: BigInt) {
     this.set("totalBoostedUnits", Value.fromBigInt(value));
+  }
+}
+
+export class AgentStack extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save AgentStack entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type AgentStack must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("AgentStack", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): AgentStack | null {
+    return changetype<AgentStack | null>(store.get_in_block("AgentStack", id));
+  }
+
+  static load(id: string): AgentStack | null {
+    return changetype<AgentStack | null>(store.get("AgentStack", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get agent(): Bytes {
+    let value = this.get("agent");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBytes();
+    }
+  }
+
+  set agent(value: Bytes) {
+    this.set("agent", Value.fromBytes(value));
+  }
+
+  get stackId(): i32 {
+    let value = this.get("stackId");
+    if (!value || value.kind == ValueKind.NULL) {
+      return 0;
+    } else {
+      return value.toI32();
+    }
+  }
+
+  set stackId(value: i32) {
+    this.set("stackId", Value.fromI32(value));
+  }
+
+  get birthBlock(): BigInt {
+    let value = this.get("birthBlock");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set birthBlock(value: BigInt) {
+    this.set("birthBlock", Value.fromBigInt(value));
+  }
+
+  get units(): BigInt {
+    let value = this.get("units");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set units(value: BigInt) {
+    this.set("units", Value.fromBigInt(value));
+  }
+
+  get reaper(): BigInt {
+    let value = this.get("reaper");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set reaper(value: BigInt) {
+    this.set("reaper", Value.fromBigInt(value));
   }
 }
 

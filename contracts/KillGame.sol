@@ -7,11 +7,21 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
-    event Spawned(address indexed agent, uint256 indexed cube, uint256 units);
-    event Moved(address indexed agent, uint16 fromCube, uint16 toCube, uint256 units, uint256 reaper);
-    event Killed(address indexed attacker, address indexed target, uint16 indexed cube, uint256 attackerUnitsLost, uint256 attackerReaperLost, uint256 targetUnitsLost, uint256 targetReaperLost, uint256 netBounty);
+    // UPDATED: renamed cube -> stack and added birthBlock to events
+    event Spawned(address indexed agent, uint256 indexed stackId, uint256 units, uint256 birthBlock);
+    event Moved(address indexed agent, uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper, uint256 birthBlock);
+    event Killed(
+        address indexed attacker, 
+        address indexed target, 
+        uint16 indexed stackId, 
+        uint256 attackerUnitsLost, 
+        uint256 attackerReaperLost, 
+        uint256 targetUnitsLost, 
+        uint256 targetReaperLost, 
+        uint256 netBounty,
+        uint256 targetBirthBlock
+    );
     
-    // Global tracking events for Subgraph
     event GlobalStats(uint256 totalUnitsKilled, uint256 totalReaperKilled, uint256 killAdded, uint256 killExtracted, uint256 killBurned);
 
     uint256 public constant BURN_BPS = 666; 
@@ -22,7 +32,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     uint256 public treasuryBalance;
     uint256 public totalUnitsMinted;
     
-    // Cumulative Totals
     uint256 public totalUnitsKilled;
     uint256 public totalReaperKilled;
     uint256 public totalKillExtracted;
@@ -32,19 +41,21 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     struct LossReport { uint256 aUnits; uint256 aReaper; uint256 tUnits; uint256 tReaper; }
 
     mapping(address => mapping(uint256 => ReaperStack)) public agentStacks;
-    mapping(uint256 => address[]) private cubeOccupants;
+    mapping(uint256 => address[]) private stackOccupants;
     mapping(uint256 => mapping(address => bool)) private isOccupying;
 
     constructor(address _tokenAddress) ERC1155("https://api.killgame.ai/metadata/{id}.json") Ownable(msg.sender) {
         killToken = IERC20(_tokenAddress);
     }
 
-    function kill(address target, uint16 cube, uint256 sentUnits, uint256 sentReaper) external nonReentrant returns (uint256 netBounty) {
-        uint256 unitId = uint256(cube);
+    function kill(address target, uint16 stackId, uint256 sentUnits, uint256 sentReaper) external nonReentrant returns (uint256 netBounty) {
+        uint256 unitId = uint256(stackId);
         uint256 reaperId = unitId + 216;
         require(balanceOf(msg.sender, unitId) >= sentUnits && balanceOf(msg.sender, reaperId) >= sentReaper, "Lack units");
 
         LossReport memory loss;
+        uint256 targetBirth = agentStacks[target][unitId].birthBlock; 
+        
         uint256 atkPower = sentUnits + (sentReaper * 666);
         uint256 defPower;
         {
@@ -57,8 +68,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         }
 
         if (atkPower > defPower) {
-            loss.aUnits = (sentUnits * (defPower * defPower)) / (atkPower * atkPower);
-            loss.aReaper = (sentReaper * (defPower * defPower)) / (atkPower * atkPower);
             uint256 totalBounty = getPendingBounty(target, unitId) + getPendingBounty(target, reaperId);
             uint256 burnAmt = (totalBounty * BURN_BPS) / 10000;
             netBounty = totalBounty - burnAmt;
@@ -88,40 +97,48 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         if (loss.aUnits > 0) _burn(msg.sender, unitId, loss.aUnits);
         if (loss.aReaper > 0) _burn(msg.sender, reaperId, loss.aReaper);
 
-        emit Killed(msg.sender, target, cube, loss.aUnits, loss.aReaper, loss.tUnits, loss.tReaper, netBounty);
+        emit Killed(msg.sender, target, stackId, loss.aUnits, loss.aReaper, loss.tUnits, loss.tReaper, netBounty, targetBirth);
         emit GlobalStats(totalUnitsKilled, totalReaperKilled, totalUnitsMinted * SPAWN_COST, totalKillExtracted, totalKillBurned);
     }
 
-    function spawn(uint16 cube, uint256 amount) external nonReentrant {
-        require(cube > 0 && cube <= 216, "Invalid Cube");
-        require(killToken.transferFrom(msg.sender, address(this), amount * SPAWN_COST), "Pay fail");
+    function spawn(uint16 stackId, uint256 amount) external nonReentrant {
+        require(stackId > 0 && stackId <= 216, "Invalid Stack");
+        uint256 totalCost = amount * SPAWN_COST;
+        require(killToken.transferFrom(msg.sender, address(this), totalCost), "Pay fail");
         
-        treasuryBalance += (amount * SPAWN_COST * TREASURY_BPS) / 10000;
+        uint256 treasuryAdd = (totalCost * TREASURY_BPS) / 10000;
+        uint256 burnAdd = totalCost - treasuryAdd; 
+        
+        treasuryBalance += treasuryAdd;
+        totalKillBurned += burnAdd; 
+        
         uint256 oldTotal = totalUnitsMinted;
         totalUnitsMinted += amount;
         
         uint256 reaperCount = (totalUnitsMinted / 666) - (oldTotal / 666);
         uint256 unitsCount = amount - reaperCount;
 
-        if (unitsCount > 0) _mintAndReg(msg.sender, uint256(cube), unitsCount);
-        if (reaperCount > 0) _mintAndReg(msg.sender, uint256(cube) + 216, reaperCount);
+        if (unitsCount > 0) _mintAndReg(msg.sender, uint256(stackId), unitsCount);
+        if (reaperCount > 0) _mintAndReg(msg.sender, uint256(stackId) + 216, reaperCount);
         
-        emit Spawned(msg.sender, cube, amount);
+        emit Spawned(msg.sender, stackId, amount, block.number);
         emit GlobalStats(totalUnitsKilled, totalReaperKilled, totalUnitsMinted * SPAWN_COST, totalKillExtracted, totalKillBurned);
     }
 
-    function move(uint16 fromCube, uint16 toCube, uint256 units, uint256 reaper) external {
-        require(fromCube > 0 && fromCube <= 216, "Invalid From");
-        require(toCube > 0 && toCube <= 216 && _isAdjacent(fromCube, toCube), "Bad move");
-        if (units > 0) _moveLogic(uint256(fromCube), uint256(toCube), units);
-        if (reaper > 0) _moveLogic(uint256(fromCube) + 216, uint256(toCube) + 216, reaper);
-        emit Moved(msg.sender, fromCube, toCube, units, reaper);
+    function move(uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper) external {
+        require(fromStack > 0 && fromStack <= 216, "Invalid From");
+        require(toStack > 0 && toStack <= 216 && _isAdjacent(fromStack, toStack), "Bad move");
+        if (units > 0) _moveLogic(uint256(fromStack), uint256(toStack), units);
+        if (reaper > 0) _moveLogic(uint256(fromStack) + 216, uint256(toStack) + 216, reaper);
+        
+        emit Moved(msg.sender, fromStack, toStack, units, reaper, block.number);
+        emit GlobalStats(totalUnitsKilled, totalReaperKilled, totalUnitsMinted * SPAWN_COST, totalKillExtracted, totalKillBurned);
     }
 
     function _mintAndReg(address to, uint256 id, uint256 amt) internal {
         _mint(to, id, amt, "");
         agentStacks[to][id].birthBlock = block.number;
-        if (!isOccupying[id][to]) { cubeOccupants[id].push(to); isOccupying[id][to] = true; }
+        if (!isOccupying[id][to]) { stackOccupants[id].push(to); isOccupying[id][to] = true; }
     }
 
     function _moveLogic(uint256 fId, uint256 tId, uint256 amt) internal {
@@ -130,7 +147,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         _mint(msg.sender, tId, amt, "");
         agentStacks[msg.sender][tId].birthBlock = block.number;
         if (balanceOf(msg.sender, fId) == 0) isOccupying[fId][msg.sender] = false;
-        if (!isOccupying[tId][msg.sender]) { cubeOccupants[tId].push(msg.sender); isOccupying[tId][msg.sender] = true; }
+        if (!isOccupying[tId][msg.sender]) { stackOccupants[tId].push(msg.sender); isOccupying[tId][msg.sender] = true; }
     }
 
     function _isAdjacent(uint16 c1, uint16 c2) internal pure returns (bool) {
@@ -147,9 +164,9 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     function adminWithdraw(uint256 amt) external onlyOwner { killToken.transfer(msg.sender, amt); }
 
-    function getRipeStacks(uint16 cube, bool b) external view returns (address[] memory a, uint256[] memory ag) {
-        uint256 id = b ? uint256(cube) + 216 : uint256(cube);
-        address[] memory occ = cubeOccupants[id];
+    function getRipeStacks(uint16 stackId, bool b) external view returns (address[] memory a, uint256[] memory ag) {
+        uint256 id = b ? uint256(stackId) + 216 : uint256(stackId);
+        address[] memory occ = stackOccupants[id];
         uint256 count = 0;
         for (uint256 i = 0; i < occ.length; i++) if (isOccupying[id][occ[i]] && balanceOf(occ[i], id) > 0) count++;
         a = new address[](count); ag = new uint256[](count);
