@@ -9,6 +9,7 @@ const ripeStacksEl = document.getElementById('ripe-stacks');
 const footerBlock = document.getElementById('footer-block');
 const timerEl = document.getElementById('timer');
 const tooltip = document.getElementById('tooltip');
+const agentModal = document.getElementById('agent-modal');
 
 let knownIds = new Set();
 let hunterStats = {};
@@ -33,6 +34,27 @@ function initStack() {
         }
         stack.appendChild(layer);
     }
+}
+
+function toggleModal(show) {
+    agentModal.style.display = show ? 'flex' : 'none';
+}
+
+function copyCommand() {
+    const cmd = document.getElementById('curl-cmd').innerText;
+    navigator.clipboard.writeText(cmd);
+    const btn = document.querySelector('.btn-copy');
+    btn.innerText = 'COPIED';
+    setTimeout(() => btn.innerText = 'COPY', 2000);
+}
+
+document.querySelector('.btn-add').onclick = () => toggleModal(true);
+window.onclick = (e) => { if (e.target == agentModal) toggleModal(false); }
+
+function clearLog() {
+    logFeed.innerHTML = '';
+    knownIds.clear();
+    addLog(lastBlock, "Log cleared by operator.", "log-network");
 }
 
 document.querySelectorAll('input[name="layer-toggle"]').forEach(radio => {
@@ -66,9 +88,9 @@ function updateRipeStacks(cubes) {
         return;
     }
     ripeStacksEl.innerHTML = activeCubes.map(item => `
-        <div class="ripe-item" style="display:flex; justify-content:space-between; font-size:0.7rem; border-bottom:1px solid #222; padding:4px 0;">
-            <span style="color:#666;">CUBE_${item.id}</span>
-            <span style="color:var(--pink); font-weight:bold;">${parseInt(item.totalStandardUnits).toLocaleString()} KILL</span>
+        <div class="ripe-item">
+            <span class="ripe-id">CUBE_${item.id}</span>
+            <span class="ripe-value">${parseInt(item.totalStandardUnits).toLocaleString()} KILL</span>
         </div>
     `).join('');
 }
@@ -79,7 +101,6 @@ async function syncData() {
         const currentBlock = Number(blockResponse); 
         footerBlock.innerText = `BLOCK: ${currentBlock}`;
 
-        // Network Resolution Log
         if (currentBlock > lastBlock) {
             if (lastBlock !== 0) addLog(currentBlock, "[NETWORK] Block resolution.", "log-network");
             lastBlock = currentBlock;
@@ -102,17 +123,14 @@ async function syncData() {
         if (!result || !result.data) return;
 
         const { killeds = [], spawneds = [], moveds = [], cubes = [] } = result.data;
-        
         updateRipeStacks(cubes);
 
-        // Combine and Sort all events by block number
         const allEvents = [
             ...spawneds.map(s => ({...s, type: 'spawn'})), 
             ...killeds.map(k => ({...k, type: 'kill'})),
             ...moveds.map(m => ({...m, type: 'move'}))
         ].sort((a, b) => Number(a.block_number) - Number(b.block_number));
 
-        // Process only new IDs
         allEvents.forEach(evt => {
             if (!knownIds.has(evt.id)) {
                 if (evt.type === 'spawn') {
@@ -136,7 +154,6 @@ function addLog(blockNum, msg, className) {
     entry.className = `log-entry ${className}`;
     entry.innerHTML = `<span class="log-block">${blockNum}</span> > ${msg}`;
     logFeed.appendChild(entry);
-    // Keep log height manageable
     if (logFeed.childNodes.length > 50) logFeed.removeChild(logFeed.firstChild);
     logFeed.scrollTop = logFeed.scrollHeight;
 }
@@ -158,7 +175,7 @@ function renderLeaderboard() {
 
 let isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 window.onmousedown = (e) => {
-    if (e.target.className === 'node' || e.target.closest('.panel')) return;
+    if (e.target.className === 'node' || e.target.closest('.panel') || e.target.closest('.modal-content')) return;
     isDragging = true; startX = e.clientX; startY = e.clientY;
 };
 window.onmouseup = () => isDragging = false;

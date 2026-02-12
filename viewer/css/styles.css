@@ -1,10 +1,8 @@
 :root {
     --pink: #ff2d75;
     --cyan: #00f0ff;
-    --dim-cyan: #008080;
     --bg-dark: #050505;
     --panel-bg: rgba(10, 10, 10, 0.98);
-    --gray-text: #888;
 }
 
 body, html {
@@ -27,14 +25,12 @@ header {
     padding: 12px 24px; cursor: pointer; font-family: 'JetBrains Mono';
     font-weight: bold; font-size: 0.8rem; letter-spacing: 1px; transition: 0.3s;
 }
-
 .btn-add:hover { background: var(--pink); color: #000; box-shadow: 0 0 15px var(--pink); }
-
-.specs-text { font-size: 0.75rem; line-height: 1.4; color: #ccc; }
 
 .main-stage {
     flex-grow: 1; display: grid; grid-template-columns: 360px 1fr 360px;
     gap: 15px; padding: 20px; box-sizing: border-box; overflow: hidden;
+    height: calc(100vh - 150px);
 }
 
 .panel {
@@ -45,46 +41,67 @@ header {
 .panel-header {
     color: var(--pink); font-size: 0.85rem; text-transform: uppercase;
     letter-spacing: 2px; margin-bottom: 12px; border-bottom: 1px solid rgba(255, 45, 117, 0.3);
-    padding-bottom: 5px; flex-shrink: 0;
+    padding-bottom: 5px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;
 }
 
-.visibility-panel { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; font-size: 0.7rem; color: var(--gray-text); position: relative; z-index: 9999; }
+.btn-clear { background: none; border: 1px solid #444; color: #666; font-size: 0.55rem; padding: 2px 6px; cursor: pointer; text-transform: uppercase; font-family: 'JetBrains Mono'; }
+.btn-clear:hover { border-color: var(--pink); color: var(--pink); }
 
-.radio-container { position: relative; cursor: pointer; display: flex; align-items: center; }
-.radio-container input { position: absolute; opacity: 0; cursor: pointer; }
+.specs-text { font-size: 0.75rem; line-height: 1.6; color: #ccc; margin-bottom: 10px; }
+.specs-text p { margin: 8px 0; }
+.specs-text strong { color: var(--pink); }
 
-.custom-radio { background: #222; color: var(--gray-text); padding: 4px 10px; border: 1px solid #333; transition: 0.2s; font-weight: bold; }
-.radio-container input:checked ~ .custom-radio { background: var(--gray-text); color: #000; border-color: var(--gray-text); }
+.ripe-item { display: flex; justify-content: space-between; font-size: 0.7rem; border-bottom: 1px solid #222; padding: 6px 0; }
+.ripe-id { color: #666; }
+.ripe-value { color: var(--pink); font-weight: bold; }
 
-.center-field { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #1a050c 0%, #000 100%); }
+.center-field { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding-top: 10px; }
 
-.scene { width: 400px; height: 450px; perspective: 1200px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
+.visibility-panel { margin-bottom: 15px; font-size: 0.65rem; color: #666; display: flex; gap: 8px; align-items: center; z-index: 10; }
+.radio-container { cursor: pointer; display: flex; align-items: center; }
+.radio-container input { display: none; }
+.custom-radio { border: 1px solid #333; padding: 2px 6px; color: #555; }
+.radio-container input:checked + .custom-radio { border-color: var(--pink); color: var(--pink); box-shadow: 0 0 8px var(--pink); }
 
-.stack { width: 300px; height: 300px; position: relative; transform-style: preserve-3d; transform: rotateX(60deg) rotateZ(-45deg); transition: transform 0.1s linear; }
-
-.layer { position: absolute; width: 300px; height: 300px; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); background: rgba(255, 45, 117, 0.03); border: 2px solid rgba(255, 45, 117, 0.4); transform-style: preserve-3d; transition: opacity 0.4s ease; }
-
-.node { border: 1px solid rgba(255, 45, 117, 0.3); width: 100%; height: 100%; cursor: crosshair; }
+.scene { width: 400px; height: 350px; perspective: 1200px; display: flex; align-items: center; justify-content: center; transform: translateY(10px); }
+.stack { width: 300px; height: 300px; position: relative; transform-style: preserve-3d; transform: rotateX(60deg) rotateZ(-45deg); }
+.layer { position: absolute; width: 300px; height: 300px; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); background: rgba(255, 45, 117, 0.03); border: 2px solid rgba(255, 45, 117, 0.5); transform-style: preserve-3d; transition: opacity 0.4s ease; }
+.node { border: 1px solid rgba(255, 45, 117, 0.25); width: 100%; height: 100%; cursor: crosshair; }
 .node:hover { background: var(--pink); box-shadow: 0 0 15px var(--pink); }
 
-.battle-label { font-size: 0.7rem; color: var(--pink); margin-bottom: 20px; letter-spacing: 3px; }
-.rotate-hint { margin-top: 40px; font-size: 0.7rem; color: #444; }
+.battle-label { font-size: 0.7rem; color: var(--pink); margin-bottom: 10px; letter-spacing: 3px; }
+.rotate-hint { font-size: 0.7rem; color: #444; margin-top: 20px; }
 
-.rank-item { display: flex; align-items: baseline; padding: 6px 0; border-bottom: 1px solid #222; font-size: 0.8rem; }
+.rank-item { display: flex; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.8rem; }
 .rank-addr { color: #fff; }
 .rank-sep { color: #444; margin: 0 6px; }
-.rank-score { color: var(--pink); font-size: 0.75rem; }
+.rank-score { color: var(--pink); font-weight: bold; }
 
-#log-feed { font-size: 0.62rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; color: #eee; scroll-behavior: smooth; }
+#log-feed { font-size: 0.62rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; padding-right: 5px; }
+#log-feed::-webkit-scrollbar { width: 4px; }
+#log-feed::-webkit-scrollbar-track { background: #000; }
+#log-feed::-webkit-scrollbar-thumb { background: var(--pink); box-shadow: 0 0 5px var(--pink); }
+
 .log-entry { margin-bottom: 6px; border-left: 2px solid transparent; padding-left: 8px; line-height: 1.4; }
-
 .log-kill { border-left-color: var(--pink); color: var(--pink); }
 .log-spawn { border-left-color: #eee; color: #eee; }
 .log-move { border-left-color: var(--cyan); color: var(--cyan); }
-.log-network { border-left-color: #888; color: #888; font-style: italic; background: rgba(255,255,255,0.05); }
+.log-network { border-left-color: #888; color: #888; font-style: italic; }
+.log-block { color: #444; margin-right: 5px; }
 
-.log-block { color: #555; font-size: 0.55rem; margin-right: 5px; }
+.tooltip { position: absolute; background: #000; border: 1px solid var(--pink); padding: 12px; font-size: 0.75rem; pointer-events: none; opacity: 0; z-index: 10000; }
 
-.tooltip { position: absolute; background: #000; border: 1px solid var(--pink); padding: 12px; font-size: 0.75rem; pointer-events: none; opacity: 0; z-index: 10000; transition: opacity 0.2s; }
+.modal { display: none; position: fixed; z-index: 20000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); align-items: center; justify-content: center; }
+.modal-content { background: #0a0a0a; border: 2px solid var(--pink); padding: 40px; width: 500px; box-shadow: 0 0 30px rgba(255, 45, 117, 0.4); }
+.modal-title { font-family: 'Oswald', sans-serif; font-size: 2.2rem; color: var(--pink); margin-bottom: 10px; text-transform: uppercase; }
+.modal-subtitle { color: #888; font-size: 0.8rem; margin-bottom: 25px; line-height: 1.4; }
+.modal-row { display: flex; gap: 15px; margin-top: 25px; }
+.modal-btn { flex: 1; padding: 12px; background: transparent; border: 1px solid #444; color: #fff; cursor: pointer; font-family: 'JetBrains Mono'; font-weight: bold; text-transform: uppercase; transition: 0.2s; }
+.modal-btn:hover { border-color: var(--pink); color: var(--pink); background: rgba(255, 45, 117, 0.1); }
+
+.code-wrapper { position: relative; background: #111; padding: 15px; border-left: 2px solid var(--cyan); margin-top: 20px; }
+.code-block { font-size: 0.75rem; color: var(--cyan); }
+.btn-copy { position: absolute; right: 10px; top: 10px; background: none; border: 1px solid #333; color: #555; font-size: 0.6rem; padding: 3px 7px; cursor: pointer; font-family: 'JetBrains Mono'; }
+.btn-copy:hover { border-color: var(--cyan); color: var(--cyan); }
 
 footer { height: 60px; background: var(--pink); color: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; font-family: 'Oswald', sans-serif; font-size: 1.6rem; font-weight: bold; flex-shrink: 0; }
