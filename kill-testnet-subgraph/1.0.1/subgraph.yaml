@@ -8,7 +8,7 @@ dataSources:
     source:
       address: "0x09b772957Cff809c2d6C55323DEb89978C5262e6"
       abi: killgame
-      startBlock: 0
+      startBlock: 37547538
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6

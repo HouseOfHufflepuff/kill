@@ -9,8 +9,8 @@ const KILL_GAME = process.env.KILL_GAME;
 
 
 
-//npx hardhat run scripts/store/extract.js --network basesepolia
-//npx hardhat run scripts/store/extract.js --network base
+//hardhat run scripts/deploy.js --network basesepolia
+//hardhat run scripts/deploy.js --network base
 async function main() {
     const [deployer] = await ethers.getSigners();
     const weiAmount = (await deployer.getBalance()).toString();

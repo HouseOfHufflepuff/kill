@@ -11,6 +11,10 @@ const timerEl = document.getElementById('timer');
 const tooltip = document.getElementById('tooltip');
 const agentModal = document.getElementById('agent-modal');
 
+// Global Stat Elements
+const unitsKilledEl = document.getElementById('stat-units-killed');
+const reaperKilledEl = document.getElementById('stat-reaper-killed');
+
 let knownIds = new Set();
 let hunterStats = {};
 let lastBlock = 0;
@@ -36,53 +40,30 @@ function initStack() {
     }
 }
 
-function toggleModal(show) {
-    agentModal.style.display = show ? 'flex' : 'none';
-}
-
-function copyCommand() {
-    const cmd = document.getElementById('curl-cmd').innerText;
-    navigator.clipboard.writeText(cmd);
-    const btn = document.querySelector('.btn-copy');
-    btn.innerText = 'COPIED';
-    setTimeout(() => btn.innerText = 'COPY', 2000);
-}
-
-document.querySelector('.btn-add').onclick = () => toggleModal(true);
-window.onclick = (e) => { if (e.target == agentModal) toggleModal(false); }
-
-function clearLog() {
-    logFeed.innerHTML = '';
-    knownIds.clear();
-    addLog(lastBlock, "Log cleared by operator.", "log-network");
-}
-
-document.querySelectorAll('input[name="layer-toggle"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        const val = e.target.value;
-        document.querySelectorAll('.layer').forEach(l => {
-            l.style.opacity = (val === 'all' || l.dataset.layerIndex === val) ? "1" : "0";
-        });
-    });
-});
-
 function showTooltip(e, id) {
-    const units = cubeRegistry[id] || 0;
+    const data = cubeRegistry[id] || { units: "0", reaper: "0" };
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
     tooltip.innerHTML = `
-        <strong>CUBE_${id}</strong><br>
+        <strong style="color:var(--cyan)">CUBE_${id}</strong><br>
         LAYER: ${Math.floor(id/36) + 1}<br>
-        <span style="color:var(--pink)">UNITS: ${parseInt(units).toLocaleString()}</span>
+        <hr style="border:0; border-top:1px solid #333; margin:5px 0;">
+        UNITS: ${parseInt(data.units).toLocaleString()}<br>
+        <span style="color:var(--pink)">REAPER: ${parseInt(data.reaper).toLocaleString()}</span>
     `;
 }
 
 function updateRipeStacks(cubes) {
     cubeRegistry = {};
-    cubes.forEach(c => { cubeRegistry[c.id] = c.totalStandardUnits; });
+    cubes.forEach(c => { 
+        cubeRegistry[c.id] = { 
+            units: c.totalStandardUnits, 
+            reaper: c.totalBoostedUnits 
+        }; 
+    });
 
-    const activeCubes = cubes.filter(c => parseInt(c.totalStandardUnits) > 0);
+    const activeCubes = cubes.filter(c => parseInt(c.totalStandardUnits) > 0 || parseInt(c.totalBoostedUnits) > 0);
     if (activeCubes.length === 0) {
         ripeStacksEl.innerHTML = '<div style="font-size:0.7rem; color:#444;">ARENA EMPTY...</div>';
         return;
@@ -90,7 +71,7 @@ function updateRipeStacks(cubes) {
     ripeStacksEl.innerHTML = activeCubes.map(item => `
         <div class="ripe-item">
             <span class="ripe-id">CUBE_${item.id}</span>
-            <span class="ripe-value">${parseInt(item.totalStandardUnits).toLocaleString()} KILL</span>
+            <span class="ripe-value">${parseInt(item.totalStandardUnits).toLocaleString()} [${parseInt(item.totalBoostedUnits)}]</span>
         </div>
     `).join('');
 }
@@ -102,13 +83,20 @@ async function syncData() {
         footerBlock.innerText = `BLOCK: ${currentBlock}`;
 
         if (currentBlock > lastBlock) {
-            if (lastBlock !== 0) addLog(currentBlock, "[NETWORK] Block resolution.", "log-network");
             lastBlock = currentBlock;
         }
 
         const query = `{
-          cubes(orderBy: totalStandardUnits, orderDirection: desc, first: 10) { id, totalStandardUnits }
-          killeds(first: 20, orderBy: block_number, orderDirection: desc) { id, attacker, targetStdLost, block_number }
+          globalStat(id: "current") {
+            totalUnitsKilled
+            totalReaperKilled
+          }
+          cubes(orderBy: totalStandardUnits, orderDirection: desc, first: 10) { 
+            id, totalStandardUnits, totalBoostedUnits 
+          }
+          killeds(first: 20, orderBy: block_number, orderDirection: desc) { 
+            id, attacker, targetUnitsLost, block_number 
+          }
           spawneds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, cube, block_number }
           moveds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, fromCube, toCube, block_number }
         }`;
@@ -122,7 +110,14 @@ async function syncData() {
         const result = await resp.json();
         if (!result || !result.data) return;
 
-        const { killeds = [], spawneds = [], moveds = [], cubes = [] } = result.data;
+        const { globalStat, killeds = [], spawneds = [], moveds = [], cubes = [] } = result.data;
+        
+        // Update Global Stats UI
+        if (globalStat) {
+            unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
+            reaperKilledEl.innerText = parseInt(globalStat.totalReaperKilled).toLocaleString();
+        }
+
         updateRipeStacks(cubes);
 
         const allEvents = [
@@ -138,7 +133,7 @@ async function syncData() {
                 } else if (evt.type === 'move') {
                     addLog(evt.block_number, `[MOVE] Agent ${evt.agent.substring(0,6)}: ${evt.fromCube} -> ${evt.toCube}`, 'log-move');
                 } else if (evt.type === 'kill') {
-                    const amount = parseInt(evt.targetStdLost);
+                    const amount = parseInt(evt.targetUnitsLost);
                     addLog(evt.block_number, `[KILL] ${evt.attacker.substring(0,8)}... Reaped ${amount} KILL`, 'log-kill');
                     hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + amount;
                 }
@@ -173,6 +168,35 @@ function renderLeaderboard() {
     `).join('');
 }
 
+// Modal and Copy Logic
+function toggleModal(show) { agentModal.style.display = show ? 'flex' : 'none'; }
+function copyCommand() {
+    const cmd = document.getElementById('curl-cmd').innerText;
+    navigator.clipboard.writeText(cmd);
+    const btn = document.querySelector('.btn-copy');
+    btn.innerText = 'COPIED';
+    setTimeout(() => btn.innerText = 'COPY', 2000);
+}
+document.querySelector('.btn-add').onclick = () => toggleModal(true);
+window.onclick = (e) => { if (e.target == agentModal) toggleModal(false); }
+
+function clearLog() {
+    logFeed.innerHTML = '';
+    knownIds.clear();
+    addLog(lastBlock, "Log cleared by operator.", "log-network");
+}
+
+// Layer Toggle Logic
+document.querySelectorAll('input[name="layer-toggle"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        const val = e.target.value;
+        document.querySelectorAll('.layer').forEach(l => {
+            l.style.opacity = (val === 'all' || l.dataset.layerIndex === val) ? "1" : "0";
+        });
+    });
+});
+
+// Grid Rotation logic
 let isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 window.onmousedown = (e) => {
     if (e.target.className === 'node' || e.target.closest('.panel') || e.target.closest('.modal-content')) return;
@@ -187,6 +211,7 @@ window.onmousemove = (e) => {
     startX = e.clientX; startY = e.clientY;
 };
 
+// Polling interval
 setInterval(() => {
     seconds--;
     if(seconds < 0) { 
