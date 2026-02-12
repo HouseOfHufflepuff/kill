@@ -8,19 +8,18 @@ import {
 import { Spawned, Moved, Killed, Stack, AgentStack, GlobalStat } from "./generated/schema"
 import { BigInt, Bytes } from "@graphprotocol/graph-ts"
 
-// Helper to manage Stack totals
 function getOrCreateStack(stackId: string): Stack {
   let stack = Stack.load(stackId)
   if (stack == null) {
     stack = new Stack(stackId)
     stack.totalStandardUnits = BigInt.fromI32(0)
     stack.totalBoostedUnits = BigInt.fromI32(0)
+    stack.birthBlock = BigInt.fromI32(0)
     stack.save()
   }
   return stack
 }
 
-// Helper to manage individual Agent positions and their birthBlocks
 function getOrCreateAgentStack(agent: Bytes, stackId: i32): AgentStack {
   let id = agent.toHex() + "-" + stackId.toString()
   let aStack = AgentStack.load(id)
@@ -49,15 +48,16 @@ export function handleSpawned(event: SpawnedEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  // Update Global Stack Totals
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = stack.totalStandardUnits.plus(event.params.units)
+  if (stack.birthBlock.equals(BigInt.fromI32(0))) {
+    stack.birthBlock = event.params.birthBlock
+  }
   stack.save()
 
-  // Update Agent Specific Position
   let aStack = getOrCreateAgentStack(event.params.agent, event.params.stackId.toI32())
   aStack.units = aStack.units.plus(event.params.units)
-  aStack.birthBlock = event.params.birthBlock // Resetting birthBlock as per contract
+  aStack.birthBlock = event.params.birthBlock
   aStack.save()
 }
 
@@ -72,18 +72,22 @@ export function handleMoved(event: MovedEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  // Update Stack Totals (From/To)
   let fromStack = getOrCreateStack(event.params.fromStack.toString())
   fromStack.totalStandardUnits = safeSubtract(fromStack.totalStandardUnits, event.params.units)
   fromStack.totalBoostedUnits = safeSubtract(fromStack.totalBoostedUnits, event.params.reaper)
+  if (fromStack.totalStandardUnits.equals(BigInt.fromI32(0)) && fromStack.totalBoostedUnits.equals(BigInt.fromI32(0))) {
+    fromStack.birthBlock = BigInt.fromI32(0)
+  }
   fromStack.save()
 
   let toStack = getOrCreateStack(event.params.toStack.toString())
   toStack.totalStandardUnits = toStack.totalStandardUnits.plus(event.params.units)
   toStack.totalBoostedUnits = toStack.totalBoostedUnits.plus(event.params.reaper)
+  if (toStack.birthBlock.equals(BigInt.fromI32(0))) {
+    toStack.birthBlock = event.params.birthBlock
+  }
   toStack.save()
 
-  // Update Agent Positions
   let aStackFrom = getOrCreateAgentStack(event.params.agent, event.params.fromStack)
   aStackFrom.units = safeSubtract(aStackFrom.units, event.params.units)
   aStackFrom.reaper = safeSubtract(aStackFrom.reaper, event.params.reaper)
@@ -92,7 +96,7 @@ export function handleMoved(event: MovedEvent): void {
   let aStackTo = getOrCreateAgentStack(event.params.agent, event.params.toStack)
   aStackTo.units = aStackTo.units.plus(event.params.units)
   aStackTo.reaper = aStackTo.reaper.plus(event.params.reaper)
-  aStackTo.birthBlock = event.params.birthBlock // Update to move time
+  aStackTo.birthBlock = event.params.birthBlock
   aStackTo.save()
 }
 
@@ -110,23 +114,22 @@ export function handleKilled(event: KilledEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  // Update Global Stack Totals
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = safeSubtract(stack.totalStandardUnits, event.params.targetUnitsLost)
   stack.totalBoostedUnits = safeSubtract(stack.totalBoostedUnits, event.params.targetReaperLost)
+  if (stack.totalStandardUnits.equals(BigInt.fromI32(0)) && stack.totalBoostedUnits.equals(BigInt.fromI32(0))) {
+    stack.birthBlock = BigInt.fromI32(0)
+  }
   stack.save()
 
-  // Update Target's remaining position
   let aStackTarget = getOrCreateAgentStack(event.params.target, event.params.stackId)
   aStackTarget.units = safeSubtract(aStackTarget.units, event.params.targetUnitsLost)
   aStackTarget.reaper = safeSubtract(aStackTarget.reaper, event.params.targetReaperLost)
-  // If bounty was claimed (netBounty > 0), the contract implies a wipe/reset
   if (event.params.netBounty.gt(BigInt.fromI32(0))) {
     aStackTarget.birthBlock = BigInt.fromI32(0) 
   }
   aStackTarget.save()
 
-  // Update Attacker's remaining position
   let aStackAttacker = getOrCreateAgentStack(event.params.attacker, event.params.stackId)
   aStackAttacker.units = safeSubtract(aStackAttacker.units, event.params.attackerUnitsLost)
   aStackAttacker.reaper = safeSubtract(aStackAttacker.reaper, event.params.attackerReaperLost)

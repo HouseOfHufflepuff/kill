@@ -27,9 +27,6 @@ let lastBlock = 0;
 let syncCounter = 2;
 let stackRegistry = {}; 
 
-/**
- * Initialize Network Name in UI
- */
 if (networkLabel) networkLabel.innerText = NETWORK.toUpperCase();
 
 async function updateHeartbeat() {
@@ -66,10 +63,13 @@ function initBattlefield() {
 }
 
 function showTooltip(e, id) {
-    const data = stackRegistry[id] || { units: "0", reaper: "0" };
+    const data = stackRegistry[id] || { units: "0", reaper: "0", birthBlock: "0" };
     const u = parseInt(data.units);
     const r = parseInt(data.reaper);
-    const killFactor = ((u + (r * 10)) / 1000).toFixed(2);
+    
+    // Exact contract calculation based on birthBlock
+    const age = (lastBlock > 0 && data.birthBlock !== "0") ? (lastBlock - parseInt(data.birthBlock)) : 0;
+    const bountyMultiplier = (1 + (age / 1000)).toFixed(2);
 
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
@@ -79,14 +79,19 @@ function showTooltip(e, id) {
         UNITS: ${u.toLocaleString()}<br>
         REAPER: ${r.toLocaleString()}<br>
         <hr style="border:0; border-top:1px solid #333; margin:5px 0;">
-        <span style="color:var(--pink)">KILL FACTOR: x${killFactor}</span>
+        <span style="color:var(--pink)">BOUNTY MULTIPLIER: ${bountyMultiplier}x</span><br>
+        <div style="font-size:0.6rem; color:#888; margin-top:4px;">Age: ${age} blocks</div>
     `;
 }
 
 function updateTopStacks(stacks) {
     stackRegistry = {};
     stacks.forEach(s => { 
-        stackRegistry[s.id] = { units: s.totalStandardUnits, reaper: s.totalBoostedUnits }; 
+        stackRegistry[s.id] = { 
+            units: s.totalStandardUnits, 
+            reaper: s.totalBoostedUnits, 
+            birthBlock: s.birthBlock 
+        }; 
     });
 
     const activeStacks = stacks.filter(s => parseInt(s.totalStandardUnits) > 0 || parseInt(s.totalBoostedUnits) > 0);
@@ -98,16 +103,36 @@ function updateTopStacks(stacks) {
     topStacksEl.innerHTML = activeStacks.map(item => {
         const u = parseInt(item.totalStandardUnits);
         const r = parseInt(item.totalBoostedUnits);
-        const killFactor = ((u + (r * 10)) / 1000).toFixed(2);
+        const age = (lastBlock > 0) ? (lastBlock - parseInt(item.birthBlock)) : 0;
+        const bountyMultiplier = (1 + (age / 1000)).toFixed(2);
+
         return `
             <div class="stack-row">
                 <span class="stack-id">${item.id}</span>
                 <span class="stack-val">${u.toLocaleString()}</span>
                 <span class="stack-val" style="color:#eee">${r.toLocaleString()}</span>
-                <span class="stack-kill">x${killFactor}</span>
+                <span class="stack-kill bounty-hover" 
+                      onmouseover="showBountyTooltip(event, ${bountyMultiplier}, ${age})" 
+                      onmouseout="tooltip.style.opacity=0">${bountyMultiplier}x</span>
             </div>
         `;
     }).join('');
+}
+
+function showBountyTooltip(e, mult, age) {
+    tooltip.style.opacity = 1;
+    tooltip.style.left = (e.pageX + 15) + 'px';
+    tooltip.style.top = (e.pageY + 15) + 'px';
+    tooltip.innerHTML = `
+        <div style="text-align:center;">
+            <strong style="color:var(--pink)">BOUNTY STATUS</strong><br>
+            <span style="font-size:0.9rem;">${mult}x Yield</span><br>
+            <div style="font-size:0.6rem; color:#666; margin-top:4px;">
+                Maturity multiplier calculated from stack birth at block offset.<br>
+                Current Age: ${age} blocks.
+            </div>
+        </div>
+    `;
 }
 
 async function syncData() {
@@ -116,7 +141,7 @@ async function syncData() {
         const query = `{
           globalStat(id: "current") { totalUnitsKilled, totalReaperKilled, killBurned }
           stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 10) { 
-            id, totalStandardUnits, totalBoostedUnits 
+            id, totalStandardUnits, totalBoostedUnits, birthBlock 
           }
           killeds(first: 20, orderBy: block_number, orderDirection: desc) { 
             id, attacker, targetUnitsLost, block_number, stackId 
@@ -134,12 +159,12 @@ async function syncData() {
 
         const { globalStat, killeds = [], spawneds = [], stacks = [] } = result.data;
         
-        // Update System Status based on kill presence
         if (killeds.length > 0) {
             statusEl.innerText = "SYSTEM STATUS: LETHAL";
-            statusEl.style.color = "#000"; // Keep black contrast on pink footer
+            statusEl.style.color = "#000";
         } else {
             statusEl.innerText = "SYSTEM STATUS: OPERATIONAL";
+            statusEl.style.color = "#000";
         }
 
         if (globalStat) {

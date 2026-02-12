@@ -482,6 +482,19 @@ export class Stack extends Entity {
   set totalBoostedUnits(value: BigInt) {
     this.set("totalBoostedUnits", Value.fromBigInt(value));
   }
+
+  get birthBlock(): BigInt {
+    let value = this.get("birthBlock");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set birthBlock(value: BigInt) {
+    this.set("birthBlock", Value.fromBigInt(value));
+  }
 }
 
 export class AgentStack extends Entity {

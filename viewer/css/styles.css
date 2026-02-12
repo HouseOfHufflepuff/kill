@@ -56,6 +56,7 @@ header {
 .stack-id { color: #888; }
 .stack-val { color: var(--pink); font-weight: bold; }
 .stack-kill { color: var(--cyan); text-align: right; }
+.bounty-hover { cursor: help; text-decoration: underline dotted rgba(0, 240, 255, 0.3); }
 
 .btn-clear { background: none; border: 1px solid #444; color: #666; font-size: 0.55rem; padding: 2px 6px; cursor: pointer; font-family: 'JetBrains Mono'; }
 .btn-clear:hover { border-color: var(--pink); color: var(--pink); }

@@ -36,6 +36,7 @@ type Stack @entity(immutable: false) {
   id: ID! # The coordinate ID (1-216)
   totalStandardUnits: BigInt!
   totalBoostedUnits: BigInt!
+  birthBlock: BigInt!
 }
 
 type AgentStack @entity(immutable: false) {
