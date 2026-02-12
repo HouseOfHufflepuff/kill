@@ -76,10 +76,10 @@ header {
 .battle-label { font-size: 0.7rem; color: var(--pink); margin-bottom: 10px; letter-spacing: 3px; }
 .rotate-hint { font-size: 0.7rem; color: #444; margin-top: 20px; }
 
-.rank-item { display: flex; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.8rem; }
+.rank-item { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.8rem; }
 .rank-addr { color: #fff; }
-.rank-sep { color: #444; margin: 0 6px; }
-.rank-score { color: var(--pink); font-weight: bold; }
+.rank-sep { color: #444; margin: 0 10px; flex-grow: 1; text-align: left; }
+.rank-score { color: var(--pink); font-weight: bold; text-align: right; }
 
 #log-feed { font-size: 0.62rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; padding-right: 5px; }
 #log-feed::-webkit-scrollbar { width: 4px; }
@@ -88,7 +88,7 @@ header {
 
 .log-entry { margin-bottom: 6px; border-left: 2px solid transparent; padding-left: 8px; line-height: 1.4; }
 .log-kill { border-left-color: var(--pink); color: var(--pink); }
-.log-spawn { border-left-color: #eee; color: #eee; }
+.log-spawn { border-left-color: var(--cyan); color: var(--cyan); }
 .log-move { border-left-color: #888; color: #888; }
 .log-network { border-left-color: #444; color: #444; font-style: italic; }
 .log-block { color: #444; margin-right: 5px; }

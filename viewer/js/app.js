@@ -11,7 +11,6 @@ const timerEl = document.getElementById('timer');
 const tooltip = document.getElementById('tooltip');
 const agentModal = document.getElementById('agent-modal');
 
-// Global Stat Elements
 const unitsKilledEl = document.getElementById('stat-units-killed');
 const reaperKilledEl = document.getElementById('stat-reaper-killed');
 
@@ -78,11 +77,15 @@ function updateRipeStacks(cubes) {
 
 async function syncData() {
     try {
-        const blockResponse = await provider.send("eth_blockNumber", []);
-        const currentBlock = Number(blockResponse); 
+        // HEARTBEAT RESTORATION: Direct block number fetch
+        const currentBlock = await provider.getBlockNumber();
         footerBlock.innerText = `BLOCK: ${currentBlock}`;
 
         if (currentBlock > lastBlock) {
+            if (lastBlock !== 0) {
+                // Occasional network pulse log
+                addLog(currentBlock, "[NETWORK] Pulse detected.", "log-network");
+            }
             lastBlock = currentBlock;
         }
 
@@ -112,7 +115,6 @@ async function syncData() {
 
         const { globalStat, killeds = [], spawneds = [], moveds = [], cubes = [] } = result.data;
         
-        // Update Global Stats UI
         if (globalStat) {
             unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
             reaperKilledEl.innerText = parseInt(globalStat.totalReaperKilled).toLocaleString();
@@ -141,7 +143,10 @@ async function syncData() {
             }
         });
         renderLeaderboard();
-    } catch (e) { console.error("Sync Error:", e); }
+    } catch (e) { 
+        console.error("Sync Error:", e);
+        footerBlock.innerText = "BLOCK: DISCONNECTED";
+    }
 }
 
 function addLog(blockNum, msg, className) {
@@ -161,14 +166,13 @@ function renderLeaderboard() {
     }
     leaderboardEl.innerHTML = sorted.map(([addr, score]) => `
         <div class="rank-item">
-            <span class="rank-addr">${addr.substring(0,12)}...</span>
+            <span class="rank-addr">${addr.substring(0,8)}...</span>
             <span class="rank-sep">//</span>
             <span class="rank-score">${score.toLocaleString()} KILL</span>
         </div>
     `).join('');
 }
 
-// Modal and Copy Logic
 function toggleModal(show) { agentModal.style.display = show ? 'flex' : 'none'; }
 function copyCommand() {
     const cmd = document.getElementById('curl-cmd').innerText;
@@ -186,7 +190,6 @@ function clearLog() {
     addLog(lastBlock, "Log cleared by operator.", "log-network");
 }
 
-// Layer Toggle Logic
 document.querySelectorAll('input[name="layer-toggle"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
         const val = e.target.value;
@@ -196,7 +199,6 @@ document.querySelectorAll('input[name="layer-toggle"]').forEach(radio => {
     });
 });
 
-// Grid Rotation logic
 let isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 window.onmousedown = (e) => {
     if (e.target.className === 'node' || e.target.closest('.panel') || e.target.closest('.modal-content')) return;
@@ -211,7 +213,6 @@ window.onmousemove = (e) => {
     startX = e.clientX; startY = e.clientY;
 };
 
-// Polling interval
 setInterval(() => {
     seconds--;
     if(seconds < 0) { 
