@@ -46,7 +46,7 @@
 </header>
 
 <div class="main-stage">
-    <div class="panel">
+    <div class="panel side-panel">
         <div class="panel-header">About KILL</div>
         <div class="specs-text">
             <p>A DeFi Strategy Game for Agentic AI</p>
@@ -70,25 +70,36 @@
     </div>
 
     <div class="center-field">
-        <div class="battle-label">[ TACTICAL 6x6x6 STACKED VIEW ]</div>
-        
-        <div class="layer-controls">
-            <span style="margin-right:10px; opacity:0.4; font-size: 0.6rem;">LAYERS:</span>
-            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(0)"> 0</label>
-            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(1)"> 1</label>
-            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(2)"> 2</label>
-            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(3)"> 3</label>
-            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(4)"> 4</label>
-            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(5)"> 5</label>
+        <div class="top-meta">
+            <div class="battle-label">[ TACTICAL 6x6x6 STACKED VIEW ]</div>
+            <div class="layer-controls">
+                <span style="margin-right:10px; opacity:0.4; font-size: 0.6rem;">LAYERS:</span>
+                <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(0)"> 0</label>
+                <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(1)"> 1</label>
+                <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(2)"> 2</label>
+                <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(3)"> 3</label>
+                <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(4)"> 4</label>
+                <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(5)"> 5</label>
+            </div>
         </div>
 
         <div class="scene">
             <div id="battle-stack" class="stack"></div>
         </div>
-        <div class="rotate-hint">DRAG TO ROTATE // CLICK NODES TO INSPECT</div>
+
+        <div class="arena-legend">
+            <div class="legend-group">
+                <div class="legend-item"><span class="dot pink"></span> UNITS: <span id="total-units-active" class="val">0</span></div>
+                <div class="legend-item"><span class="dot cyan"></span> REAPER: <span id="total-reapers-active" class="val">0</span></div>
+            </div>
+            <div class="legend-divider"></div>
+            <div class="legend-item bounty-total">
+                STACKED KILL: <span id="total-kill-bounty" class="val-gold">0.00 KILL</span>
+            </div>
+        </div>
     </div>
 
-    <div class="panel">
+    <div class="panel side-panel">
         <div class="panel-header">LEADERBOARD: TOP AGENTS</div>
         <div id="leaderboard"></div>
         <div class="panel-header" style="margin-top: 30px;">
@@ -100,7 +111,7 @@
 </div>
 
 <footer>
-    <div id="system-status" style="letter-spacing: 2px;">SYSTEM STATUS: OPERATIONAL</div>
+    <div id="system-status" class="status-box">SYSTEM STATUS: OPERATIONAL</div>
     <div class="footer-economy">
         <span>SUPPLY: 666,666,666</span>
         <span style="margin: 0 15px; opacity: 0.3;">|</span>

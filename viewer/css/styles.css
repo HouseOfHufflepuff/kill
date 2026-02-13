@@ -30,9 +30,9 @@ header {
 .btn-add:hover { background: var(--pink); color: #000; box-shadow: 0 0 15px var(--pink); }
 
 .main-stage {
-    flex-grow: 1; display: grid; grid-template-columns: 320px 1fr 360px;
+    flex-grow: 1; /* FIXED: Dynamically fills space to prevent footer overlap */
+    display: grid; grid-template-columns: 320px 1fr 360px;
     gap: 15px; padding: 20px; box-sizing: border-box; overflow: hidden;
-    height: calc(100vh - 150px);
 }
 
 .panel {
@@ -68,9 +68,9 @@ header {
 .lethal-row { display: flex; justify-content: space-between; font-size: 0.75rem; margin: 4px 0; }
 .lethal-val { color: var(--pink); font-weight: bold; text-shadow: 0 0 5px var(--pink); }
 
-.center-field { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding-top: 10px; }
+.center-field { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; position: relative; padding: 10px 0; }
 
-.scene { width: 400px; height: 350px; perspective: 1200px; display: flex; align-items: center; justify-content: center; transform: translateY(15px); }
+.scene { width: 100%; flex-grow: 1; perspective: 1200px; display: flex; align-items: center; justify-content: center; transform: translateY(15px); }
 .stack { width: 300px; height: 300px; position: relative; transform-style: preserve-3d; transform: rotateX(60deg) rotateZ(-45deg); transition: transform 0.1s ease-out; }
 
 .layer { position: absolute; width: 300px; height: 300px; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); background: rgba(255, 45, 117, 0.03); border: 2px solid rgba(255, 45, 117, 0.5); transform-style: preserve-3d; transition: opacity 0.4s ease, transform 0.4s ease; }
@@ -113,7 +113,21 @@ header {
 }
 
 .battle-label { font-size: 0.75rem; color: var(--pink); margin-bottom: 12px; letter-spacing: 4px; font-weight: bold; text-transform: uppercase; }
-.rotate-hint { font-size: 0.65rem; color: #777; margin-top: 25px; letter-spacing: 1px; }
+
+/* FIXED: Ensure the legend stays centered and doesn't push layout */
+.arena-legend {
+    display: flex; align-items: center; gap: 20px;
+    background: rgba(0,0,0,0.85); border: 1px solid #333; 
+    padding: 10px 20px; border-radius: 4px; font-size: 0.65rem; 
+    margin-bottom: 5px; flex-shrink: 0;
+}
+.legend-group { display: flex; gap: 15px; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.val-gold { color: var(--cyan); font-weight: bold; text-shadow: 0 0 10px rgba(0,240,255,0.4); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.pink { background: var(--pink); }
+.dot.cyan { background: var(--cyan); }
+.legend-divider { width: 1px; height: 15px; background: #333; }
 
 .layer-controls {
     position: relative;
