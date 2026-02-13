@@ -5,8 +5,6 @@ const KILL_TOKEN_ADDR = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 const KILL_GAME_ADDR = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
 const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
-const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
-const killTokenContract = new ethers.Contract(KILL_TOKEN_ADDR, tokenAbi, provider);
 
 const battleField = document.getElementById('battle-stack');
 const leaderboardEl = document.getElementById('leaderboard');
@@ -46,9 +44,7 @@ async function updateHeartbeat() {
 
 function toggleLayer(idx) {
     const layers = document.querySelectorAll('.layer');
-    if (layers[idx]) {
-        layers[idx].classList.toggle('hidden');
-    }
+    if (layers[idx]) layers[idx].classList.toggle('hidden');
 }
 
 function initBattlefield() {
@@ -62,6 +58,7 @@ function initBattlefield() {
             const stackId = (l * 36) + i;
             const node = document.createElement('div');
             node.className = 'node';
+            node.id = `node-${stackId}`;
             node.dataset.id = stackId;
             node.onmouseover = (e) => showTooltip(e, stackId);
             node.onmouseout = () => tooltip.style.opacity = 0;
@@ -69,6 +66,71 @@ function initBattlefield() {
         }
         battleField.appendChild(layer);
     }
+}
+
+/**
+ * Visualizing Density: Pink for Units (1:1000), Cyan for Reaper (1:1)
+ * Modified: Additive logic to keep existing dots static.
+ */
+function updateNodeParticles(id, units, reaper) {
+    const node = document.getElementById(`node-${id}`);
+    if (!node) return;
+
+    const targetUnitDots = Math.min(Math.floor(units / 1000), 40);
+    const targetReaperDots = Math.min(parseInt(reaper), 20);
+
+    syncParticleGroup(node, 'unit', targetUnitDots);
+    syncParticleGroup(node, 'reaper', targetReaperDots);
+}
+
+function syncParticleGroup(node, type, targetCount) {
+    const existing = node.querySelectorAll(`.particle.${type}`);
+    const currentCount = existing.length;
+
+    if (currentCount < targetCount) {
+        // Add only the difference
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < (targetCount - currentCount); i++) {
+            frag.appendChild(createParticle(type));
+        }
+        node.appendChild(frag);
+    } else if (currentCount > targetCount) {
+        // Remove excess if units decrease (e.g. after a kill)
+        for (let i = 0; i < (currentCount - targetCount); i++) {
+            existing[i].remove();
+        }
+    }
+}
+
+function createParticle(type) {
+    const p = document.createElement('div');
+    p.className = `particle ${type}`;
+    
+    // Position remains static once created
+    const x = Math.random() * 80 + 10;
+    const y = Math.random() * 80 + 10;
+    
+    const zOffsets = [0, 8, 16];
+    const z = zOffsets[Math.floor(Math.random() * zOffsets.length)];
+    
+    p.style.left = `${x}%`;
+    p.style.top = `${y}%`;
+    p.style.transform = `translateZ(${z}px)`;
+    
+    return p;
+}
+
+/**
+ * Tactical Pulse: Triggers a visual flash on the node.
+ */
+function triggerPulse(id, type) {
+    const node = document.getElementById(`node-${id}`);
+    if (!node) return;
+
+    const pulseClass = (type === 'kill') ? 'pulse-kill' : 'pulse-cyan';
+    node.classList.remove('pulse-kill', 'pulse-cyan');
+    void node.offsetWidth; // Force reflow for animation restart
+    node.classList.add(pulseClass);
 }
 
 function showTooltip(e, id) {
@@ -92,13 +154,13 @@ function showTooltip(e, id) {
 }
 
 function updateTopStacks(stacks) {
-    stackRegistry = {};
     stacks.forEach(s => { 
         stackRegistry[s.id] = { 
             units: s.totalStandardUnits, 
             reaper: s.totalBoostedUnits, 
             birthBlock: s.birthBlock 
         }; 
+        updateNodeParticles(s.id, s.totalStandardUnits, s.totalBoostedUnits);
     });
 
     const activeStacks = stacks.filter(s => parseInt(s.totalStandardUnits) > 0 || parseInt(s.totalBoostedUnits) > 0);
@@ -117,7 +179,7 @@ function updateTopStacks(stacks) {
             <div class="stack-row">
                 <span class="stack-id">${item.id}</span>
                 <span class="stack-val">${u.toLocaleString()}</span>
-                <span class="stack-val" style="color:#eee">${r.toLocaleString()}</span>
+                <span class="stack-val" style="color:var(--cyan)">${r.toLocaleString()}</span>
                 <span class="stack-kill bounty-hover" 
                       onmouseover="showBountyTooltip(event, ${bountyMultiplier}, ${age})" 
                       onmouseout="tooltip.style.opacity=0">${bountyMultiplier}x</span>
@@ -146,7 +208,7 @@ async function syncData() {
     try {
         const query = `{
           globalStat(id: "current") { totalUnitsKilled, totalReaperKilled, killBurned }
-          stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 10) { 
+          stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 30) { 
             id, totalStandardUnits, totalBoostedUnits, birthBlock 
           }
           killeds(first: 20, orderBy: block_number, orderDirection: desc) { 
@@ -184,9 +246,11 @@ async function syncData() {
             if (!knownIds.has(evt.id)) {
                 if (evt.type === 'spawn') {
                     addLog(evt.block_number, `[SPAWN] Agent ${evt.agent.substring(0,6)} @ STACK_${evt.stackId}`, 'log-spawn');
+                    triggerPulse(evt.stackId, 'spawn');
                 } else if (evt.type === 'kill') {
                     const amount = parseInt(evt.targetUnitsLost);
                     addLog(evt.block_number, `[KILL] Agent ${evt.attacker.substring(0,8)} reaped ${amount} @ STACK_${evt.stackId}`, 'log-kill');
+                    triggerPulse(evt.stackId, 'kill');
                     hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + amount;
                 }
                 knownIds.add(evt.id);
