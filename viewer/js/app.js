@@ -27,9 +27,6 @@ let lastBlock = 0;
 let syncCounter = 2;
 let stackRegistry = {}; 
 
-/**
- * Sync NETWORK variable to UI elements
- */
 if (networkLabel) networkLabel.innerText = NETWORK.toUpperCase();
 document.querySelectorAll('.net-var').forEach(el => el.innerText = NETWORK);
 
@@ -47,7 +44,15 @@ async function updateHeartbeat() {
     }
 }
 
+function toggleLayer(idx) {
+    const layers = document.querySelectorAll('.layer');
+    if (layers[idx]) {
+        layers[idx].classList.toggle('hidden');
+    }
+}
+
 function initBattlefield() {
+    battleField.innerHTML = ''; 
     for (let l = 0; l < 6; l++) {
         const layer = document.createElement('div');
         layer.className = 'layer';
@@ -130,8 +135,7 @@ function showBountyTooltip(e, mult, age) {
             <strong style="color:var(--pink)">BOUNTY STATUS</strong><br>
             <span style="font-size:0.9rem;">${mult}x Yield</span><br>
             <div style="font-size:0.6rem; color:#666; margin-top:4px;">
-                Maturity multiplier calculated from stack birth at block offset.<br>
-                Current Age: ${age} blocks.
+                Age: ${age} blocks.
             </div>
         </div>
     `;
@@ -160,12 +164,7 @@ async function syncData() {
         if (!result || !result.data) return;
 
         const { globalStat, killeds = [], spawneds = [], stacks = [] } = result.data;
-        
-        if (killeds.length > 0) {
-            statusEl.innerText = "SYSTEM STATUS: LETHAL";
-        } else {
-            statusEl.innerText = "SYSTEM STATUS: OPERATIONAL";
-        }
+        statusEl.innerText = killeds.length > 0 ? "SYSTEM STATUS: LETHAL" : "SYSTEM STATUS: OPERATIONAL";
 
         if (globalStat) {
             unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
@@ -223,17 +222,8 @@ function showAddrTooltip(e, addr) {
     tooltip.innerHTML = `<span style="color:var(--pink)">FULL ADDR:</span><br><span style="font-size:0.6rem;">${addr}</span>`;
 }
 
-/**
- * Modal Management
- */
-function toggleModal(show) { 
-    agentModal.style.display = show ? 'flex' : 'none'; 
-}
-
-// Close when clicking background
-window.addEventListener('click', (e) => {
-    if (e.target === agentModal) toggleModal(false);
-});
+function toggleModal(show) { agentModal.style.display = show ? 'flex' : 'none'; }
+window.addEventListener('click', (e) => { if (e.target === agentModal) toggleModal(false); });
 
 function copyCommand() {
     navigator.clipboard.writeText(document.getElementById('curl-cmd').innerText);
@@ -244,12 +234,9 @@ function copyCommand() {
 
 function clearLog() { logFeed.innerHTML = ''; knownIds.clear(); }
 
-/**
- * Battlefield Controls
- */
 let isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 window.onmousedown = (e) => {
-    if (e.target.className === 'node' || e.target.closest('.panel') || e.target.closest('.modal-content')) return;
+    if (e.target.className === 'node' || e.target.closest('.panel') || e.target.closest('.modal-content') || e.target.closest('.layer-controls')) return;
     isDragging = true; startX = e.clientX; startY = e.clientY;
 };
 window.onmouseup = () => isDragging = false;

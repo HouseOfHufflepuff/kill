@@ -71,6 +71,17 @@
 
     <div class="center-field">
         <div class="battle-label">[ TACTICAL 6x6x6 STACKED VIEW ]</div>
+        
+        <div class="layer-controls">
+            <span style="margin-right:10px; opacity:0.4; font-size: 0.6rem;">LAYERS:</span>
+            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(0)"> 0</label>
+            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(1)"> 1</label>
+            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(2)"> 2</label>
+            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(3)"> 3</label>
+            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(4)"> 4</label>
+            <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(5)"> 5</label>
+        </div>
+
         <div class="scene">
             <div id="battle-stack" class="stack"></div>
         </div>

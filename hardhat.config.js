@@ -2,7 +2,25 @@ require("@nomicfoundation/hardhat-toolbox");
 require("@openzeppelin/hardhat-upgrades");
 require("dotenv").config();
 
-const { API_URL, PRIVATE_KEY } = process.env;
+const { 
+  API_URL, 
+  PRIVATE_KEY, 
+  AGENT1_PRIVATE_KEY,
+  AGENT2_PRIVATE_KEY,
+  AGENT3_PRIVATE_KEY,
+  AGENT4_PRIVATE_KEY,
+  AGENT5_PRIVATE_KEY
+} = process.env;
+
+// Collect all accounts for the simulation signers array
+const accounts = [
+  PRIVATE_KEY, // Index 0: Owner/Deployer
+  AGENT1_PRIVATE_KEY,
+  AGENT2_PRIVATE_KEY,
+  AGENT3_PRIVATE_KEY,
+  AGENT4_PRIVATE_KEY,
+  AGENT5_PRIVATE_KEY
+].filter(key => !!key); // Remove undefined values
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -21,18 +39,18 @@ module.exports = {
       chainId: 1337
     },
     base: {
-      url: API_URL || "",
-      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      url: API_URL || "https://mainnet.base.org",
+      accounts: accounts,
     },
     basesepolia: {
-      url: API_URL || "",
-      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      url: API_URL || "https://sepolia.base.org",
+      accounts: accounts,
     }
   },
   etherscan: {
     apiKey: {
-      base: "YOUR_BASESCAN_API_KEY",
-      baseSepolia: "YOUR_BASESCAN_API_KEY"
+      base: process.env.BASESCAN_API_KEY || "",
+      baseSepolia: process.env.BASESCAN_API_KEY || ""
     }
   }
 };
