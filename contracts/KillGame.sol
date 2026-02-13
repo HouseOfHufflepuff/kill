@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
-    // UPDATED: renamed cube -> stack and added birthBlock to events
     event Spawned(address indexed agent, uint256 indexed stackId, uint256 units, uint256 birthBlock);
     event Moved(address indexed agent, uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper, uint256 birthBlock);
     event Killed(
@@ -40,6 +39,15 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     struct ReaperStack { uint256 birthBlock; }
     struct LossReport { uint256 aUnits; uint256 aReaper; uint256 tUnits; uint256 tReaper; }
 
+    // Struct for the new batch view
+    struct StackInfo {
+        address occupant;
+        uint256 units;
+        uint256 reapers;
+        uint256 age;
+        uint256 pendingBounty;
+    }
+
     mapping(address => mapping(uint256 => ReaperStack)) public agentStacks;
     mapping(uint256 => address[]) private stackOccupants;
     mapping(uint256 => mapping(address => bool)) private isOccupying;
@@ -47,6 +55,71 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     constructor(address _tokenAddress) ERC1155("https://api.killgame.ai/metadata/{id}.json") Ownable(msg.sender) {
         killToken = IERC20(_tokenAddress);
     }
+
+    // --- VIEWS FOR AGENT OPTIMIZATION ---
+
+    /**
+     * @dev Explicit getter for Agent0 and external scripts to fetch birthBlock.
+     */
+    function getBirthBlock(address agent, uint256 id) public view returns (uint256) {
+        return agentStacks[agent][id].birthBlock;
+    }
+
+    /**
+     * @dev Comprehensive view of a single 6x6x6 stack location.
+     * Efficiency: Reduces 216 * N calls to 216 calls for a full grid scan.
+     */
+    function getFullStack(uint16 stackId) external view returns (StackInfo[] memory) {
+        uint256 unitId = uint256(stackId);
+        uint256 reaperId = unitId + 216;
+        address[] memory occ = stackOccupants[unitId];
+        
+        uint256 count = 0;
+        for (uint256 i = 0; i < occ.length; i++) {
+            if (isOccupying[unitId][occ[i]] || isOccupying[reaperId][occ[i]]) count++;
+        }
+
+        StackInfo[] memory info = new StackInfo[](count);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < occ.length; i++) {
+            address target = occ[i];
+            if (isOccupying[unitId][target] || isOccupying[reaperId][target]) {
+                uint256 u = balanceOf(target, unitId);
+                uint256 r = balanceOf(target, reaperId);
+                uint256 birth = agentStacks[target][unitId].birthBlock;
+                
+                info[idx] = StackInfo({
+                    occupant: target,
+                    units: u,
+                    reapers: r,
+                    age: birth > 0 ? block.number - birth : 0,
+                    pendingBounty: getPendingBounty(target, unitId) + getPendingBounty(target, reaperId)
+                });
+                idx++;
+            }
+        }
+        return info;
+    }
+
+    /**
+     * @dev Returns every stack ID the agent currently has a presence on.
+     */
+    function getAgentPresence(address agent) external view returns (uint16[] memory stacks) {
+        uint256 count = 0;
+        for (uint256 i = 1; i <= 216; i++) {
+            if (isOccupying[i][agent] || isOccupying[i + 216][agent]) count++;
+        }
+        stacks = new uint16[](count);
+        uint256 idx = 0;
+        for (uint16 i = 1; i <= 216; i++) {
+            if (isOccupying[i][agent] || isOccupying[uint256(i) + 216][agent]) {
+                stacks[idx] = i;
+                idx++;
+            }
+        }
+    }
+
+    // --- CORE GAME LOGIC ---
 
     function kill(address target, uint16 stackId, uint256 sentUnits, uint256 sentReaper) external nonReentrant returns (uint256 netBounty) {
         uint256 unitId = uint256(stackId);

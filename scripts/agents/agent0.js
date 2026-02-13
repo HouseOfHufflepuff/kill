@@ -1,12 +1,13 @@
 const { ethers } = require("hardhat");
 
 /**
- * KILL // Tactical Simulation Script (Ethers v5)
- * Logic: Scout -> Siege (Spawn until lethal) -> Kill -> Repeat.
+ * KILL // Agent0: "The Whale Hunter"
+ * Logic: Scan for Age -> Calculate Attrition -> Strike if Net-Positive -> Move to Hide.
  */
 async function main() {
-    const KILL_TOKEN_ADDR = process.env.KILL_TOKEN;
-    const KILL_GAME_ADDR = process.env.KILL_GAME;
+    // Contract Addresses
+    const KILL_TOKEN_ADDR = process.env.KILL_TOKEN || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+    const KILL_GAME_ADDR = process.env.KILL_GAME || "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
     const KillToken = await ethers.getContractFactory("KILLToken");
     const killToken = await KillToken.attach(KILL_TOKEN_ADDR);
@@ -14,120 +15,115 @@ async function main() {
     const KillGame = await ethers.getContractFactory("KILLGame");
     const killGame = await KillGame.attach(KILL_GAME_ADDR);
 
-    const allSigners = await ethers.getSigners();
-    const owner = allSigners[0];
+    const [owner] = await ethers.getSigners();
+    const address = await owner.getAddress();
 
-    const agents = [
-        { signer: allSigners[0], name: "WHALE_A", mint: "10000", targetStack: null, targetAddr: null },
-        { signer: allSigners[1], name: "WHALE_B", mint: "1000", targetStack: null, targetAddr: null },
-        { signer: allSigners[2], name: "SHRIMP_A", mint: "100", targetStack: null, targetAddr: null },
-        { signer: allSigners[3], name: "SHRIMP_B", mint: "50", targetStack: null, targetAddr: null },
-        { signer: allSigners[4], name: "SHRIMP_C", mint: "25", targetStack: null, targetAddr: null },
-        { signer: allSigners[5], name: "MINNOW", mint: "5", targetStack: null, targetAddr: null }
-    ];
+    console.log(`--- AGENT0 INITIALIZED: ${address} ---`);
+    console.log(`STATED ASSETS: ETH + 10M KILL`);
 
-    console.log("--- KILL SIMULATION ENGINE: SIEGE MODE ---");
+    // Tactical Constants from README
+    const SCALE = 10000;
+    const SPAWN_COST = ethers.utils.parseEther("10");
+    const KILL_FEE = ethers.utils.parseEther("1");
+    const MOVE_FEE = ethers.utils.parseEther("0.1");
+    const ATTRITION_THRESHOLD = 5.0; // Aim for 5:1 ratio
+
+    // 1. Initial Approval
+    const allowance = await killToken.allowance(address, KILL_GAME_ADDR);
+    if (allowance.lt(ethers.utils.parseEther("10000000"))) {
+        console.log("[AGENT0] Increasing allowance for war chest...");
+        await (await killToken.approve(KILL_GAME_ADDR, ethers.constants.MaxUint256)).wait(1);
+    }
 
     while (true) {
-        const block = await ethers.provider.getBlockNumber();
-        console.log(`\n[BLOCK ${block}] --- TICK ---`);
+        try {
+            const currentBlock = await ethers.provider.getBlockNumber();
+            const ccb = await killToken.balanceOf(KILL_GAME_ADDR); // Current Contract Balance
 
-        for (let agent of agents) {
-            try {
-                const { signer, name, mint } = agent;
-                const address = await signer.getAddress();
+            console.log(`\n[BLOCK ${currentBlock}] Scanning for high-value targets...`);
 
-                // 1. GAS CHECK: Ensure agents can pay for transactions
-                const ethBalance = await signer.getBalance();
-                if (ethBalance.lt(ethers.utils.parseEther("0.01")) && address !== owner.address) {
-                    console.log(`[${name}] Low Gas. Requesting funds from Owner...`);
-                    await (await owner.sendTransaction({
-                        to: address,
-                        value: ethers.utils.parseEther("0.05")
-                    })).wait(1);
-                }
+            let bestTarget = null;
+            let highestProfit = ethers.BigNumber.from(0);
 
-                // 2. FUNDING: Owner mints archetype tokens
-                const mintAmount = ethers.utils.parseEther(mint);
-                await (await killToken.connect(owner).mint(address, mintAmount)).wait(1);
+            // 2. SCOUTING: Scan all 216 cubes (Simplified scan)
+            for (let i = 1; i <= 216; i++) {
+                const [occupants] = await killGame.getRipeStacks(i, false);
+                
+                for (let targetAddr of occupants) {
+                    if (targetAddr === address || targetAddr === ethers.constants.AddressZero) continue;
 
-                // 3. APPROVAL
-                const tokenBalance = await killToken.balanceOf(address);
-                const allowance = await killToken.allowance(address, KILL_GAME_ADDR);
-                if (allowance.lt(tokenBalance)) {
-                    await (await killToken.connect(signer).approve(KILL_GAME_ADDR, ethers.constants.MaxUint256)).wait(1);
-                }
-
-                // 4. SIEGE LOGIC
-                let currentStack = agent.targetStack;
-                let currentTarget = agent.targetAddr;
-
-                // If no target, scout a random stack (1-216)
-                if (!currentStack) {
-                    const scoutId = Math.floor(Math.random() * 216) + 1;
-                    const [occupants] = await killGame.getRipeStacks(scoutId, false);
+                    // Fetch Target Stats
+                    const targetU = await killGame.balanceOf(targetAddr, i);
+                    const targetR = await killGame.balanceOf(targetAddr, i + 216);
+                    const birthBlock = await killGame.getBirthBlock(targetAddr, i);
                     
-                    for (let occ of occupants) {
-                        if (occ !== address && occ !== ethers.constants.AddressZero) {
-                            agent.targetStack = scoutId;
-                            agent.targetAddr = occ;
-                            currentStack = scoutId;
-                            currentTarget = occ;
-                            console.log(`[${name}] SCOUTED target ${occ.substring(0,8)} on Stack ${scoutId}. Initializing Siege.`);
-                            break;
-                        }
-                    }
-                }
+                    if (targetU.add(targetR).eq(0)) continue;
 
-                if (currentTarget) {
-                    // Check if target is still there
-                    const targetU = await killGame.balanceOf(currentTarget, currentStack);
-                    const targetR = await killGame.balanceOf(currentTarget, currentStack + 216);
+                    // Calculate Accrued Bounty: Bounty = CCB * (Delta / 10000)
+                    const delta = currentBlock - birthBlock.toNumber();
+                    const potentialBounty = ccb.mul(delta).div(SCALE);
+
+                    // Estimate Casualties (Inverse Square Law approximation)
+                    // If we have 10M tokens, we can spawn a massive force
+                    const myPower = ethers.utils.parseEther("500000"); // Standard attack force
+                    const targetPower = targetU.add(targetR.mul(666)).mul(110).div(100); // +10% Defense
                     
-                    if (targetU.add(targetR).eq(0)) {
-                        console.log(`[${name}] Target on Stack ${currentStack} vanished. Resuming scouting.`);
-                        agent.targetStack = null;
-                        agent.targetAddr = null;
-                    } else {
-                        // CALC LETHALITY: Power = Units + (Reaper * 666). Target gets 10% defense bonus.
-                        const defPower = (targetU.add(targetR.mul(666))).mul(110).div(100);
-                        
-                        const myU = await killGame.balanceOf(address, currentStack);
-                        const myR = await killGame.balanceOf(address, currentStack + 216);
-                        const myPower = myU.add(myR.mul(666));
+                    const ratio = parseFloat(ethers.utils.formatEther(myPower)) / parseFloat(ethers.utils.formatEther(targetPower));
+                    
+                    // Loss calculation based on Force Ratio table
+                    let lossRate = 0.50; // default 50%
+                    if (ratio > 10) lossRate = 0.01;
+                    else if (ratio > 5) lossRate = 0.15;
+                    else if (ratio > 2) lossRate = 0.25;
 
-                        if (myPower.gt(defPower)) {
-                            console.log(`[${name}] LETHAL REACHED (${myPower} vs ${defPower}). EXECUTING KILL.`);
-                            const tx = await killGame.connect(signer).kill(currentTarget, currentStack, myU, myR, { gasLimit: 1000000 });
-                            await tx.wait(1);
-                            // Reset after successful kill
-                            agent.targetStack = null;
-                            agent.targetAddr = null;
-                        } else {
-                            // SIEGE: Spawn more units to build power
-                            const spawnAmount = tokenBalance.div(ethers.utils.parseEther("10"));
-                            if (spawnAmount.gt(0)) {
-                                console.log(`[${name}] SIEGING Stack ${currentStack}. Current Power: ${myPower} / Required: ${defPower.add(1)}`);
-                                await (await killGame.connect(signer).spawn(currentStack, spawnAmount, { gasLimit: 800000 })).wait(1);
-                            }
-                        }
-                    }
-                } else {
-                    // Random Spawn to establish presence if no target found during scouting
-                    const spawnAmount = tokenBalance.div(ethers.utils.parseEther("10"));
-                    const randomStack = Math.floor(Math.random() * 216) + 1;
-                    if (spawnAmount.gt(0)) {
-                        console.log(`[${name}] No targets. Spawning presence on Stack ${randomStack}.`);
-                        await (await killGame.connect(signer).spawn(randomStack, spawnAmount, { gasLimit: 800000 })).wait(1);
+                    const casualtyCost = SPAWN_COST.mul(myPower.div(ethers.utils.parseEther("1"))).mul(Math.floor(lossRate * 100)).div(100);
+                    const netProfit = potentialBounty.mul(9334).div(10000).sub(casualtyCost).sub(KILL_FEE);
+
+                    if (netProfit.gt(highestProfit)) {
+                        highestProfit = netProfit;
+                        bestTarget = { addr: targetAddr, stackId: i, u: targetU, r: targetR, profit: netProfit };
                     }
                 }
-
-            } catch (err) {
-                console.log(`[${agent.name}] Action failed: ${err.reason || "Revert/Network error"}`);
             }
+
+            // 3. EXECUTION PHASE
+            if (bestTarget && highestProfit.gt(0)) {
+                console.log(`[AGENT0] TARGET ACQUIRED: ${bestTarget.addr.substring(0,8)} at Stack ${bestTarget.stackId}`);
+                console.log(`[AGENT0] ESTIMATED PROFIT: ${ethers.utils.formatEther(bestTarget.profit)} KILL`);
+
+                // Spawn to ensure 10:1 dominance
+                const targetPower = bestTarget.u.add(bestTarget.r.mul(666)).mul(110).div(100);
+                const reqPower = targetPower.mul(10);
+                
+                console.log(`[AGENT0] Deploying force for 10:1 Overwhelming Advantage...`);
+                await (await killGame.spawn(bestTarget.stackId, reqPower.div(ethers.utils.parseEther("10")), { gasLimit: 500000 })).wait(1);
+
+                // Execute KILL
+                console.log(`[AGENT0] Executing Meat-Grinder...`);
+                const tx = await killGame.kill(bestTarget.addr, bestTarget.stackId, reqPower, 0, { gasLimit: 800000 });
+                await tx.wait(1);
+                console.log(`[AGENT0] Bounty Collected. P&L Optimized.`);
+            } else {
+                console.log(`[AGENT0] No profitable targets. Idling...`);
+            }
+
+            // 4. DEFENSIVE MOVE (The Defender's Dilemma)
+            // If our own stack is too old (heat is high), move it to reset age.
+            const myStacks = await killGame.getAgentStacks(address);
+            for (let sId of myStacks) {
+                const myBirth = await killGame.getBirthBlock(address, sId);
+                if (currentBlock - myBirth.toNumber() > 5000) {
+                    const newCube = Math.floor(Math.random() * 216) + 1;
+                    console.log(`[AGENT0] Stack ${sId} is too "ripe" (${currentBlock - myBirth.toNumber()} blocks). Resetting heat via MOVE.`);
+                    await (await killGame.move(sId, newCube, { gasLimit: 300000 })).wait(1);
+                }
+            }
+
+        } catch (err) {
+            console.error(`[AGENT0] TICK ERROR: ${err.message}`);
         }
 
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 1000)); // 1 Second Loop
     }
 }
 

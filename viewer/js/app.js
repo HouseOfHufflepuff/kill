@@ -7,7 +7,7 @@ const KILL_GAME_ADDR = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
 
 const battleField = document.getElementById('battle-stack');
-const leaderboardEl = document.getElementById('leaderboard');
+const pnlEl = document.getElementById('leaderboard'); // Reusing ID for P&L Panel
 const logFeed = document.getElementById('log-feed');
 const topStacksEl = document.getElementById('ripe-stacks');
 const headerBlock = document.getElementById('header-block');
@@ -24,11 +24,13 @@ const totalReapersActiveEl = document.getElementById('total-reapers-active');
 const totalKillBountyEl = document.getElementById('total-kill-bounty');
 
 let knownIds = new Set();
-let hunterStats = {};
+let agentPnL = {}; // Structure: { addr: { spent: 0, earned: 0 } }
 let lastBlock = 0;
 let syncCounter = 2;
 let stackRegistry = {}; 
-let currentGlobalKillStacked = "0";
+let currentGlobalKillStacked = 0;
+
+const REAPER_SPAWN_COST = 1000; // Adjust based on your contract logic
 
 if (networkLabel) networkLabel.innerText = NETWORK.toUpperCase();
 document.querySelectorAll('.net-var').forEach(el => el.innerText = NETWORK);
@@ -38,9 +40,9 @@ async function updateHeartbeat() {
         const hexBlock = await provider.send("eth_blockNumber", []);
         const currentBlock = parseInt(hexBlock, 16);
         if (currentBlock !== lastBlock && lastBlock !== 0) {
-            // Updated to show the Total Kill Stacked from the API instead of "RESOLVED"
-            const formattedKill = Math.floor(currentGlobalKillStacked).toLocaleString();
-            addLog(currentBlock, `BLOCK SYNC: ${formattedKill} KILL`, "log-network");
+            const displayKill = Math.floor(currentGlobalKillStacked).toLocaleString();
+            // Changed "KILL STACKED" to "KILL" per request
+            addLog(currentBlock, `BLOCK SYNC: ${displayKill} KILL`, "log-network");
         }
         headerBlock.innerText = currentBlock;
         lastBlock = currentBlock;
@@ -78,10 +80,8 @@ function initBattlefield() {
 function updateNodeParticles(id, units, reaperCount) {
     const node = document.getElementById(`node-${id}`);
     if (!node) return;
-
     const targetUnitDots = Math.min(Math.floor(units / 1000), 40);
     const targetReaperDots = Math.min(reaperCount, 40); 
-
     syncParticleGroup(node, 'unit', targetUnitDots);
     syncParticleGroup(node, 'reaper', targetReaperDots);
 }
@@ -147,24 +147,21 @@ function showTooltip(e, id) {
 function updateTopStacks(stacks, activeReaperMap) {
     let globalUnits = 0, globalReapers = 0, globalBountyKill = 0;
 
-    // Process all stacks and calculate current kill value for sorting
-    const processedStacks = stacks.map(s => {
+    const processed = stacks.map(s => {
         const u = parseInt(s.totalStandardUnits);
         const r = activeReaperMap[s.id] || parseInt(s.totalBoostedUnits) || 0;
         const age = (lastBlock > 0) ? (lastBlock - parseInt(s.birthBlock)) : 0;
         const multiplier = (1 + (age / 1000));
-        const currentKillValue = u * multiplier;
+        const totalKillValue = u * multiplier;
 
-        // Update Global Stats
         globalUnits += u; 
         globalReapers += r; 
-        globalBountyKill += currentKillValue;
+        globalBountyKill += totalKillValue;
 
-        // Update Registry and visual particles
         stackRegistry[s.id] = { units: s.totalStandardUnits, reaper: r.toString(), birthBlock: s.birthBlock }; 
         updateNodeParticles(s.id, s.totalStandardUnits, r);
 
-        return { ...s, rCount: r, age, multiplier, currentKillValue };
+        return { id: s.id, units: u, reapers: r, kill: totalKillValue };
     });
 
     currentGlobalKillStacked = globalBountyKill;
@@ -173,36 +170,33 @@ function updateTopStacks(stacks, activeReaperMap) {
     if(totalReapersActiveEl) totalReapersActiveEl.innerText = globalReapers.toLocaleString();
     if(totalKillBountyEl) totalKillBountyEl.innerText = `${Math.floor(globalBountyKill).toLocaleString()} KILL`;
 
-    // Filter active and Sort Descending by KILL Value
-    const activeStacks = processedStacks
-        .filter(s => parseInt(s.totalStandardUnits) > 0 || s.rCount > 0)
-        .sort((a, b) => b.currentKillValue - a.currentKillValue);
+    const sorted = processed
+        .filter(s => s.units > 0 || s.reapers > 0)
+        .sort((a, b) => b.kill - a.kill);
 
-    if (activeStacks.length === 0) {
+    if (sorted.length === 0) {
         topStacksEl.innerHTML = '<div style="font-size:0.7rem; color:#444; padding:10px;">ARENA EMPTY...</div>';
         return;
     }
 
-    // New header for the Top Stacks table
-    const tableHeader = `
-        <div class="stack-row" style="border-bottom: 1px solid #333; margin-bottom: 5px; font-weight: bold; font-size: 0.65rem; color: #666;">
-            <span class="stack-id">ID</span>
-            <span class="stack-val">UNITS</span>
-            <span class="stack-val">REAP</span>
-            <span class="stack-kill">KILL</span>
+    // TIGHTENED TABLE: Removed redundant header, abbreviated REAP, condensed KILL
+    const header = `
+        <div class="stack-row header-row" style="opacity:0.6; font-size:0.55rem; border-bottom:1px solid #222; margin-bottom:4px;">
+            <span style="width:15%">ID</span>
+            <span style="width:35%">UNITS</span>
+            <span style="width:15%">R</span>
+            <span style="width:35%; text-align:right;">KILL</span>
         </div>
     `;
 
-    topStacksEl.innerHTML = tableHeader + activeStacks.map(item => {
-        return `
-            <div class="stack-row">
-                <span class="stack-id">${item.id}</span>
-                <span class="stack-val">${parseInt(item.totalStandardUnits).toLocaleString()}</span>
-                <span class="stack-val" style="color:var(--cyan)">${item.rCount}</span>
-                <span class="stack-kill" style="color:var(--pink)">${Math.floor(item.currentKillValue).toLocaleString()}</span>
-            </div>
-        `;
-    }).join('');
+    topStacksEl.innerHTML = header + sorted.map(item => `
+        <div class="stack-row" style="font-size:0.75rem;">
+            <span style="width:15%">${item.id}</span>
+            <span style="width:35%">${Math.floor(item.units / 1000)}K</span>
+            <span style="width:15%; color:var(--cyan)">${item.reapers}</span>
+            <span style="width:35%; text-align:right; color:var(--pink); font-weight:bold;">${Math.floor(item.kill).toLocaleString()}</span>
+        </div>
+    `).join('');
 }
 
 async function syncData() {
@@ -211,8 +205,8 @@ async function syncData() {
         const query = `{
           globalStat(id: "current") { totalUnitsKilled, totalReaperKilled, killBurned }
           stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 100) { id, totalStandardUnits, totalBoostedUnits, birthBlock }
-          killeds(first: 20, orderBy: block_number, orderDirection: desc) { id, attacker, targetUnitsLost, block_number, stackId }
-          spawneds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, stackId, block_number }
+          killeds(first: 50, orderBy: block_number, orderDirection: desc) { id, attacker, targetUnitsLost, block_number, stackId }
+          spawneds(first: 50, orderBy: block_number, orderDirection: desc) { id, agent, stackId, block_number }
         }`;
         const resp = await fetch(SUBGRAPH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
         const result = await resp.json();
@@ -239,23 +233,28 @@ async function syncData() {
 
         updateTopStacks(stacks, activeReaperMap);
 
+        // P&L Logic
         [...spawneds.map(s => ({...s, type: 'spawn'})), ...killeds.map(k => ({...k, type: 'kill'}))]
             .sort((a, b) => Number(a.block_number) - Number(b.block_number))
             .forEach(evt => {
+                const addr = evt.type === 'spawn' ? evt.agent : evt.attacker;
+                if (!agentPnL[addr]) agentPnL[addr] = { spent: 0, earned: 0 };
+
                 if (!knownIds.has(evt.id)) {
                     if (evt.type === 'spawn') {
+                        agentPnL[addr].spent += REAPER_SPAWN_COST;
                         addLog(evt.block_number, `[SPAWN] Agent ${evt.agent.substring(0,6)} @ STACK_${evt.stackId}`, 'log-spawn');
                         triggerPulse(evt.stackId, 'spawn');
                     } else {
                         const amount = parseInt(evt.targetUnitsLost);
+                        agentPnL[addr].earned += amount;
                         addLog(evt.block_number, `[KILL] Agent ${evt.attacker.substring(0,8)} reaped ${amount} @ STACK_${evt.stackId}`, 'log-kill');
                         triggerPulse(evt.stackId, 'kill');
-                        hunterStats[evt.attacker] = (hunterStats[evt.attacker] || 0) + amount;
                     }
                     knownIds.add(evt.id);
                 }
             });
-        renderLeaderboard();
+        renderPnL();
     } catch (e) { console.error("Sync fail", e); }
 }
 
@@ -268,14 +267,26 @@ function addLog(blockNum, msg, className) {
     logFeed.scrollTop = logFeed.scrollHeight;
 }
 
-function renderLeaderboard() {
-    const sorted = Object.entries(hunterStats).sort(([,a], [,b]) => b - a).slice(0, 10);
-    leaderboardEl.innerHTML = sorted.map(([addr, score]) => `
-        <div class="rank-item" onmouseover="showAddrTooltip(event, '${addr}')" onmouseout="tooltip.style.opacity=0">
-            <span class="rank-addr">${addr.substring(0,8)}...</span>
-            <span class="rank-score">${score.toLocaleString()} KILL</span>
+function renderPnL() {
+    const sortedPnL = Object.entries(agentPnL)
+        .map(([addr, stats]) => ({ addr, net: stats.earned - stats.spent }))
+        .sort((a, b) => b.net - a.net)
+        .slice(0, 10);
+
+    pnlEl.innerHTML = `
+        <div class="stack-row header-row" style="opacity:0.6; font-size:0.55rem; border-bottom:1px solid #222; margin-bottom:5px;">
+            <span style="width:60%">AGENT</span>
+            <span style="width:40%; text-align:right;">NET P/L</span>
         </div>
-    `).join('');
+    ` + sortedPnL.map(item => {
+        const color = item.net >= 0 ? 'var(--cyan)' : 'var(--pink)';
+        return `
+            <div class="rank-item" onmouseover="showAddrTooltip(event, '${item.addr}')" onmouseout="tooltip.style.opacity=0">
+                <span class="rank-addr">${item.addr.substring(0,8)}...</span>
+                <span class="rank-score" style="color:${color}">${item.net > 0 ? '+' : ''}${item.net.toLocaleString()}</span>
+            </div>
+        `;
+    }).join('');
 }
 
 function showAddrTooltip(e, addr) {

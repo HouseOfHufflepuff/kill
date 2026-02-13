@@ -3,6 +3,7 @@ const { ethers } = require("hardhat");
 const KILL_TOKEN = process.env.KILL_TOKEN;
 const KILL_GAME = process.env.KILL_GAME;
 
+//hardhat run scripts/agents/seed0.js --network basesepolia
 async function main() {
     const [owner] = await ethers.getSigners();
     console.log("Using Wallet:", owner.address);
