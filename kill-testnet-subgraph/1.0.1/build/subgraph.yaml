@@ -6,7 +6,7 @@ dataSources:
     name: killgame
     network: base-sepolia
     source:
-      address: "0xBE61299145202d5b72eF0e197B579BF5DC1133Aa"
+      address: "0x22872467618fe87d2a731A74Ca45Fa7Af39D0e23"
       abi: killgame
       startBlock: 37569832
     mapping:

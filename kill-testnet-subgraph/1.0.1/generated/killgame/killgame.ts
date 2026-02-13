@@ -300,6 +300,28 @@ export class URI__Params {
   }
 }
 
+export class killgame__getFullStackResultValue0Struct extends ethereum.Tuple {
+  get occupant(): Address {
+    return this[0].toAddress();
+  }
+
+  get units(): BigInt {
+    return this[1].toBigInt();
+  }
+
+  get reapers(): BigInt {
+    return this[2].toBigInt();
+  }
+
+  get age(): BigInt {
+    return this[3].toBigInt();
+  }
+
+  get pendingBounty(): BigInt {
+    return this[4].toBigInt();
+  }
+}
+
 export class killgame__getRipeStacksResult {
   value0: Array<Address>;
   value1: Array<BigInt>;
@@ -466,6 +488,85 @@ export class killgame extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBigIntArray());
+  }
+
+  getAgentPresence(agent: Address): Array<i32> {
+    let result = super.call(
+      "getAgentPresence",
+      "getAgentPresence(address):(uint16[])",
+      [ethereum.Value.fromAddress(agent)],
+    );
+
+    return result[0].toI32Array();
+  }
+
+  try_getAgentPresence(agent: Address): ethereum.CallResult<Array<i32>> {
+    let result = super.tryCall(
+      "getAgentPresence",
+      "getAgentPresence(address):(uint16[])",
+      [ethereum.Value.fromAddress(agent)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toI32Array());
+  }
+
+  getBirthBlock(agent: Address, id: BigInt): BigInt {
+    let result = super.call(
+      "getBirthBlock",
+      "getBirthBlock(address,uint256):(uint256)",
+      [
+        ethereum.Value.fromAddress(agent),
+        ethereum.Value.fromUnsignedBigInt(id),
+      ],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_getBirthBlock(agent: Address, id: BigInt): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "getBirthBlock",
+      "getBirthBlock(address,uint256):(uint256)",
+      [
+        ethereum.Value.fromAddress(agent),
+        ethereum.Value.fromUnsignedBigInt(id),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  getFullStack(stackId: i32): Array<killgame__getFullStackResultValue0Struct> {
+    let result = super.call(
+      "getFullStack",
+      "getFullStack(uint16):((address,uint256,uint256,uint256,uint256)[])",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(stackId))],
+    );
+
+    return result[0].toTupleArray<killgame__getFullStackResultValue0Struct>();
+  }
+
+  try_getFullStack(
+    stackId: i32,
+  ): ethereum.CallResult<Array<killgame__getFullStackResultValue0Struct>> {
+    let result = super.tryCall(
+      "getFullStack",
+      "getFullStack(uint16):((address,uint256,uint256,uint256,uint256)[])",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(stackId))],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(
+      value[0].toTupleArray<killgame__getFullStackResultValue0Struct>(),
+    );
   }
 
   getPendingBounty(agent: Address, id: BigInt): BigInt {

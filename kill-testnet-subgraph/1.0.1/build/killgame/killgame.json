@@ -578,6 +578,95 @@
         "internalType": "address",
         "name": "agent",
         "type": "address"
+      }
+    ],
+    "name": "getAgentPresence",
+    "outputs": [
+      {
+        "internalType": "uint16[]",
+        "name": "stacks",
+        "type": "uint16[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "agent",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getBirthBlock",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "stackId",
+        "type": "uint16"
+      }
+    ],
+    "name": "getFullStack",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "occupant",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "units",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "reapers",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "age",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pendingBounty",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct KILLGame.StackInfo[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "agent",
+        "type": "address"
       },
       {
         "internalType": "uint256",
