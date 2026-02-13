@@ -30,7 +30,7 @@ header {
 .btn-add:hover { background: var(--pink); color: #000; box-shadow: 0 0 15px var(--pink); }
 
 .main-stage {
-    flex-grow: 1; /* FIXED: Dynamically fills space to prevent footer overlap */
+    flex-grow: 1; 
     display: grid; grid-template-columns: 320px 1fr 360px;
     gap: 15px; padding: 20px; box-sizing: border-box; overflow: hidden;
 }
@@ -46,6 +46,14 @@ header {
     padding-bottom: 5px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;
 }
 
+#ripe-stacks {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+#ripe-stacks::-webkit-scrollbar { width: 4px; }
+#ripe-stacks::-webkit-scrollbar-thumb { background: #333; }
+
 .stack-row { 
     display: grid; 
     grid-template-columns: 40px 1fr 1fr 60px; 
@@ -54,7 +62,7 @@ header {
     border-bottom: 1px solid #222; 
     align-items: center;
 }
-.stack-row.header { color: #666; border-bottom: 1px solid #444; font-weight: bold; margin-bottom: 4px; }
+.stack-row.header { color: #666; border-bottom: 1px solid #444; font-weight: bold; margin-bottom: 4px; position: sticky; top: 0; background: var(--panel-bg); }
 .stack-id { color: #888; }
 .stack-val { color: var(--pink); font-weight: bold; }
 .stack-kill { color: var(--cyan); text-align: right; }
@@ -63,10 +71,9 @@ header {
 .btn-clear { background: none; border: 1px solid #444; color: #666; font-size: 0.55rem; padding: 2px 6px; cursor: pointer; font-family: 'JetBrains Mono'; }
 .btn-clear:hover { border-color: var(--pink); color: var(--pink); }
 
-.specs-text { font-size: 0.75rem; line-height: 1.6; color: #ccc; margin-bottom: 10px; }
+.specs-text, .lethal-row { font-size: 0.75rem; line-height: 1.6; color: #ccc; }
 .lethal-metrics { background: rgba(255, 45, 117, 0.05); padding: 10px; border: 1px solid rgba(255, 45, 117, 0.2); margin-top: 10px; }
-.lethal-row { display: flex; justify-content: space-between; font-size: 0.75rem; margin: 4px 0; }
-.lethal-val { color: var(--pink); font-weight: bold; text-shadow: 0 0 5px var(--pink); }
+.lethal-val { color: var(--pink); font-weight: bold; margin-left: 5px; }
 
 .center-field { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; position: relative; padding: 10px 0; }
 
@@ -82,23 +89,21 @@ header {
     width: 100%; height: 100%; 
     cursor: crosshair; 
     transform-style: preserve-3d;
-    transition: background 0.3s ease;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
-.node:hover { background: rgba(255, 45, 117, 0.1); }
+.node:hover { 
+    background: rgba(255, 45, 117, 0.2); 
+    box-shadow: inset 0 0 10px var(--pink); 
+}
 
-/* PARTICLE SYSTEM */
 .particle {
     position: absolute;
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    pointer-events: none;
-    transform-style: preserve-3d;
+    width: 3px; height: 3px; border-radius: 50%;
+    pointer-events: none; transform-style: preserve-3d;
 }
 .particle.unit { background: var(--pink); box-shadow: 0 0 4px var(--pink); }
 .particle.reaper { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); width: 5px; height: 5px; z-index: 10; }
 
-/* TACTICAL PULSES */
 .pulse-kill { animation: pulse-pink 0.8s ease-out; }
 .pulse-cyan { animation: pulse-cyan-anim 0.8s ease-out; }
 
@@ -114,7 +119,6 @@ header {
 
 .battle-label { font-size: 0.75rem; color: var(--pink); margin-bottom: 12px; letter-spacing: 4px; font-weight: bold; text-transform: uppercase; }
 
-/* FIXED: Ensure the legend stays centered and doesn't push layout */
 .arena-legend {
     display: flex; align-items: center; gap: 20px;
     background: rgba(0,0,0,0.85); border: 1px solid #333; 
@@ -130,8 +134,7 @@ header {
 .legend-divider { width: 1px; height: 15px; background: #333; }
 
 .layer-controls {
-    position: relative;
-    z-index: 1000;
+    position: relative; z-index: 1000;
     display: flex; gap: 12px; font-size: 0.65rem; align-items: center;
     background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 4px;
     border: 1px solid #333; margin-bottom: 20px;

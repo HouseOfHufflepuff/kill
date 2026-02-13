@@ -157,7 +157,7 @@ function updateTopStacks(stacks) {
 
     if(totalUnitsActiveEl) totalUnitsActiveEl.innerText = globalUnits.toLocaleString();
     if(totalReapersActiveEl) totalReapersActiveEl.innerText = globalReapers.toLocaleString();
-    if(totalKillBountyEl) totalKillBountyEl.innerText = `${globalBountyKill.toLocaleString(undefined, {maximumFractionDigits: 2})} KILL`;
+    if(totalKillBountyEl) totalKillBountyEl.innerText = `${Math.floor(globalBountyKill).toLocaleString()} KILL`;
 
     const activeStacks = stacks.filter(s => parseInt(s.totalStandardUnits) > 0 || parseInt(s.totalBoostedUnits) > 0);
     if (activeStacks.length === 0) {
@@ -192,7 +192,7 @@ async function syncData() {
     try {
         const query = `{
           globalStat(id: "current") { totalUnitsKilled, totalReaperKilled, killBurned }
-          stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 30) { id, totalStandardUnits, totalBoostedUnits, birthBlock }
+          stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 100) { id, totalStandardUnits, totalBoostedUnits, birthBlock }
           killeds(first: 20, orderBy: block_number, orderDirection: desc) { id, attacker, targetUnitsLost, block_number, stackId }
           spawneds(first: 20, orderBy: block_number, orderDirection: desc) { id, agent, stackId, block_number }
         }`;
