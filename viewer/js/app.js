@@ -200,7 +200,10 @@ async function syncData() {
         const result = await resp.json();
         if (!result || !result.data) return;
         const { globalStat, killeds = [], spawneds = [], stacks = [] } = result.data;
-        statusEl.innerText = killeds.length > 0 ? "SYSTEM STATUS: LETHAL" : "SYSTEM STATUS: OPERATIONAL";
+        
+        // LETHAL INDICATOR SYNC
+        statusEl.innerHTML = killeds.length > 0 ? '<span class="lethal-dot"></span>SYSTEM STATUS: LETHAL' : 'SYSTEM STATUS: OPERATIONAL';
+        
         if (globalStat) {
             unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
             reaperKilledEl.innerText = parseInt(globalStat.totalReaperKilled).toLocaleString();

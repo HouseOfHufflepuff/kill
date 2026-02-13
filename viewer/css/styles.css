@@ -148,12 +148,41 @@ header {
 .rank-addr { color: #fff; }
 .rank-score { color: var(--pink); font-weight: bold; text-align: right; flex-grow: 1; }
 
-#log-feed { font-size: 0.62rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; padding-right: 5px; }
-.log-entry { margin-bottom: 6px; border-left: 2px solid transparent; padding-left: 8px; line-height: 1.4; }
-.log-kill { border-left-color: var(--pink); color: var(--pink); }
-.log-spawn { border-left-color: var(--cyan); color: var(--cyan); }
-.log-network { border-left-color: #444; color: #444; font-style: italic; }
-.log-block { color: #444; margin-right: 5px; }
+/* REFINED LOG TYPOGRAPHY & ANIMATIONS */
+#log-feed { font-size: 0.68rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; padding-right: 5px; }
+.log-entry { 
+    margin-bottom: 8px; 
+    border-left: 2px solid transparent; 
+    padding: 4px 8px; 
+    line-height: 1.4; 
+    background: rgba(255,255,255,0.02);
+    animation: log-slide 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+.log-kill { border-left-color: var(--pink); color: #ffb3cc; } /* Lightened text */
+.log-spawn { border-left-color: var(--cyan); color: #b3faff; } /* Lightened text */
+.log-network { border-left-color: #666; color: #aaa; font-style: italic; }
+.log-block { color: #888; margin-right: 8px; font-weight: bold; }
+
+@keyframes log-slide {
+    from { transform: translateX(10px); opacity: 0; filter: brightness(2); }
+    to { transform: translateX(0); opacity: 1; filter: brightness(1); }
+}
+
+/* LETHAL INDICATOR */
+.lethal-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--pink);
+    border-radius: 50%;
+    margin-right: 10px;
+    box-shadow: 0 0 10px var(--pink);
+    animation: pulse-dot 1s infinite ease-in-out;
+}
+@keyframes pulse-dot {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.4; }
+    100% { transform: scale(1); opacity: 1; }
+}
 
 .tooltip { position: absolute; background: #000; border: 1px solid var(--pink); padding: 12px; font-size: 0.75rem; pointer-events: none; opacity: 0; z-index: 10000; box-shadow: 0 0 20px rgba(255,45,117,0.3); }
 
