@@ -72,12 +72,13 @@ function initBattlefield() {
     }
 }
 
-function updateNodeParticles(id, units, reaper) {
+function updateNodeParticles(id, units, reaperCount) {
     const node = document.getElementById(`node-${id}`);
     if (!node) return;
 
+    // Fixed: Scale dots exactly to reaperCount (max 40 for performance)
     const targetUnitDots = Math.min(Math.floor(units / 1000), 40);
-    const targetReaperDots = Math.min(parseInt(reaper), 20);
+    const targetReaperDots = Math.min(reaperCount, 40); 
 
     syncParticleGroup(node, 'unit', targetUnitDots);
     syncParticleGroup(node, 'reaper', targetReaperDots);
@@ -134,57 +135,57 @@ function showTooltip(e, id) {
     tooltip.innerHTML = `
         <strong style="color:var(--cyan)">STACK_${id}</strong><br>
         UNITS: ${u.toLocaleString()}<br>
-        REAPER: ${r.toLocaleString()}<br>
+        REAPER COUNT: ${r}<br>
         <hr style="border:0; border-top:1px solid #333; margin:5px 0;">
         <span style="color:var(--pink)">KILL VALUE: ${killOnStack.toLocaleString(undefined, {maximumFractionDigits: 2})}</span><br>
         <div style="font-size:0.6rem; color:#888; margin-top:4px;">Mult: ${bountyMultiplier.toFixed(2)}x // Age: ${age}</div>
     `;
 }
 
-function updateTopStacks(stacks) {
+function updateTopStacks(stacks, activeReaperMap) {
     let globalUnits = 0, globalReapers = 0, globalBountyKill = 0;
 
     stacks.forEach(s => { 
         const u = parseInt(s.totalStandardUnits);
-        const r = parseInt(s.totalBoostedUnits);
+        
+        // Use the map to get the exact count of reapers for this stack
+        const r = activeReaperMap[s.id] || parseInt(s.totalBoostedUnits) || 0;
+        
         const age = (lastBlock > 0) ? (lastBlock - parseInt(s.birthBlock)) : 0;
         const multiplier = (1 + (age / 1000));
 
-        stackRegistry[s.id] = { units: s.totalStandardUnits, reaper: s.totalBoostedUnits, birthBlock: s.birthBlock }; 
-        globalUnits += u; globalReapers += r; globalBountyKill += (u * multiplier);
-        updateNodeParticles(s.id, s.totalStandardUnits, s.totalBoostedUnits);
+        stackRegistry[s.id] = { units: s.totalStandardUnits, reaper: r.toString(), birthBlock: s.birthBlock }; 
+        globalUnits += u; 
+        globalReapers += r; 
+        globalBountyKill += (u * multiplier);
+        
+        updateNodeParticles(s.id, s.totalStandardUnits, r);
     });
 
     if(totalUnitsActiveEl) totalUnitsActiveEl.innerText = globalUnits.toLocaleString();
     if(totalReapersActiveEl) totalReapersActiveEl.innerText = globalReapers.toLocaleString();
     if(totalKillBountyEl) totalKillBountyEl.innerText = `${Math.floor(globalBountyKill).toLocaleString()} KILL`;
 
-    const activeStacks = stacks.filter(s => parseInt(s.totalStandardUnits) > 0 || parseInt(s.totalBoostedUnits) > 0);
+    const activeStacks = stacks.filter(s => parseInt(s.totalStandardUnits) > 0 || (activeReaperMap[s.id] > 0));
     if (activeStacks.length === 0) {
         topStacksEl.innerHTML = '<div style="font-size:0.7rem; color:#444; padding:10px;">ARENA EMPTY...</div>';
         return;
     }
 
     topStacksEl.innerHTML = activeStacks.map(item => {
-        const u = parseInt(item.totalStandardUnits), r = parseInt(item.totalBoostedUnits);
+        const u = parseInt(item.totalStandardUnits);
+        const rCount = activeReaperMap[item.id] || 0;
         const age = (lastBlock > 0) ? (lastBlock - parseInt(item.birthBlock)) : 0;
         const bountyMultiplier = (1 + (age / 1000)).toFixed(2);
         return `
             <div class="stack-row">
                 <span class="stack-id">${item.id}</span>
                 <span class="stack-val">${u.toLocaleString()}</span>
-                <span class="stack-val" style="color:var(--cyan)">${r.toLocaleString()}</span>
+                <span class="stack-val" style="color:var(--cyan)">${rCount}</span>
                 <span class="stack-kill bounty-hover" onmouseover="showBountyTooltip(event, ${bountyMultiplier}, ${age})" onmouseout="tooltip.style.opacity=0">${bountyMultiplier}x</span>
             </div>
         `;
     }).join('');
-}
-
-function showBountyTooltip(e, mult, age) {
-    tooltip.style.opacity = 1;
-    tooltip.style.left = (e.pageX + 15) + 'px';
-    tooltip.style.top = (e.pageY + 15) + 'px';
-    tooltip.innerHTML = `<div style="text-align:center;"><strong style="color:var(--pink)">BOUNTY STATUS</strong><br>${mult}x Yield<br><div style="font-size:0.6rem; color:#666;">Age: ${age} blocks</div></div>`;
 }
 
 async function syncData() {
@@ -201,7 +202,16 @@ async function syncData() {
         if (!result || !result.data) return;
         const { globalStat, killeds = [], spawneds = [], stacks = [] } = result.data;
         
-        // LETHAL INDICATOR SYNC
+        // Calculate the map of active reapers per stack
+        const killedStackIds = new Set(killeds.map(k => k.stackId.toString()));
+        const activeReaperMap = {};
+        
+        spawneds.forEach(s => {
+            if (!killedStackIds.has(s.stackId.toString())) {
+                activeReaperMap[s.stackId] = (activeReaperMap[s.stackId] || 0) + 1;
+            }
+        });
+
         statusEl.innerHTML = killeds.length > 0 ? '<span class="lethal-dot"></span>SYSTEM STATUS: LETHAL' : 'SYSTEM STATUS: OPERATIONAL';
         
         if (globalStat) {
@@ -210,7 +220,9 @@ async function syncData() {
             const burned = ethers.formatEther(globalStat.killBurned || "0");
             killBurnedEl.innerText = `${parseFloat(burned).toLocaleString(undefined, {minimumFractionDigits: 3})} KILL`;
         }
-        updateTopStacks(stacks);
+
+        updateTopStacks(stacks, activeReaperMap);
+
         [...spawneds.map(s => ({...s, type: 'spawn'})), ...killeds.map(k => ({...k, type: 'kill'}))]
             .sort((a, b) => Number(a.block_number) - Number(b.block_number))
             .forEach(evt => {

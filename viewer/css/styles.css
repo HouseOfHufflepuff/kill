@@ -72,8 +72,20 @@ header {
 .btn-clear:hover { border-color: var(--pink); color: var(--pink); }
 
 .specs-text, .lethal-row { font-size: 0.75rem; line-height: 1.6; color: #ccc; }
-.lethal-metrics { background: rgba(255, 45, 117, 0.05); padding: 10px; border: 1px solid rgba(255, 45, 117, 0.2); margin-top: 10px; }
-.lethal-val { color: var(--pink); font-weight: bold; margin-left: 5px; }
+
+/* RIGHT ALIGN METRICS TABLE */
+.lethal-metrics { 
+    background: rgba(255, 45, 117, 0.05); 
+    padding: 10px; 
+    border: 1px solid rgba(255, 45, 117, 0.2); 
+    margin-top: 10px; 
+}
+.lethal-row { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+.lethal-val { color: var(--pink); font-weight: bold; text-align: right; }
 
 .center-field { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; position: relative; padding: 10px 0; }
 
@@ -144,11 +156,12 @@ header {
 .layer-toggle input { accent-color: #666; cursor: pointer; }
 .layer-toggle:hover { color: #fff; }
 
-.rank-item { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.8rem; cursor: help; }
-.rank-addr { color: #fff; }
+/* LEADERBOARD SYNCED TYPOGRAPHY */
+.rank-item { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.75rem; cursor: help; }
+.rank-addr { color: #ccc; } /* Matches specs-text color */
 .rank-score { color: var(--pink); font-weight: bold; text-align: right; flex-grow: 1; }
 
-/* REFINED LOG TYPOGRAPHY & ANIMATIONS */
+/* LOG COLORS RESTORED */
 #log-feed { font-size: 0.68rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; padding-right: 5px; }
 .log-entry { 
     margin-bottom: 8px; 
@@ -158,9 +171,9 @@ header {
     background: rgba(255,255,255,0.02);
     animation: log-slide 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
-.log-kill { border-left-color: var(--pink); color: #ffb3cc; } /* Lightened text */
-.log-spawn { border-left-color: var(--cyan); color: #b3faff; } /* Lightened text */
-.log-network { border-left-color: #666; color: #aaa; font-style: italic; }
+.log-kill { border-left-color: var(--pink); color: var(--pink); } /* Restored Pink */
+.log-spawn { border-left-color: var(--cyan); color: var(--cyan); } /* Restored Cyan */
+.log-network { border-left-color: #666; color: #888; font-style: italic; }
 .log-block { color: #888; margin-right: 8px; font-weight: bold; }
 
 @keyframes log-slide {
@@ -168,7 +181,6 @@ header {
     to { transform: translateX(0); opacity: 1; filter: brightness(1); }
 }
 
-/* LETHAL INDICATOR */
 .lethal-dot {
     display: inline-block;
     width: 8px; height: 8px;

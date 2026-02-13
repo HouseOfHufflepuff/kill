@@ -12,10 +12,10 @@ async function main() {
 
     const [owner] = await ethers.getSigners();
     //1M game contract
-    await killToken.mint("0xd1a9C5653Eac53c6895a3880D18547421E770337", "1000000000000000000000000");
+    //await killToken.mint("0xd1a9C5653Eac53c6895a3880D18547421E770337", "1000000000000000000000000");
 
-    //1M owner
-    await killToken.mint(PUBLIC_KEY, "1000000000000000000000000");
+    //66600000M owner seed0.js
+    await killToken.mint(PUBLIC_KEY, "66600000000000000000000000");
     console.log("done");
 
 
