@@ -239,3 +239,61 @@ footer {
 }
 
 .footer-economy { font-family: 'JetBrains Mono'; font-size: 0.9rem; font-weight: 400; text-align: right; }
+
+/* --- MOBILE VERTICAL FLEX OVERRIDES --- */
+@media (max-width: 1024px) {
+    body, html {
+        overflow: auto; /* Allow scrolling on the whole page for mobile */
+        height: auto;
+    }
+
+    header {
+        padding: 10px 20px;
+        height: auto;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .main-stage {
+        display: flex;
+        flex-direction: column; /* Stack vertically */
+        height: auto;
+        overflow: visible;
+    }
+
+    /* Surgical Reordering */
+    .center-field { 
+        order: 1; /* Stack View First */
+        width: 100%;
+        min-height: 500px;
+    }
+
+    .panel:first-of-type { 
+        order: 2; /* Left Panel Second (Metrics/Top Stacks) */
+        width: 100% !important; 
+    }
+
+    .panel:last-of-type { 
+        order: 3; /* Right Panel Third (Leaderboard/Log) */
+        width: 100% !important; 
+    }
+
+    /* Scale the 3D Scene for Mobile */
+    .scene {
+        transform: scale(0.8) translateY(0);
+        margin: 20px 0;
+    }
+
+    .arena-legend {
+        flex-direction: column;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    footer {
+        height: auto;
+        flex-direction: column;
+        padding: 15px;
+        text-align: center;
+    }
+}
