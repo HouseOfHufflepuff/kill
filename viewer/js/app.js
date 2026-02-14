@@ -437,41 +437,71 @@ function addLog(blockNum, msg, className) {
 
 /**
  * UI: Render Agent P&L Leaderboard
+ * FIX: Using DocumentFragment and explicit loop to ensure all elements append.
  */
 function renderPnL(agents) {
-    if (!pnlEl || !agents) return;
+    if (!pnlEl) return;
+    
+    // Clear the container completely
+    pnlEl.innerHTML = '';
 
-    // Calculate P&L from raw fields and sort descending by Net
-    const sorted = agents.map(a => {
+    if (!agents || agents.length === 0) {
+        pnlEl.innerHTML = '<div style="color:#444; padding:10px;">AWAITING DATA...</div>';
+        return;
+    }
+
+    // 1. Sort the raw data first
+    const sortedAgents = [...agents].sort((a, b) => {
+        const netA = (parseFloat(a.totalEarned || 0) / 1e18) - parseFloat(a.totalSpent || 0);
+        const netB = (parseFloat(b.totalEarned || 0) / 1e18) - parseFloat(b.totalSpent || 0);
+        return netB - netA;
+    }).slice(0, 5); // Limit to top 5
+
+    // 2. Create Header
+    const header = document.createElement('div');
+    header.className = 'rank-item';
+    header.style.cssText = "opacity:0.5; font-size:0.5rem; border-bottom:1px solid #333; margin-bottom:8px; display:flex; width:100%;";
+    header.innerHTML = `
+        <span style="flex:1.5">AGENT</span>
+        <span style="flex:1; text-align:right;">EARNED</span>
+        <span style="flex:1; text-align:right;">SPENT</span>
+        <span style="flex:1; text-align:right;">NET P/L</span>
+    `;
+    pnlEl.appendChild(header);
+
+    // 3. Create Rows using a Fragment for performance and reliability
+    const fragment = document.createDocumentFragment();
+
+    for (let i = 0; i < sortedAgents.length; i++) {
+        const a = sortedAgents[i];
         const spent = parseFloat(a.totalSpent || 0);
-        // Divide by 1e18 to handle the Wei earned value (e.g. 192008... becomes 192008.91)
-        const earned = parseFloat(a.totalEarned || 0) / 1e18; 
-        return {
-            id: a.id,
-            spent: spent,
-            earned: earned,
-            net: earned - spent
-        };
-    }).sort((a, b) => b.net - a.net);
+        const earned = parseFloat(a.totalEarned || 0) / 1e18;
+        const net = earned - spent;
+        const pnlColor = net >= 0 ? 'var(--cyan)' : 'var(--pink)';
 
-    pnlEl.innerHTML = `
-        <div class="rank-item" style="opacity:0.6; font-size:0.55rem; border-bottom:1px solid #444; margin-bottom:5px;">
-            <span>AGENT</span>
-            <span style="text-align:right;">PROFIT</span>
-            <span style="text-align:right;">COST</span>
-            <span style="text-align:right;">P/L</span>
-        </div>
-    ` + sorted.map(item => {
-        const pnlColor = item.net >= 0 ? 'var(--cyan)' : 'var(--pink)';
-        return `
-            <div class="rank-item" onmouseover="showAddrTooltip(event, '${item.id}')" onmouseout="tooltip.style.opacity=0">
-                <span class="rank-addr">${item.id.substring(0,8)}</span>
-                <span class="rank-val rank-profit">${formatValue(item.earned)}</span>
-                <span class="rank-val rank-cost">${formatValue(item.spent)}</span>
-                <span class="rank-val rank-pnl" style="color:${pnlColor}">${item.net > 0 ? '+' : ''}${formatValue(item.net)}</span>
-            </div>
+        const row = document.createElement('div');
+        row.className = 'rank-item';
+        // Ensure the row is visible and has layout
+        row.style.cssText = "display:flex; width:100%; min-height:20px; align-items:center; margin-bottom:4px;";
+        
+        row.onmouseover = (e) => showAddrTooltip(e, a.id);
+        row.onmouseout = () => { if(tooltip) tooltip.style.opacity = 0; };
+
+        row.innerHTML = `
+            <span class="rank-addr" style="flex:1.5; font-family:monospace;">${a.id.substring(0, 8)}</span>
+            <span style="flex:1; text-align:right;">${formatValue(earned)}</span>
+            <span style="flex:1; text-align:right; opacity:0.6;">${formatValue(spent)}</span>
+            <span style="flex:1; text-align:right; color:${pnlColor}; font-weight:bold;">
+                ${net > 0 ? '+' : ''}${formatValue(net)}
+            </span>
         `;
-    }).join('');
+        fragment.appendChild(row);
+    }
+
+    pnlEl.appendChild(fragment);
+    
+    // Debug check: log how many rows were actually added
+    console.log(`Leaderboard rendered with ${sortedAgents.length} agents.`);
 }
 /**
  * UI: Tooltip for full address hover

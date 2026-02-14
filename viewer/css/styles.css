@@ -1,3 +1,7 @@
+/**
+ * KILL SYSTEM STYLES - PRODUCTION v1.0.1
+ */
+
 :root {
     --pink: #ff2d75;
     --cyan: #00f0ff;
@@ -32,12 +36,16 @@ header {
 .main-stage {
     flex-grow: 1; 
     display: grid; grid-template-columns: 320px 1fr 400px;
-    gap: 15px; padding: 20px; box-sizing: border-box; overflow: hidden;
+    gap: 15px; padding: 20px; box-sizing: border-box; 
+    overflow: hidden;
+    max-height: calc(100vh - 150px); /* Adjust based on header/footer height */
 }
 
 .panel {
     background: var(--panel-bg); border: 1px solid rgba(255, 45, 117, 0.2);
-    padding: 20px; display: flex; flex-direction: column; overflow: hidden;
+    padding: 20px; display: flex; flex-direction: column; 
+    overflow: hidden;
+    min-height: 0; /* CRITICAL: Allows inner scrollable areas to function in Grid */
 }
 
 .panel-header {
@@ -48,17 +56,25 @@ header {
 
 /* --- SCROLLABLE DATA FEEDS --- */
 #ripe-stacks, 
-#leaderboard, 
 #log-feed {
-    max-height: 280px; /* Limits height to tighten view */
+    max-height: 280px; 
     overflow-y: auto;
     padding-right: 8px;
     scrollbar-width: thin;
     scrollbar-color: var(--pink) transparent;
 }
 
+#leaderboard {
+    flex-grow: 1;           /* Take all available vertical space in the panel */
+    overflow-y: auto;       /* Scroll internally if list is long */
+    min-height: 120px;      /* Ensure it doesn't collapse to 0 */
+    padding-right: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--pink) transparent;
+}
+
 #log-feed, .log-entry {
-    font-size: 0.65rem !important; /* Forces the small tactical text size */
+    font-size: 0.65rem !important; 
     line-height: 1.2;
 }
 
@@ -95,7 +111,6 @@ header {
     align-items: center;
 }
 
-/* Sticky Header for Stacks */
 .stack-row.header { 
     color: #666; 
     border-bottom: 1px solid #444; 
@@ -121,6 +136,7 @@ header {
     padding: 10px; 
     border: 1px solid rgba(255, 45, 117, 0.2); 
     margin-top: 10px; 
+    flex-shrink: 0; /* Prevents stats from squashing the leaderboard */
 }
 .lethal-row { 
     display: flex; 
@@ -205,6 +221,7 @@ header {
     font-size: 0.7rem; 
     align-items: center;
     gap: 4px;
+    min-height: 32px; /* Ensures row visibility */
 }
 
 .rank-addr { color: #888; }
@@ -301,6 +318,7 @@ footer {
         flex-direction: column;
         height: auto;
         overflow: visible;
+        max-height: none;
     }
 
     .center-field { 
@@ -317,6 +335,11 @@ footer {
     .panel:last-of-type { 
         order: 3; 
         width: 100% !important; 
+    }
+
+    #leaderboard {
+        max-height: 400px;
+        flex-grow: 0;
     }
 
     .scene {
