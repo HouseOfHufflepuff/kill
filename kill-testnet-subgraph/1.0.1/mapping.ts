@@ -8,7 +8,9 @@ import {
 import { Spawned, Moved, Killed, Stack, AgentStack, GlobalStat, Agent } from "./generated/schema"
 import { BigInt, Bytes } from "@graphprotocol/graph-ts"
 
-const REAPER_COST = BigInt.fromI32(1000);
+// --- CONSTANTS ---
+const UNIT_PRICE = BigInt.fromI32(10);
+const MOVE_PENALTY = BigInt.fromI32(1);
 
 function getOrCreateAgent(address: Bytes): Agent {
   let id = address.toHex()
@@ -71,8 +73,11 @@ export function handleSpawned(event: SpawnedEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
+  // Calculate cost based strictly on unit volume: units * 10
+  let totalSpawnCost = event.params.units.times(UNIT_PRICE);
+
   // Update Persistent Agent Stats
-  updateAgentPnL(event.params.agent, REAPER_COST, BigInt.fromI32(0))
+  updateAgentPnL(event.params.agent, totalSpawnCost, BigInt.fromI32(0))
 
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = stack.totalStandardUnits.plus(event.params.units)
@@ -97,6 +102,9 @@ export function handleMoved(event: MovedEvent): void {
   entity.birthBlock = event.params.birthBlock
   entity.block_number = event.block.number
   entity.save()
+
+  // Cost of move is 1 KILL
+  updateAgentPnL(event.params.agent, MOVE_PENALTY, BigInt.fromI32(0))
 
   let fromStack = getOrCreateStack(event.params.fromStack.toString())
   fromStack.totalStandardUnits = safeSubtract(fromStack.totalStandardUnits, event.params.units)
