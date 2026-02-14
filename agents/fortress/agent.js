@@ -8,11 +8,36 @@ async function countdown(seconds) {
         process.stdout.write(`\r[WAIT] Next scan in ${i}s... `);
         await new Promise(r => setTimeout(r, 1000));
     }
-    process.stdout.write('\r\x1b[K'); // Clear line after countdown
+    process.stdout.write('\r\x1b[K');
+}
+
+/**
+ * Implements the exact _isAdjacent logic from the contract
+ * to find neighbors in the 6x6x6 grid.
+ */
+function getNeighbors(hubId) {
+    const neighbors = [];
+    const checkAdjacent = (c1, c2) => {
+        const v1 = c1 - 1; 
+        const v2 = c2 - 1;
+        const x1 = v1 % 6; const y1 = Math.floor(v1 / 6) % 6; const z1 = Math.floor(v1 / 36);
+        const x2 = v2 % 6; const y2 = Math.floor(v2 / 6) % 6; const z2 = Math.floor(v2 / 36);
+        
+        const dist = Math.abs(x1 - x2) + Math.abs(y1 - y2) + Math.abs(z1 - z2);
+        return dist === 1;
+    };
+
+    // Scan all possible IDs in the 6x6x6 space (1 to 216)
+    for (let i = 1; i <= 216; i++) {
+        if (i === hubId) continue;
+        if (checkAdjacent(hubId, i)) {
+            neighbors.push(i);
+        }
+    }
+    return neighbors;
 }
 
 async function main() {
-    // 1. IDENTITY SETUP
     if (!process.env.FORTRESS_PK) {
         throw new Error("Missing FORTRESS_PK in .env file");
     }
@@ -20,10 +45,9 @@ async function main() {
     const wallet = new ethers.Wallet(process.env.FORTRESS_PK, ethers.provider);
     const address = wallet.address;
 
-    // 2. CONFIG & CONTRACTS
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
     const { kill_game_addr, multicall_addr } = config.network;
-    const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, REAPER_MULTIPLE, NEIGHBORS, LOOP_DELAY_SECONDS } = config.settings;
+    const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, REAPER_MULTIPLE, LOOP_DELAY_SECONDS } = config.settings;
 
     const killGame = await ethers.getContractAt("KILLGame", kill_game_addr);
     const multicall = new ethers.Contract(
@@ -33,14 +57,15 @@ async function main() {
     );
 
     const TOPUP_THRESHOLD = TARGET_UNITS - REPLENISH_AMT;
+    const NEIGHBORS = getNeighbors(HUB_STACK);
 
     while (true) {
         console.clear();
         console.log(`\n--- FORTRESS AGENT ONLINE ---`);
-        console.log(`HUB: ${HUB_STACK} | OPERATING AS: ${address}\n`);
+        console.log(`HUB: ${HUB_STACK} | OPERATING AS: ${address}`);
+        console.log(`PERIMETER: [${NEIGHBORS.join(", ")}]\n`);
 
         try {
-            // 3. SCANNING
             const scanIds = [HUB_STACK, ...NEIGHBORS];
             const calls = scanIds.map(id => ({
                 target: kill_game_addr,
@@ -79,7 +104,7 @@ async function main() {
 
             const currentHubUnits = hubState.self ? hubState.self.units.toNumber() : 0;
 
-            // 4. TACTICAL EXECUTION
+            // STRATEGY
             if (friendliesToConsolidate.length > 0) {
                 const f = friendliesToConsolidate[0];
                 console.log(`[CONSOLIDATE] Returning ${f.units.toString()} from Stack ${f.id}`);
@@ -104,14 +129,13 @@ async function main() {
                 console.log(`[RAID] Attacking Stack ${raid.id}`);
                 await (await killGame.connect(wallet).move(HUB_STACK, raid.id, moveUnits, 0, { gasLimit: 600000 })).wait();
                 
-                const items = await killGame.getFullStack(raid.id);
-                const me = items.find(it => it.occupant.toLowerCase() === address.toLowerCase());
-                if (me) {
+                const itemsAfter = await killGame.getFullStack(raid.id);
+                const me = itemsAfter.find(it => it.occupant.toLowerCase() === address.toLowerCase());
+                if (me && me.units.gt(1)) {
                     await (await killGame.connect(wallet).kill(raid.target.occupant, raid.id, me.units.sub(1), me.reapers, { gasLimit: 800000 })).wait();
                 }
             }
 
-            // 5. UI
             console.log("\n>> HUB STATUS:");
             console.table([{ Hub: HUB_STACK, Units: currentHubUnits.toLocaleString() }]);
             console.log(">> PERIMETER:");
