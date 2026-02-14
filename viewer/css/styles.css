@@ -31,7 +31,7 @@ header {
 
 .main-stage {
     flex-grow: 1; 
-    display: grid; grid-template-columns: 320px 1fr 400px; /* Wider right panel for P&L columns */
+    display: grid; grid-template-columns: 320px 1fr 400px;
     gap: 15px; padding: 20px; box-sizing: border-box; overflow: hidden;
 }
 
@@ -46,13 +46,45 @@ header {
     padding-bottom: 5px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;
 }
 
-#ripe-stacks {
-    flex-grow: 1;
+/* --- SCROLLABLE DATA FEEDS --- */
+#ripe-stacks, 
+#leaderboard, 
+#log-feed {
+    max-height: 280px; /* Limits height to tighten view */
     overflow-y: auto;
-    padding-right: 5px;
+    padding-right: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--pink) transparent;
 }
-#ripe-stacks::-webkit-scrollbar { width: 4px; }
-#ripe-stacks::-webkit-scrollbar-thumb { background: #333; }
+
+#log-feed, .log-entry {
+    font-size: 0.65rem !important; /* Forces the small tactical text size */
+    line-height: 1.2;
+}
+
+#ripe-stacks, #leaderboard {
+    font-size: 0.65rem;
+}
+
+/* Custom Webkit Scrollbars */
+#ripe-stacks::-webkit-scrollbar,
+#leaderboard::-webkit-scrollbar,
+#log-feed::-webkit-scrollbar {
+    width: 4px;
+}
+
+#ripe-stacks::-webkit-scrollbar-track,
+#leaderboard::-webkit-scrollbar-track,
+#log-feed::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+#ripe-stacks::-webkit-scrollbar-thumb,
+#leaderboard::-webkit-scrollbar-thumb,
+#log-feed::-webkit-scrollbar-thumb {
+    background: var(--pink);
+    border-radius: 2px;
+}
 
 .stack-row { 
     display: grid; 
@@ -62,7 +94,19 @@ header {
     border-bottom: 1px solid #222; 
     align-items: center;
 }
-.stack-row.header { color: #666; border-bottom: 1px solid #444; font-weight: bold; margin-bottom: 4px; position: sticky; top: 0; background: var(--panel-bg); }
+
+/* Sticky Header for Stacks */
+.stack-row.header { 
+    color: #666; 
+    border-bottom: 1px solid #444; 
+    font-weight: bold; 
+    margin-bottom: 4px; 
+    position: sticky; 
+    top: 0; 
+    background: var(--panel-bg); 
+    z-index: 5;
+}
+
 .stack-id { color: #888; }
 .stack-val { color: var(--pink); font-weight: bold; }
 .stack-kill { color: var(--cyan); text-align: right; }
@@ -153,8 +197,6 @@ header {
 .layer-toggle input { accent-color: #666; cursor: pointer; }
 .layer-toggle:hover { color: #fff; }
 
-/* LEADERBOARD MULTI-COLUMN LAYOUT */
-/* Update the grid to 4 columns */
 .rank-item { 
     display: grid; 
     grid-template-columns: 85px 1fr 1fr 1fr; 
@@ -167,11 +209,10 @@ header {
 
 .rank-addr { color: #888; }
 .rank-val { text-align: right; font-family: 'JetBrains Mono'; }
-.rank-profit { color: var(--cyan); } /* Make profit cyan */
+.rank-profit { color: var(--cyan); }
 .rank-cost { color: #666; }
 .rank-pnl { font-weight: bold; }
 
-#log-feed { font-size: 0.68rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; padding-right: 5px; }
 .log-entry { 
     margin-bottom: 8px; 
     border-left: 2px solid transparent; 
@@ -243,7 +284,7 @@ footer {
 /* --- MOBILE VERTICAL FLEX OVERRIDES --- */
 @media (max-width: 1024px) {
     body, html {
-        overflow: auto; /* Allow scrolling on the whole page for mobile */
+        overflow: auto; 
         height: auto;
     }
 
@@ -256,32 +297,30 @@ footer {
 
     .main-stage {
         display: flex;
-        flex-direction: column; /* Stack vertically */
+        flex-direction: column;
         height: auto;
         overflow: visible;
     }
 
-    /* Surgical Reordering */
     .center-field { 
-        order: 1; /* Stack View First */
+        order: 1; 
         width: 100%;
-        min-height: 500px;
+        min-height: 450px;
     }
 
     .panel:first-of-type { 
-        order: 2; /* Left Panel Second (Metrics/Top Stacks) */
+        order: 2; 
         width: 100% !important; 
     }
 
     .panel:last-of-type { 
-        order: 3; /* Right Panel Third (Leaderboard/Log) */
+        order: 3; 
         width: 100% !important; 
     }
 
-    /* Scale the 3D Scene for Mobile */
     .scene {
         transform: scale(0.8) translateY(0);
-        margin: 20px 0;
+        margin: 10px 0;
     }
 
     .arena-legend {
