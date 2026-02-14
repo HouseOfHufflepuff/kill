@@ -58,12 +58,16 @@
             <div class="lethal-row"><span>REAPER KILLED:</span> <span id="stat-reaper-killed" class="lethal-val">0</span></div>
         </div>
         
-        <div class="panel-header" style="margin-top: 25px;">Top Stacks</div>
-        <div class="stack-row header">
-            <span>ID</span>
-            <span>UNITS</span>
-            <span>REAP</span>
-            <span style="text-align: right;">BOUNTY</span>
+        <div class="panel-header" style="margin-top: 25px;">
+            <span>Top Stacks</span>
+            <button class="btn-clear" onclick="clearLocalStacks()">FLUSH</button>
+        </div>
+        <div class="stack-row" style="opacity:0.5; font-size:0.5rem; border-bottom:1px solid #333; margin-bottom:4px; padding-bottom:4px; font-weight:bold; display: flex; justify-content: space-between;">
+            <span style="width:10%">ID</span>
+            <span style="width:20%">UNIT</span>
+            <span style="width:10%">R</span>
+            <span style="width:25%">BOUNTY</span>
+            <span style="width:35%; text-align:right;">KILL</span>
         </div>
         <div id="ripe-stacks"></div>
     </div>
@@ -108,7 +112,7 @@
 </div>
 
 <footer>
-    <div id="system-status" class="status-box">SYSTEM STATUS: OPERATIONAL</div>
+    <div id="system-status" class="status-box">SYSTEM STATUS: LETHAL</div>
     <div class="footer-economy">
         <span>SUPPLY: 666,666,666</span>
         <span style="margin: 0 15px; opacity: 0.3;">|</span>

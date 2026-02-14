@@ -102,7 +102,6 @@ header {
     border-radius: 2px;
 }
 
-/* --- UPDATED STACK ROW FOR 5 COLUMNS --- */
 .stack-row { 
     display: flex; 
     width: 100%;
@@ -111,9 +110,11 @@ header {
     padding: 6px 0; 
     border-bottom: 1px solid #222; 
     align-items: center;
+    box-sizing: border-box;
 }
 
 .stack-row span {
+    display: inline-block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

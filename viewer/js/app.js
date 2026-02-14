@@ -189,7 +189,7 @@ function triggerPulse(id, type) {
 
 /**
  * UI: Show contextual information for a stack node
- * RESTORED: Detailed bounty calculation explanation
+ * FIX: Removed vertical pink line (border-left)
  */
 function showTooltip(e, id) {
     if (!tooltip) return;
@@ -197,42 +197,48 @@ function showTooltip(e, id) {
     const data = stackRegistry[id] || { units: "0", reaper: "0", birthBlock: "0" };
     const u = parseInt(data.units);
     const r = parseInt(data.reaper);
-    const age = (lastBlock > 0 && data.birthBlock !== "0") ? (lastBlock - parseInt(data.birthBlock)) : 0;
+    const bBlock = parseInt(data.birthBlock);
     
-    // Bounty logic calculation: 1% increase per 10 blocks (0.001 per block)
+    const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
     const bountyMultiplier = (1 + (age / 1000));
     const totalKillValue = (u * bountyMultiplier);
 
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
+    
     tooltip.innerHTML = `
-        <strong style="color:var(--cyan)">STACK_${id}</strong><br>
-        UNITS: ${u.toLocaleString()}<br>
-        REAPERS: ${r}<br>
-        <hr style="border:0; border-top:1px solid #333; margin:5px 0;">
-        <span style="color:var(--cyan)">BOUNTY MULT: ${bountyMultiplier.toFixed(3)}x</span><br>
-        <span style="color:var(--pink); font-weight:bold;">KILL VALUE: ${totalKillValue.toLocaleString(undefined, {maximumFractionDigits: 2})}</span><br>
-        <div style="font-size:0.6rem; color:#888; margin-top:4px;">
-            Formula: Units * (1 + (Age / 1000))<br>
-            Current Age: ${age} blocks
+        <div style="padding: 2px;">
+            <strong style="color:var(--cyan); letter-spacing:1px;">STACK_${id}</strong><br>
+            <span style="opacity:0.6">BIRTH_BLOCK:</span> ${bBlock > 0 ? bBlock : '---'}<br>
+            <span style="opacity:0.6">CURRENT_AGE:</span> ${age.toLocaleString()} blocks
+            <hr style="border:0; border-top:1px solid #333; margin:8px 0;">
+            UNITS: ${u.toLocaleString()}<br>
+            REAPERS: ${r}<br>
+            <span style="color:var(--cyan)">BOUNTY: ${bountyMultiplier.toFixed(3)}x</span><br>
+            <span style="color:var(--pink); font-weight:bold; font-size:0.9rem;">VALUE: ${Math.floor(totalKillValue).toLocaleString()} KILL</span>
+            <div style="font-size:0.55rem; color:#666; margin-top:6px; font-style:italic;">
+                Calc: Units * (1 + (Age / 1000))
+            </div>
         </div>
     `;
 }
 
 /**
- * UI: Render the Top Stacks leaderboard
- * FIXED: Added Bounty column and retained Kill column
+ * UI: Render the Top Stacks leaderboard rows
+ * FIX: Renders 5 columns to match the new static header
  */
 function updateTopStacks(stacks, activeReaperMap) {
+    if (!topStacksEl) return;
+
     let globalUnits = 0, globalReapers = 0, globalBountyKill = 0;
 
     const processed = stacks.map(s => {
         const u = parseInt(s.totalStandardUnits);
         const r = activeReaperMap[s.id] || parseInt(s.totalBoostedUnits) || 0;
-        const age = (lastBlock > 0 && s.birthBlock !== "0") ? (lastBlock - parseInt(s.birthBlock)) : 0;
+        const bBlock = parseInt(s.birthBlock);
+        const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
         
-        // Multiplier logic
         const multiplier = (1 + (age / 1000));
         const totalKillValue = u * multiplier;
 
@@ -240,22 +246,19 @@ function updateTopStacks(stacks, activeReaperMap) {
         globalReapers += r; 
         globalBountyKill += totalKillValue;
 
-        // Sync local registry for tooltip access
-        stackRegistry[s.id] = { units: s.totalStandardUnits, reaper: r.toString(), birthBlock: s.birthBlock }; 
+        stackRegistry[s.id] = { 
+            units: s.totalStandardUnits, 
+            reaper: r.toString(), 
+            birthBlock: s.birthBlock 
+        }; 
+        
         updateNodeParticles(s.id, s.totalStandardUnits, r);
 
-        return { 
-            id: s.id, 
-            units: u, 
-            reapers: r, 
-            bounty: multiplier, 
-            kill: totalKillValue 
-        };
+        return { id: s.id, units: u, reapers: r, bounty: multiplier, kill: totalKillValue };
     });
 
     currentGlobalKillStacked = globalBountyKill;
 
-    // Update Global Statistics in Header/Panels
     if(totalUnitsActiveEl) totalUnitsActiveEl.innerText = globalUnits.toLocaleString();
     if(totalReapersActiveEl) totalReapersActiveEl.innerText = globalReapers.toLocaleString();
     if(totalKillBountyEl) totalKillBountyEl.innerText = `${Math.floor(globalBountyKill).toLocaleString()}`;
@@ -264,31 +267,19 @@ function updateTopStacks(stacks, activeReaperMap) {
         .filter(s => s.units > 0 || s.reapers > 0)
         .sort((a, b) => b.kill - a.kill);
 
-    if (!topStacksEl) return;
-
     if (sorted.length === 0) {
         topStacksEl.innerHTML = '<div style="font-size:0.7rem; color:#444; padding:10px;">ARENA EMPTY...</div>';
         return;
     }
 
-    // Updated Header to include BOUNTY
-    const header = `
-        <div class="stack-row header-row" style="opacity:0.6; font-size:0.5rem; border-bottom:1px solid #222; margin-bottom:4px;">
-            <span style="width:10%">ID</span>
-            <span style="width:25%">UNIT</span>
-            <span style="width:10%">R</span>
-            <span style="width:25%">BOUNTY</span>
-            <span style="width:30%; text-align:right;">KILL</span>
-        </div>
-    `;
-
-    topStacksEl.innerHTML = header + sorted.map(item => `
-        <div class="stack-row" style="font-size:0.65rem; display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #111;">
-            <span style="width:10%; color:#888;">${item.id}</span>
-            <span style="width:25%">${(item.units / 1000).toFixed(1)}K</span>
+    // Generate rows ONLY (No duplicate header)
+    topStacksEl.innerHTML = sorted.map(item => `
+        <div class="stack-row" onmouseover="showTooltip(event, '${item.id}')" onmouseout="if(tooltip) tooltip.style.opacity=0" style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 4px 0;">
+            <span style="width:10%; color:#555;">${item.id}</span>
+            <span style="width:20%">${item.units >= 1000 ? (item.units / 1000).toFixed(1) + 'K' : item.units}</span>
             <span style="width:10%; color:var(--cyan)">${item.reapers}</span>
-            <span style="width:25%; color:var(--cyan)">${item.bounty.toFixed(2)}x</span>
-            <span style="width:30%; text-align:right; color:var(--pink); font-weight:bold;">${Math.floor(item.kill).toLocaleString()}</span>
+            <span style="width:25%; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
+            <span style="width:35%; text-align:right; color:var(--pink); font-weight:bold;">${Math.floor(item.kill).toLocaleString()}</span>
         </div>
     `).join('');
 }
