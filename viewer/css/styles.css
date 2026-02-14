@@ -31,7 +31,7 @@ header {
 
 .main-stage {
     flex-grow: 1; 
-    display: grid; grid-template-columns: 320px 1fr 360px;
+    display: grid; grid-template-columns: 320px 1fr 400px; /* Wider right panel for P&L columns */
     gap: 15px; padding: 20px; box-sizing: border-box; overflow: hidden;
 }
 
@@ -66,14 +66,12 @@ header {
 .stack-id { color: #888; }
 .stack-val { color: var(--pink); font-weight: bold; }
 .stack-kill { color: var(--cyan); text-align: right; }
-.bounty-hover { cursor: help; text-decoration: underline dotted rgba(0, 240, 255, 0.3); }
 
 .btn-clear { background: none; border: 1px solid #444; color: #666; font-size: 0.55rem; padding: 2px 6px; cursor: pointer; font-family: 'JetBrains Mono'; }
 .btn-clear:hover { border-color: var(--pink); color: var(--pink); }
 
 .specs-text, .lethal-row { font-size: 0.75rem; line-height: 1.6; color: #ccc; }
 
-/* RIGHT ALIGN METRICS TABLE */
 .lethal-metrics { 
     background: rgba(255, 45, 117, 0.05); 
     padding: 10px; 
@@ -101,7 +99,6 @@ header {
     width: 100%; height: 100%; 
     cursor: crosshair; 
     transform-style: preserve-3d;
-    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 .node:hover { 
     background: rgba(255, 45, 117, 0.2); 
@@ -156,12 +153,24 @@ header {
 .layer-toggle input { accent-color: #666; cursor: pointer; }
 .layer-toggle:hover { color: #fff; }
 
-/* LEADERBOARD SYNCED TYPOGRAPHY */
-.rank-item { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.75rem; cursor: help; }
-.rank-addr { color: #ccc; } /* Matches specs-text color */
-.rank-score { color: var(--pink); font-weight: bold; text-align: right; flex-grow: 1; }
+/* LEADERBOARD MULTI-COLUMN LAYOUT */
+/* Update the grid to 4 columns */
+.rank-item { 
+    display: grid; 
+    grid-template-columns: 85px 1fr 1fr 1fr; 
+    padding: 8px 0; 
+    border-bottom: 1px solid #222; 
+    font-size: 0.7rem; 
+    align-items: center;
+    gap: 4px;
+}
 
-/* LOG COLORS RESTORED */
+.rank-addr { color: #888; }
+.rank-val { text-align: right; font-family: 'JetBrains Mono'; }
+.rank-profit { color: var(--cyan); } /* Make profit cyan */
+.rank-cost { color: #666; }
+.rank-pnl { font-weight: bold; }
+
 #log-feed { font-size: 0.68rem; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono'; padding-right: 5px; }
 .log-entry { 
     margin-bottom: 8px; 
@@ -171,8 +180,8 @@ header {
     background: rgba(255,255,255,0.02);
     animation: log-slide 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
-.log-kill { border-left-color: var(--pink); color: var(--pink); } /* Restored Pink */
-.log-spawn { border-left-color: var(--cyan); color: var(--cyan); } /* Restored Cyan */
+.log-kill { border-left-color: var(--pink); color: var(--pink); } 
+.log-spawn { border-left-color: var(--cyan); color: var(--cyan); } 
 .log-network { border-left-color: #666; color: #888; font-style: italic; }
 .log-block { color: #888; margin-right: 8px; font-weight: bold; }
 

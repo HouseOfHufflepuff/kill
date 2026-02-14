@@ -33,19 +33,26 @@ type Killed @entity(immutable: true) {
 }
 
 type Stack @entity(immutable: false) {
-  id: ID! # The coordinate ID (1-216)
+  id: ID! 
   totalStandardUnits: BigInt!
   totalBoostedUnits: BigInt!
   birthBlock: BigInt!
 }
 
 type AgentStack @entity(immutable: false) {
-  id: ID! # Set as AgentAddress-StackID
+  id: ID! 
   agent: Bytes!
   stackId: Int!
   birthBlock: BigInt!
   units: BigInt!
   reaper: BigInt!
+}
+
+type Agent @entity(immutable: false) {
+  id: ID! # Wallet Address
+  totalSpent: BigInt!
+  totalEarned: BigInt!
+  netPnL: BigInt!
 }
 
 type GlobalStat @entity(immutable: false) {

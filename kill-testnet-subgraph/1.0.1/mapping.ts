@@ -5,8 +5,31 @@ import {
   GlobalStats as GlobalStatsEvent
 } from "./generated/killgame/killgame"
 
-import { Spawned, Moved, Killed, Stack, AgentStack, GlobalStat } from "./generated/schema"
+import { Spawned, Moved, Killed, Stack, AgentStack, GlobalStat, Agent } from "./generated/schema"
 import { BigInt, Bytes } from "@graphprotocol/graph-ts"
+
+const REAPER_COST = BigInt.fromI32(1000);
+
+function getOrCreateAgent(address: Bytes): Agent {
+  let id = address.toHex()
+  let agent = Agent.load(id)
+  if (agent == null) {
+    agent = new Agent(id)
+    agent.totalSpent = BigInt.fromI32(0)
+    agent.totalEarned = BigInt.fromI32(0)
+    agent.netPnL = BigInt.fromI32(0)
+    agent.save()
+  }
+  return agent
+}
+
+function updateAgentPnL(address: Bytes, spent: BigInt, earned: BigInt): void {
+  let agent = getOrCreateAgent(address)
+  agent.totalSpent = agent.totalSpent.plus(spent)
+  agent.totalEarned = agent.totalEarned.plus(earned)
+  agent.netPnL = agent.totalEarned.minus(agent.totalSpent)
+  agent.save()
+}
 
 function getOrCreateStack(stackId: string): Stack {
   let stack = Stack.load(stackId)
@@ -47,6 +70,9 @@ export function handleSpawned(event: SpawnedEvent): void {
   entity.birthBlock = event.params.birthBlock
   entity.block_number = event.block.number
   entity.save()
+
+  // Update Persistent Agent Stats
+  updateAgentPnL(event.params.agent, REAPER_COST, BigInt.fromI32(0))
 
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = stack.totalStandardUnits.plus(event.params.units)
@@ -113,6 +139,9 @@ export function handleKilled(event: KilledEvent): void {
   entity.targetBirthBlock = event.params.targetBirthBlock
   entity.block_number = event.block.number
   entity.save()
+
+  // Update Attacker persistent stats (Earned netBounty)
+  updateAgentPnL(event.params.attacker, BigInt.fromI32(0), event.params.netBounty)
 
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = safeSubtract(stack.totalStandardUnits, event.params.targetUnitsLost)
