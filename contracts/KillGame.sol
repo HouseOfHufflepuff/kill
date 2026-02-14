@@ -25,9 +25,11 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     // --- ECONOMIC CONSTANTS ---
     uint256 public constant BURN_BPS = 666; 
-    uint256 public constant TREASURY_BPS = 9334;
     uint256 public constant SPAWN_COST = 10 * 10**18;
     uint256 public constant MOVE_COST = 10 * 10**18;
+    uint256 public constant TREASURY_BPS = 2500; // 25%
+    uint256 public constant BURN_OF_TREASURY_BPS = 666; // 6.66% of the 25%
+    uint256 public constant SENDER_BPS = 7500; // 75%
     
     IERC20 public immutable killToken;
     uint256 public treasuryBalance;
@@ -102,50 +104,61 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     // --- CORE GAME LOGIC ---
 
-    function kill(address target, uint16 stackId, uint256 sentUnits, uint256 sentReaper) external nonReentrant returns (uint256 netBounty) {
+    function kill(address target, uint16 stackId, uint256 sentUnits, uint256 sentReaper) 
+        external 
+        nonReentrant 
+        returns (uint256 netBounty) 
+    {
         uint256 unitId = uint256(stackId);
         uint256 reaperId = unitId + 216;
-        require(balanceOf(msg.sender, unitId) >= sentUnits && balanceOf(msg.sender, reaperId) >= sentReaper, "Lack units");
+        
+        require(balanceOf(msg.sender, unitId) >= sentUnits && 
+                balanceOf(msg.sender, reaperId) >= sentReaper, "Lack units");
 
         LossReport memory loss;
         uint256 targetBirth = agentStacks[target][unitId].birthBlock; 
         
+        // Scoped block for power calculations to free stack space immediately after
         uint256 atkPower = sentUnits + (sentReaper * 666);
         uint256 defPower;
         {
             uint256 effDefUnits = balanceOf(target, unitId);
             uint256 effDefReaper = balanceOf(target, reaperId);
-            if (msg.sender == target) { effDefUnits -= sentUnits; effDefReaper -= sentReaper; }
+            if (msg.sender == target) { 
+                effDefUnits -= sentUnits; 
+                effDefReaper -= sentReaper; 
+            }
             defPower = (effDefUnits + (effDefReaper * 666)) * 110 / 100;
             if (defPower == 0) defPower = 1;
-            loss.tUnits = effDefUnits; loss.tReaper = effDefReaper;
+            loss.tUnits = effDefUnits; 
+            loss.tReaper = effDefReaper;
         }
 
         if (atkPower > defPower) {
-            uint256 totalBounty = getPendingBounty(target, unitId) + getPendingBounty(target, reaperId);
-            uint256 burnAmt = (totalBounty * BURN_BPS) / 10000;
-            netBounty = totalBounty - burnAmt;
+            // Calculate and transfer bounty via helper to avoid Stack Too Deep
+            netBounty = _processBounty(target, unitId, reaperId);
             
-            treasuryBalance -= totalBounty;
-            totalKillBurned += burnAmt;
-            totalKillExtracted += netBounty;
-            
-            require(killToken.transfer(msg.sender, netBounty), "Payout fail");
             isOccupying[unitId][target] = false;
             isOccupying[reaperId][target] = false;
         } else {
             loss.aUnits = sentUnits;
             loss.aReaper = sentReaper;
-            uint256 tU = loss.tUnits; uint256 tR = loss.tReaper;
-            loss.tUnits = (tU * (atkPower * atkPower)) / (defPower * defPower);
-            loss.tReaper = (tR * (atkPower * atkPower)) / (defPower * defPower);
-            if (tU == loss.tUnits) isOccupying[unitId][target] = false;
-            if (tR == loss.tReaper) isOccupying[reaperId][target] = false;
+            
+            // Complex math here also consumes stack; keeping it in the else block helps
+            uint256 pwrSq = atkPower * atkPower;
+            uint256 defSq = defPower * defPower;
+            
+            loss.tUnits = (loss.tUnits * pwrSq) / defSq;
+            loss.tReaper = (loss.tReaper * pwrSq) / defSq;
+            
+            if (loss.tUnits == 0) isOccupying[unitId][target] = false;
+            if (loss.tReaper == 0) isOccupying[reaperId][target] = false;
         }
 
-        totalUnitsKilled += (loss.aUnits + loss.tUnits);
-        totalReaperKilled += (loss.aReaper + loss.tReaper);
+        // Global Statistics Tracking
+        _updateGlobalStats(loss);
 
+        // Final Burns
         if (loss.tUnits > 0) _burn(target, unitId, loss.tUnits);
         if (loss.tReaper > 0) _burn(target, reaperId, loss.tReaper);
         if (loss.aUnits > 0) _burn(msg.sender, unitId, loss.aUnits);
@@ -206,6 +219,29 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     // --- INTERNAL HELPERS ---
 
+    /**
+    * @dev Isolates bounty math to resolve Stack Too Deep errors.
+    */
+    function _processBounty(address target, uint256 uId, uint256 rId) internal returns (uint256 netBounty) {
+        uint256 totalBounty = getPendingBounty(target, uId) + getPendingBounty(target, rId);
+        
+        uint256 treasurySlice = (totalBounty * TREASURY_BPS) / 10000;
+        uint256 burnAmt = (treasurySlice * BURN_OF_TREASURY_BPS) / 10000;
+        netBounty = (totalBounty * SENDER_BPS) / 10000;
+        
+        // Remaining (treasurySlice - burnAmt) effectively stays in treasury via subtraction
+        treasuryBalance -= (netBounty + burnAmt); 
+        
+        totalKillBurned += burnAmt;
+        totalKillExtracted += netBounty;
+        
+        require(killToken.transfer(msg.sender, netBounty), "Payout fail");
+    }
+
+    function _updateGlobalStats(LossReport memory loss) internal {
+        totalUnitsKilled += (loss.aUnits + loss.tUnits);
+        totalReaperKilled += (loss.aReaper + loss.tReaper);
+    }
     function _mintAndReg(address to, uint256 id, uint256 amt) internal {
         _mint(to, id, amt, "");
         agentStacks[to][id].birthBlock = block.number;

@@ -463,6 +463,45 @@
   },
   {
     "inputs": [],
+    "name": "BURN_OF_TREASURY_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MOVE_COST",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "SENDER_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "SPAWN_COST",
     "outputs": [
       {
@@ -578,25 +617,6 @@
         "internalType": "address",
         "name": "agent",
         "type": "address"
-      }
-    ],
-    "name": "getAgentPresence",
-    "outputs": [
-      {
-        "internalType": "uint16[]",
-        "name": "stacks",
-        "type": "uint16[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "agent",
-        "type": "address"
       },
       {
         "internalType": "uint256",
@@ -680,35 +700,6 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint16",
-        "name": "stackId",
-        "type": "uint16"
-      },
-      {
-        "internalType": "bool",
-        "name": "b",
-        "type": "bool"
-      }
-    ],
-    "name": "getRipeStacks",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "a",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "ag",
-        "type": "uint256[]"
       }
     ],
     "stateMutability": "view",

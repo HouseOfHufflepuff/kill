@@ -322,31 +322,6 @@ export class killgame__getFullStackResultValue0Struct extends ethereum.Tuple {
   }
 }
 
-export class killgame__getRipeStacksResult {
-  value0: Array<Address>;
-  value1: Array<BigInt>;
-
-  constructor(value0: Array<Address>, value1: Array<BigInt>) {
-    this.value0 = value0;
-    this.value1 = value1;
-  }
-
-  toMap(): TypedMap<string, ethereum.Value> {
-    let map = new TypedMap<string, ethereum.Value>();
-    map.set("value0", ethereum.Value.fromAddressArray(this.value0));
-    map.set("value1", ethereum.Value.fromUnsignedBigIntArray(this.value1));
-    return map;
-  }
-
-  getA(): Array<Address> {
-    return this.value0;
-  }
-
-  getAg(): Array<BigInt> {
-    return this.value1;
-  }
-}
-
 export class killgame extends ethereum.SmartContract {
   static bind(address: Address): killgame {
     return new killgame("killgame", address);
@@ -360,6 +335,59 @@ export class killgame extends ethereum.SmartContract {
 
   try_BURN_BPS(): ethereum.CallResult<BigInt> {
     let result = super.tryCall("BURN_BPS", "BURN_BPS():(uint256)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  BURN_OF_TREASURY_BPS(): BigInt {
+    let result = super.call(
+      "BURN_OF_TREASURY_BPS",
+      "BURN_OF_TREASURY_BPS():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_BURN_OF_TREASURY_BPS(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "BURN_OF_TREASURY_BPS",
+      "BURN_OF_TREASURY_BPS():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  MOVE_COST(): BigInt {
+    let result = super.call("MOVE_COST", "MOVE_COST():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_MOVE_COST(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall("MOVE_COST", "MOVE_COST():(uint256)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  SENDER_BPS(): BigInt {
+    let result = super.call("SENDER_BPS", "SENDER_BPS():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_SENDER_BPS(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall("SENDER_BPS", "SENDER_BPS():(uint256)", []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -490,29 +518,6 @@ export class killgame extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigIntArray());
   }
 
-  getAgentPresence(agent: Address): Array<i32> {
-    let result = super.call(
-      "getAgentPresence",
-      "getAgentPresence(address):(uint16[])",
-      [ethereum.Value.fromAddress(agent)],
-    );
-
-    return result[0].toI32Array();
-  }
-
-  try_getAgentPresence(agent: Address): ethereum.CallResult<Array<i32>> {
-    let result = super.tryCall(
-      "getAgentPresence",
-      "getAgentPresence(address):(uint16[])",
-      [ethereum.Value.fromAddress(agent)],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toI32Array());
-  }
-
   getBirthBlock(agent: Address, id: BigInt): BigInt {
     let result = super.call(
       "getBirthBlock",
@@ -599,46 +604,6 @@ export class killgame extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  getRipeStacks(stackId: i32, b: boolean): killgame__getRipeStacksResult {
-    let result = super.call(
-      "getRipeStacks",
-      "getRipeStacks(uint16,bool):(address[],uint256[])",
-      [
-        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(stackId)),
-        ethereum.Value.fromBoolean(b),
-      ],
-    );
-
-    return new killgame__getRipeStacksResult(
-      result[0].toAddressArray(),
-      result[1].toBigIntArray(),
-    );
-  }
-
-  try_getRipeStacks(
-    stackId: i32,
-    b: boolean,
-  ): ethereum.CallResult<killgame__getRipeStacksResult> {
-    let result = super.tryCall(
-      "getRipeStacks",
-      "getRipeStacks(uint16,bool):(address[],uint256[])",
-      [
-        ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(stackId)),
-        ethereum.Value.fromBoolean(b),
-      ],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(
-      new killgame__getRipeStacksResult(
-        value[0].toAddressArray(),
-        value[1].toBigIntArray(),
-      ),
-    );
   }
 
   isApprovedForAll(account: Address, operator: Address): boolean {
