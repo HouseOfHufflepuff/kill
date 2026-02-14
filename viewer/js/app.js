@@ -48,6 +48,7 @@ let isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
  */
 const formatValue = (val) => {
     const absVal = Math.abs(val);
+    if (absVal >= 1000000000) return (val / 1000000000).toFixed(1) + 'B';
     if (absVal >= 1000000) return (val / 1000000).toFixed(1) + 'M';
     if (absVal >= 1000) return (val / 1000).toFixed(1) + 'K';
     return Math.floor(val).toLocaleString();
@@ -230,11 +231,9 @@ function showTooltip(e, id) {
 
 /**
  * UI: Render the Top Stacks leaderboard rows
- * FIX: Renders 5 columns to match the new static header
  */
 function updateTopStacks(stacks, activeReaperMap) {
     if (!topStacksEl) return;
-
     let globalUnits = 0, globalReapers = 0, globalBountyKill = 0;
 
     const processed = stacks.map(s => {
@@ -242,43 +241,30 @@ function updateTopStacks(stacks, activeReaperMap) {
         const r = activeReaperMap[s.id] || parseInt(s.totalBoostedUnits) || 0;
         const bBlock = parseInt(s.birthBlock);
         const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
-        
         const multiplier = (1 + (age / 1000));
         const totalKillValue = u * multiplier;
 
         globalUnits += u; 
         globalReapers += r; 
         globalBountyKill += totalKillValue;
-
-        stackRegistry[s.id] = { 
-            units: s.totalStandardUnits, 
-            reaper: r.toString(), 
-            birthBlock: s.birthBlock 
-        }; 
-        
+        stackRegistry[s.id] = { units: s.totalStandardUnits, reaper: r.toString(), birthBlock: s.birthBlock }; 
         updateNodeParticles(s.id, s.totalStandardUnits, r);
-
         return { id: s.id, units: u, reapers: r, bounty: multiplier, kill: totalKillValue };
     });
 
     currentGlobalKillStacked = globalBountyKill;
-
     if(totalUnitsActiveEl) totalUnitsActiveEl.innerText = globalUnits.toLocaleString();
     if(totalReapersActiveEl) totalReapersActiveEl.innerText = globalReapers.toLocaleString();
     if(totalKillBountyEl) totalKillBountyEl.innerText = `${Math.floor(globalBountyKill).toLocaleString()}`;
 
-    const sorted = processed
-        .filter(s => s.units > 0 || s.reapers > 0)
-        .sort((a, b) => b.kill - a.kill);
-
+    const sorted = processed.filter(s => s.units > 0 || s.reapers > 0).sort((a, b) => b.kill - a.kill);
     if (sorted.length === 0) {
         topStacksEl.innerHTML = '<div style="font-size:0.7rem; color:#444; padding:10px;">ARENA EMPTY...</div>';
         return;
     }
 
-    // Generate rows ONLY (No duplicate header)
     topStacksEl.innerHTML = sorted.map(item => `
-        <div class="stack-row" onmouseover="showTooltip(event, '${item.id}')" onmouseout="if(tooltip) tooltip.style.opacity=0" style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 4px 0;">
+        <div class="stack-row" onmouseover="showTooltip(event, '${item.id}')" onmouseout="if(tooltip) tooltip.style.opacity=0" style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0;">
             <span style="width:10%; color:#555;">${item.id}</span>
             <span style="width:20%">${item.units >= 1000 ? (item.units / 1000).toFixed(1) + 'K' : item.units}</span>
             <span style="width:10%; color:var(--cyan)">${item.reapers}</span>
@@ -449,33 +435,32 @@ function addLog(blockNum, msg, className) {
 
 /**
  * UI: Render Agent P&L Leaderboard
- * FIX: Removed internal header and standardized widths to match Top Stacks.
+ * FIX: Normalized earned/net by 1e18 and reduced row height.
  */
 function renderPnL(agents) {
     if (!pnlEl) return;
-    
     if (!agents || agents.length === 0) {
         pnlEl.innerHTML = '<div style="color:#444; padding:10px; font-size:0.7rem;">SCANNING NETWORK...</div>';
         return;
     }
 
-    // 1. Sort by Net P/L descending
+    // 1. Sort by Net P/L descending using normalized values
     const sortedAgents = [...agents].sort((a, b) => {
-        const netA = parseFloat(a.totalEarned || 0) - parseFloat(a.totalSpent || 0);
-        const netB = parseFloat(b.totalEarned || 0) - parseFloat(b.totalSpent || 0);
+        const netA = (parseFloat(a.totalEarned || 0) / 1e18) - parseFloat(a.totalSpent || 0);
+        const netB = (parseFloat(b.totalEarned || 0) / 1e18) - parseFloat(b.totalSpent || 0);
         return netB - netA;
     }).slice(0, 10);
 
-    // 2. Clear and Render Rows
+    // 2. Render Rows with Tight Height (padding: 2px 0)
     pnlEl.innerHTML = sortedAgents.map(a => {
         const spent = parseFloat(a.totalSpent || 0);
-        const earned = parseFloat(a.totalEarned || 0);
+        const earned = parseFloat(a.totalEarned || 0) / 1e18; // FIX: Normalize wei
         const net = earned - spent;
         const pnlColor = net >= 0 ? 'var(--cyan)' : 'var(--pink)';
         const pnlSign = net > 0 ? '+' : '';
 
         return `
-            <div class="stack-row" onmouseover="showAddrTooltip(event, '${a.id}')" onmouseout="if(tooltip) tooltip.style.opacity=0" style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 4px 0; align-items: center;">
+            <div class="stack-row" onmouseover="showAddrTooltip(event, '${a.id}')" onmouseout="if(tooltip) tooltip.style.opacity=0" style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; align-items: center;">
                 <span style="width:25%; font-family:monospace; color:#888;">${a.id.substring(0, 8)}</span>
                 <span style="width:25%; text-align:right;">${formatValue(earned)}</span>
                 <span style="width:20%; text-align:right; opacity:0.6;">${formatValue(spent)}</span>
