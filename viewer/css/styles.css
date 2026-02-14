@@ -225,6 +225,7 @@ header {
 .log-spawn { border-left-color: var(--cyan); color: var(--cyan); } 
 .log-network { border-left-color: #666; color: #888; font-style: italic; }
 .log-block { color: #888; margin-right: 8px; font-weight: bold; }
+.log-move { border-left-color: white; color: white; }
 
 @keyframes log-slide {
     from { transform: translateX(10px); opacity: 0; filter: brightness(2); }

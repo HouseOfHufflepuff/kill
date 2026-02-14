@@ -283,39 +283,49 @@ async function syncData() {
     await updateHeartbeat();
     
     try {
-        // --- NEW UPDATED GRAPHQL CALL ---
-        // Includes detailed stack metadata and entity filtering
- const query = `{
-  globalStat(id: "current") { 
-    totalUnitsKilled 
-    totalReaperKilled 
-    killBurned 
-  }
-  stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 100) { 
-    id 
-    totalStandardUnits 
-    totalBoostedUnits 
-    birthBlock 
-  }
-  killeds(first: 50, orderBy: block_number, orderDirection: desc) { 
-    id 
-    attacker 
-    targetUnitsLost 
-    block_number 
-    stackId 
-  }
-  spawneds(first: 50, orderBy: block_number, orderDirection: desc) { 
-    id 
-    agent 
-    stackId 
-    block_number 
-  }
-  agents(first: 10) {
-    id
-    totalSpent
-    totalEarned
-  }
-}`;
+        // Query updated to match your schema exactly:
+        // 1. Moved: Changed 'amount' to 'units'
+        // 2. Killed: Added 'targetUnitsLost' (matches schema)
+        const query = `{
+          globalStat(id: "current") { 
+            totalUnitsKilled 
+            totalReaperKilled 
+            killBurned 
+          }
+          stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 100) { 
+            id 
+            totalStandardUnits 
+            totalBoostedUnits 
+            birthBlock 
+          }
+          killeds(first: 50, orderBy: block_number, orderDirection: desc) { 
+            id 
+            attacker 
+            targetUnitsLost 
+            block_number 
+            stackId 
+          }
+          spawneds(first: 50, orderBy: block_number, orderDirection: desc) { 
+            id 
+            agent 
+            stackId 
+            units
+            block_number 
+          }
+          moveds(first: 50, orderBy: block_number, orderDirection: desc) { 
+            id 
+            agent 
+            fromStack 
+            toStack 
+            units 
+            block_number 
+          }
+          agents(first: 10) {
+            id
+            totalSpent
+            totalEarned
+          }
+        }`;
 
         const resp = await fetch(SUBGRAPH_URL, { 
             method: "POST", 
@@ -324,13 +334,18 @@ async function syncData() {
         });
 
         const result = await resp.json();
+        
+        if (result.errors) {
+            console.error("GraphQL Schema Mismatch:", result.errors);
+            return;
+        }
+
         if (!result || !result.data) {
             console.error("Subgraph data return is null or malformed");
             return;
         }
 
-        const { globalStat, killeds = [], spawneds = [], stacks = [], agents = [] } = result.data;
-        console.log(agents);
+        const { globalStat, killeds = [], spawneds = [], moveds = [], stacks = [], agents = [] } = result.data;
         
         // --- LOGIC: Track Active Reapers ---
         const killedStackIds = new Set(killeds.map(k => k.stackId.toString()));
@@ -365,13 +380,14 @@ async function syncData() {
         // --- P&L LOGIC: Event Processing ---
         const events = [
             ...spawneds.map(s => ({...s, type: 'spawn'})), 
-            ...killeds.map(k => ({...k, type: 'kill'}))
-        ];
+            ...killeds.map(k => ({...k, type: 'kill'})),
+            ...moveds.map(m => ({...m, type: 'move'}))
+        ].sort((a, b) => Number(a.block_number) - Number(b.block_number));
 
         events.forEach(evt => {
-            const addr = evt.type === 'spawn' ? evt.agent : evt.attacker;
+            const addr = (evt.type === 'kill') ? evt.attacker : evt.agent;
             
-            if (!agentPnL[addr]) {
+            if (addr && !agentPnL[addr]) {
                 agentPnL[addr] = { spent: 0, earned: 0 };
             }
 
@@ -385,12 +401,15 @@ async function syncData() {
                     agentPnL[addr].earned += amount;
                     addLog(evt.block_number, `[KILL] ${evt.attacker.substring(0,6)} reaped ${amount}`, 'log-kill');
                     triggerPulse(evt.stackId, 'kill');
+                } else if (evt.type === 'move') {
+                    // Logic mapped to schema: using 'units' and 'toStack'
+                    addLog(evt.block_number, `[MOVE] ${evt.agent.substring(0,6)} shifted ${evt.units} to STACK_${evt.toStack}`, 'log-move');
+                    triggerPulse(evt.toStack, 'spawn'); 
                 }
                 knownIds.add(evt.id);
             }
         });
 
-        updateTopStacks(stacks, activeReaperMap);
         renderPnL(agents);
 
     } catch (e) { 
