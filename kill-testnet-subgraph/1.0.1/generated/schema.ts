@@ -90,6 +90,19 @@ export class Spawned extends Entity {
     this.set("units", Value.fromBigInt(value));
   }
 
+  get reapers(): BigInt {
+    let value = this.get("reapers");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set reapers(value: BigInt) {
+    this.set("reapers", Value.fromBigInt(value));
+  }
+
   get birthBlock(): BigInt {
     let value = this.get("birthBlock");
     if (!value || value.kind == ValueKind.NULL) {

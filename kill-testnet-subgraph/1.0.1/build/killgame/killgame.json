@@ -367,6 +367,12 @@
       {
         "indexed": false,
         "internalType": "uint256",
+        "name": "reapers",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
         "name": "birthBlock",
         "type": "uint256"
       }

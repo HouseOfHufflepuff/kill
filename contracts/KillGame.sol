@@ -6,10 +6,18 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/**
+ * @title KILLGame
+ * @dev A high-stakes strategy game involving standard units and Reaper bonuses.
+ * Features bi-directional looting, adjacency-based movement, and scalable rewards.
+ */
 contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     // --- EVENTS ---
-    event Spawned(address indexed agent, uint256 indexed stackId, uint256 units, uint256 birthBlock);
+    // Added 'reapers' field to Spawned event to ensure Subgraph/API visibility
+    event Spawned(address indexed agent, uint256 indexed stackId, uint256 units, uint256 reapers, uint256 birthBlock);
+    
     event Moved(address indexed agent, uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper, uint256 birthBlock);
+    
     event Killed(
         address indexed attacker, 
         address indexed target, 
@@ -21,8 +29,11 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         uint256 netBounty,
         uint256 targetBirthBlock
     );
+    
     event GlobalStats(uint256 totalUnitsKilled, uint256 totalReaperKilled, uint256 killAdded, uint256 killExtracted, uint256 killBurned);
+    
     event DefenderRewarded(address indexed defender, uint256 amount);
+    
     event TreasuryBpsUpdated(uint256 oldBps, uint256 newBps);
 
     // --- ECONOMIC CONSTANTS & VARIABLES ---
@@ -31,7 +42,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     uint256 public constant REAPER_SPAWN_COST = 6660 * 10**18; // 666 * SPAWN_COST
     uint256 public constant MOVE_COST = 10 * 10**18;
     
-    // Changed from constant to variable for owner-based tuning
+    // Adjustable treasury emission rate
     uint256 public treasuryBps = 2500; // 25% initial
     
     uint256 public constant BURN_OF_TREASURY_BPS = 666; // 6.66% of the 25%
@@ -79,6 +90,9 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         emit TreasuryBpsUpdated(oldBps, _newBps);
     }
 
+    /**
+     * @dev Manual treasury withdrawal for owner/emergency use.
+     */
     function adminWithdraw(uint256 amt) external onlyOwner { 
         killToken.transfer(msg.sender, amt); 
     }
@@ -89,6 +103,9 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         return agentStacks[agent][id].birthBlock;
     }
 
+    /**
+     * @dev Returns full details of all occupants in a specific cube (stack).
+     */
     function getFullStack(uint16 stackId) external view returns (StackInfo[] memory) {
         uint256 unitId = uint256(stackId);
         uint256 reaperId = unitId + 216;
@@ -121,9 +138,11 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         return info;
     }
 
+    /**
+     * @dev Calculates bounty based on treasury balance, time elapsed, and treasuryBps.
+     */
     function getPendingBounty(address agent, uint256 id) public view returns (uint256) {
         if(agentStacks[agent][id].birthBlock == 0) return 0;
-        // Payout logic now scales with the adjustable treasuryBps variable
         return (treasuryBalance * (block.number - agentStacks[agent][id].birthBlock) * treasuryBps) / (10000 * 1000000); 
     }
 
@@ -131,6 +150,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     /**
     * @dev KILL function v2.1 - Bi-directional Looting (Stack-Safe)
+    * Solves combat between two agents and transfers bounties based on units lost.
     */
     function kill(address target, uint16 stackId, uint256 sentUnits, uint256 sentReaper) 
         external 
@@ -145,14 +165,13 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
         uint256 targetBirth = agentStacks[target][unitId].birthBlock; 
         
-        // Resolve combat math in a separate internal function to avoid Stack Too Deep
+        // Internal combat resolution
         LossReport memory loss = _resolveCombat(msg.sender, target, unitId, reaperId, sentUnits, sentReaper);
 
-        // Occupancy cleanup based on losses
+        // Occupancy cleanup
         if (loss.tUnits == balanceOf(target, unitId)) isOccupying[unitId][target] = false;
         if (loss.tReaper == balanceOf(target, reaperId)) isOccupying[reaperId][target] = false;
 
-        // --- BOUNTY PROCESSING (Bi-Directional) ---
         // 1. Attacker gets bounty for defender units killed
         if (loss.tUnits > 0 || loss.tReaper > 0) {
             attackerBounty = _calculateLoot(target, unitId, loss.tUnits, loss.tReaper);
@@ -169,7 +188,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
             agentTotalProfit[target] += defenderBounty;
         }
 
-        // --- STATE UPDATES ---
         _updateGlobalStats(loss);
 
         // Final Burns
@@ -187,7 +205,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     /**
      * @dev Spawn standard units with Reaper bonus logic.
-     * Logic updated to calculate reapers directly from amount (amount / 666).
+     * Guaranteed 500 Reapers for 333,333 standard units.
      */
     function spawn(uint16 stackId, uint256 amount) external nonReentrant {
         require(stackId > 0 && stackId <= 216, "Invalid Stack");
@@ -204,7 +222,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
             totalUnitsMinted += amount;
         }
         
-        // FIXED: Direct calculation for Reapers (e.g., 333,333 / 666 = 500)
+        // Direct calculation: 333,333 / 666 = 500
         uint256 reaperCount = amount / 666;
 
         _mintAndReg(msg.sender, uint256(stackId), amount);
@@ -213,7 +231,8 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
             _mintAndReg(msg.sender, uint256(stackId) + 216, reaperCount);
         }
         
-        emit Spawned(msg.sender, stackId, amount, block.number);
+        // Updated event emission with reaperCount for API indexing
+        emit Spawned(msg.sender, stackId, amount, reaperCount, block.number);
         emit GlobalStats(totalUnitsKilled, totalReaperKilled, totalUnitsMinted * SPAWN_COST, totalKillExtracted, totalKillBurned);
     }
 
@@ -244,7 +263,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     // --- INTERNAL HELPERS ---
 
     /**
-    * @dev Internal combat resolution to prevent Stack Too Deep.
+    * @dev Internal combat resolution math.
     */
     function _resolveCombat(
         address attacker, 
@@ -334,6 +353,9 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         }
     }
 
+    /**
+     * @dev Adjacency math for a 6x6x6 cube grid.
+     */
     function _isAdjacent(uint16 c1, uint16 c2) internal pure returns (bool) {
         uint16 v1 = c1 - 1; uint16 v2 = c2 - 1;
         int16 x1 = int16(v1 % 6); int16 y1 = int16((v1 / 6) % 6); int16 z1 = int16(v1 / 36);

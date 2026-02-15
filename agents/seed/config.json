@@ -2,10 +2,10 @@
   "role": "seed",
   "network": {
     "rpc_url": "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs",
-    "kill_game_addr": "0xcBd56Cd7D358C1B6157f1bc7D37AE153d2276bb4"
+    "kill_game_addr": "0xD74639351BFdc9DC77Fd342254CA6328CEf06f16"
   },
   "settings": {
-    "SEED_AMOUNT": 200,
-    "LOOP_DELAY_SECONDS": 60
+    "SEED_AMOUNT": 1332,
+    "LOOP_DELAY_SECONDS": 12
   }
 }

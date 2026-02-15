@@ -79,11 +79,16 @@ function safeSubtract(current: BigInt, amount: BigInt): BigInt {
 
 // --- HANDLERS ---
 
+/**
+ * @dev UPDATED: Now handles the 4th parameter (reapers) from the smart contract event.
+ */
 export function handleSpawned(event: SpawnedEvent): void {
   let entity = new Spawned(event.transaction.hash.toHex() + "-" + event.logIndex.toString())
   entity.agent = event.params.agent
   entity.stackId = event.params.stackId
   entity.units = event.params.units
+  // Mapping the new reaper parameter to the entity
+  entity.reapers = event.params.reapers 
   entity.birthBlock = event.params.birthBlock
   entity.block_number = event.block.number
   entity.save()
@@ -92,15 +97,22 @@ export function handleSpawned(event: SpawnedEvent): void {
   let cost = event.params.units.times(UNIT_PRICE_WEI);
   updateAgentFinance(event.params.agent, cost, BigInt.fromI32(0))
 
+  // Update Global Stack
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = stack.totalStandardUnits.plus(event.params.units)
+  // FIXED: Increment boosted units (Reapers) globally
+  stack.totalBoostedUnits = stack.totalBoostedUnits.plus(event.params.reapers)
+  
   if (stack.birthBlock.equals(BigInt.fromI32(0))) {
     stack.birthBlock = event.params.birthBlock
   }
   stack.save()
 
+  // Update Agent's Personal Stack
   let aStack = getOrCreateAgentStack(event.params.agent, event.params.stackId.toI32())
   aStack.units = aStack.units.plus(event.params.units)
+  // FIXED: Increment boosted units (Reapers) for the specific agent
+  aStack.reaper = aStack.reaper.plus(event.params.reapers)
   aStack.birthBlock = event.params.birthBlock
   aStack.save()
 }
@@ -174,7 +186,6 @@ export function handleKilled(event: KilledEvent): void {
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = safeSubtract(stack.totalStandardUnits, event.params.targetUnitsLost)
   stack.totalBoostedUnits = safeSubtract(stack.totalBoostedUnits, event.params.targetReaperLost)
-  // Attacker losses also affect the stack if they were on the same stack
   stack.totalStandardUnits = safeSubtract(stack.totalStandardUnits, event.params.attackerUnitsLost)
   stack.totalBoostedUnits = safeSubtract(stack.totalBoostedUnits, event.params.attackerReaperLost)
   
@@ -188,7 +199,6 @@ export function handleKilled(event: KilledEvent): void {
   aStackTarget.units = safeSubtract(aStackTarget.units, event.params.targetUnitsLost)
   aStackTarget.reaper = safeSubtract(aStackTarget.reaper, event.params.targetReaperLost)
   
-  // Reset birthblock only if they were wiped or took damage that triggered extraction
   if (aStackTarget.units.equals(BigInt.fromI32(0)) && aStackTarget.reaper.equals(BigInt.fromI32(0))) {
     aStackTarget.birthBlock = BigInt.fromI32(0) 
   }
@@ -204,10 +214,6 @@ export function handleKilled(event: KilledEvent): void {
   aStackAttacker.save()
 }
 
-/**
- * @dev New Handler for Defender Payouts
- * Ensures the defender's earnings from burning attackers are counted in Agent P&L.
- */
 export function handleDefenderRewarded(event: DefenderRewardedEvent): void {
   let rewardId = event.transaction.hash.toHex() + "-" + event.logIndex.toString()
   let reward = new DefenderReward(rewardId)
@@ -216,7 +222,6 @@ export function handleDefenderRewarded(event: DefenderRewardedEvent): void {
   reward.block_number = event.block.number
   reward.save()
 
-  // Add the reward to defender's total earnings and update Net PnL
   updateAgentFinance(event.params.defender, BigInt.fromI32(0), event.params.amount)
 }
 
@@ -231,10 +236,6 @@ export function handleGlobalStats(event: GlobalStatsEvent): void {
   stats.killAdded = event.params.killAdded
   stats.killExtracted = event.params.killExtracted
   stats.killBurned = event.params.killBurned
-  
-  // Game P&L = (Everything Paid In) - (Everything Extracted) - (Everything Burned)
-  // This represents the current Treasury holdings
   stats.totalPnL = stats.killAdded.minus(stats.killExtracted).minus(stats.killBurned)
-  
   stats.save()
 }

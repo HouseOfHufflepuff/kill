@@ -9,7 +9,6 @@
 const NETWORK = "Base Sepolia";
 const ALCHEMY_URL = "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs";
 const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.1/gn";
-const REAPER_SPAWN_COST = 10;
 
 // --- ETHER INTERFACE ---
 const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
@@ -283,44 +282,45 @@ async function syncData() {
         // 1. Moved: Changed 'amount' to 'units'
         // 2. Killed: Added 'targetUnitsLost' (matches schema)
         const query = `{
-          globalStat(id: "current") { 
+            globalStat(id: "current") { 
             totalUnitsKilled 
             totalReaperKilled 
             killBurned 
-          }
-          stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 100) { 
+            }
+            stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 100) { 
             id 
             totalStandardUnits 
             totalBoostedUnits 
             birthBlock 
-          }
-          killeds(first: 50, orderBy: block_number, orderDirection: desc) { 
+            }
+            killeds(first: 50, orderBy: block_number, orderDirection: desc) { 
             id 
             attacker 
             targetUnitsLost 
             block_number 
             stackId 
-          }
-          spawneds(first: 50, orderBy: block_number, orderDirection: desc) { 
+            }
+            spawneds(first: 50, orderBy: block_number, orderDirection: desc) { 
             id 
             agent 
             stackId 
             units
+            reapers
             block_number 
-          }
-          moveds(first: 50, orderBy: block_number, orderDirection: desc) { 
+            }
+            moveds(first: 50, orderBy: block_number, orderDirection: desc) { 
             id 
             agent 
             fromStack 
             toStack 
             units 
             block_number 
-          }
-          agents(first: 10) {
+            }
+            agents(first: 10) {
             id
             totalSpent
             totalEarned
-          }
+            }
         }`;
 
         const resp = await fetch(SUBGRAPH_URL, { 
@@ -343,15 +343,22 @@ async function syncData() {
 
         const { globalStat, killeds = [], spawneds = [], moveds = [], stacks = [], agents = [] } = result.data;
         
-        // --- LOGIC: Track Active Reapers ---
-        const killedStackIds = new Set(killeds.map(k => k.stackId.toString()));
+        // --- LOGIC: Use Subgraph Totals for Active Reapers ---
         const activeReaperMap = {};
-        
-        spawneds.forEach(s => {
-            if (!killedStackIds.has(s.stackId.toString())) {
-                activeReaperMap[s.stackId] = (activeReaperMap[s.stackId] || 0) + 1;
-            }
+        stacks.forEach(s => {
+            // Map the Subgraph's stack data to the UI's ID system
+            activeReaperMap[s.id] = parseInt(s.totalBoostedUnits || "0");
         });
+
+        // --- UI: Update Lethal Status ---
+        if (statusEl) {
+            statusEl.innerHTML = killeds.length > 0 ? 
+                '<span class="lethal-dot"></span>SYSTEM STATUS: LETHAL' : 
+                'SYSTEM STATUS: OPERATIONAL';
+        }
+
+        // Update the global visual elements
+        updateTopStacks(stacks, activeReaperMap);
 
         // --- UI: Update Lethal Status ---
         if (statusEl) {
@@ -389,8 +396,11 @@ async function syncData() {
 
             if (!knownIds.has(evt.id)) {
                 if (evt.type === 'spawn') {
-                    agentPnL[addr].spent += Number(REAPER_SPAWN_COST);
-                    addLog(evt.block_number, `[SPAWN] ${evt.agent.substring(0,6)}`, 'log-spawn');
+                    // Cost is Units * 10 (Reapers are free reward units)
+                    const cost = Number(evt.units || 0) * 10;
+                    agentPnL[addr].spent += cost;
+                    
+                    addLog(evt.block_number, `[SPAWN] ${evt.agent.substring(0,6)} (+${evt.reapers} REAPER)`, 'log-spawn');
                     triggerPulse(evt.stackId, 'spawn');
                 } else if (evt.type === 'kill') {
                     const amount = parseInt(evt.targetUnitsLost);
@@ -398,7 +408,6 @@ async function syncData() {
                     addLog(evt.block_number, `[KILL] ${evt.attacker.substring(0,6)} reaped ${amount}`, 'log-kill');
                     triggerPulse(evt.stackId, 'kill');
                 } else if (evt.type === 'move') {
-                    // Logic mapped to schema: using 'units' and 'toStack'
                     addLog(evt.block_number, `[MOVE] ${evt.agent.substring(0,6)} shifted ${evt.units} to STACK_${evt.toStack}`, 'log-move');
                     triggerPulse(evt.toStack, 'spawn'); 
                 }

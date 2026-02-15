@@ -6,7 +6,7 @@ dataSources:
     name: killgame
     network: base-sepolia
     source:
-      address: "0xcBd56Cd7D358C1B6157f1bc7D37AE153d2276bb4"
+      address: "0xD74639351BFdc9DC77Fd342254CA6328CEf06f16"
       abi: killgame
       startBlock: 37666658
     mapping:
@@ -24,7 +24,7 @@ dataSources:
         - name: killgame
           file: ./abis/killgame.json
       eventHandlers:
-        - event: Spawned(indexed address,indexed uint256,uint256,uint256)
+        - event: Spawned(indexed address,indexed uint256,uint256,uint256,uint256)
           handler: handleSpawned
         - event: Moved(indexed address,uint16,uint16,uint256,uint256,uint256)
           handler: handleMoved

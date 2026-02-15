@@ -3,7 +3,8 @@ type Spawned @entity(immutable: true) {
   agent: Bytes!
   stackId: BigInt!
   units: BigInt!
-  birthBlock: BigInt!
+  reapers: BigInt! # Ensure this is here
+  birthBlock: BigInt! # Ensure this is here
   block_number: BigInt!
 }
 

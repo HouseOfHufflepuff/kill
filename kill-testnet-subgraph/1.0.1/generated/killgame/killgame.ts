@@ -227,8 +227,12 @@ export class Spawned__Params {
     return this._event.parameters[2].value.toBigInt();
   }
 
-  get birthBlock(): BigInt {
+  get reapers(): BigInt {
     return this._event.parameters[3].value.toBigInt();
+  }
+
+  get birthBlock(): BigInt {
+    return this._event.parameters[4].value.toBigInt();
   }
 }
 
