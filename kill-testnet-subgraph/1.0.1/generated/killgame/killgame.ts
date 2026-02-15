@@ -36,6 +36,28 @@ export class ApprovalForAll__Params {
   }
 }
 
+export class DefenderRewarded extends ethereum.Event {
+  get params(): DefenderRewarded__Params {
+    return new DefenderRewarded__Params(this);
+  }
+}
+
+export class DefenderRewarded__Params {
+  _event: DefenderRewarded;
+
+  constructor(event: DefenderRewarded) {
+    this._event = event;
+  }
+
+  get defender(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get amount(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+}
+
 export class GlobalStats extends ethereum.Event {
   get params(): GlobalStats__Params {
     return new GlobalStats__Params(this);
@@ -380,6 +402,29 @@ export class killgame extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
+  REAPER_SPAWN_COST(): BigInt {
+    let result = super.call(
+      "REAPER_SPAWN_COST",
+      "REAPER_SPAWN_COST():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_REAPER_SPAWN_COST(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "REAPER_SPAWN_COST",
+      "REAPER_SPAWN_COST():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   SENDER_BPS(): BigInt {
     let result = super.call("SENDER_BPS", "SENDER_BPS():(uint256)", []);
 
@@ -449,6 +494,29 @@ export class killgame extends ethereum.SmartContract {
         ethereum.Value.fromAddress(param0),
         ethereum.Value.fromUnsignedBigInt(param1),
       ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  agentTotalProfit(param0: Address): BigInt {
+    let result = super.call(
+      "agentTotalProfit",
+      "agentTotalProfit(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_agentTotalProfit(param0: Address): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "agentTotalProfit",
+      "agentTotalProfit(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -993,7 +1061,7 @@ export class KillCall__Outputs {
     this._call = call;
   }
 
-  get netBounty(): BigInt {
+  get attackerBounty(): BigInt {
     return this._call.outputValues[0].value.toBigInt();
   }
 }

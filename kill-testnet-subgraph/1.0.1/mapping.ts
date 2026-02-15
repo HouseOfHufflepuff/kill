@@ -2,15 +2,28 @@ import {
   Spawned as SpawnedEvent,
   Moved as MovedEvent,
   Killed as KilledEvent,
-  GlobalStats as GlobalStatsEvent
+  GlobalStats as GlobalStatsEvent,
+  DefenderRewarded as DefenderRewardedEvent
 } from "./generated/killgame/killgame"
 
-import { Spawned, Moved, Killed, Stack, AgentStack, GlobalStat, Agent } from "./generated/schema"
-import { BigInt, Bytes } from "@graphprotocol/graph-ts"
+import { 
+  Spawned, 
+  Moved, 
+  Killed, 
+  Stack, 
+  AgentStack, 
+  GlobalStat, 
+  Agent, 
+  DefenderReward 
+} from "./generated/schema"
+import { BigInt, Bytes, log } from "@graphprotocol/graph-ts"
 
 // --- CONSTANTS ---
-const UNIT_PRICE = BigInt.fromI32(10);
-const MOVE_PENALTY = BigInt.fromI32(1);
+const KILL_DECIMALS = BigInt.fromI32(10).pow(18);
+const UNIT_PRICE_WEI = BigInt.fromI32(10).times(KILL_DECIMALS);
+const MOVE_COST_WEI = BigInt.fromI32(10).times(KILL_DECIMALS);
+
+// --- HELPERS ---
 
 function getOrCreateAgent(address: Bytes): Agent {
   let id = address.toHex()
@@ -25,7 +38,7 @@ function getOrCreateAgent(address: Bytes): Agent {
   return agent
 }
 
-function updateAgentPnL(address: Bytes, spent: BigInt, earned: BigInt): void {
+function updateAgentFinance(address: Bytes, spent: BigInt, earned: BigInt): void {
   let agent = getOrCreateAgent(address)
   agent.totalSpent = agent.totalSpent.plus(spent)
   agent.totalEarned = agent.totalEarned.plus(earned)
@@ -64,6 +77,8 @@ function safeSubtract(current: BigInt, amount: BigInt): BigInt {
   return current.minus(amount)
 }
 
+// --- HANDLERS ---
+
 export function handleSpawned(event: SpawnedEvent): void {
   let entity = new Spawned(event.transaction.hash.toHex() + "-" + event.logIndex.toString())
   entity.agent = event.params.agent
@@ -73,11 +88,9 @@ export function handleSpawned(event: SpawnedEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  // Calculate cost based strictly on unit volume: units * 10
-  let totalSpawnCost = event.params.units.times(UNIT_PRICE);
-
-  // Update Persistent Agent Stats
-  updateAgentPnL(event.params.agent, totalSpawnCost, BigInt.fromI32(0))
+  // Track Cost: units * 10
+  let cost = event.params.units.times(UNIT_PRICE_WEI);
+  updateAgentFinance(event.params.agent, cost, BigInt.fromI32(0))
 
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = stack.totalStandardUnits.plus(event.params.units)
@@ -103,9 +116,10 @@ export function handleMoved(event: MovedEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  // Cost of move is 1 KILL
-  updateAgentPnL(event.params.agent, MOVE_PENALTY, BigInt.fromI32(0))
+  // Track Move Cost
+  updateAgentFinance(event.params.agent, MOVE_COST_WEI, BigInt.fromI32(0))
 
+  // Update From Stack
   let fromStack = getOrCreateStack(event.params.fromStack.toString())
   fromStack.totalStandardUnits = safeSubtract(fromStack.totalStandardUnits, event.params.units)
   fromStack.totalBoostedUnits = safeSubtract(fromStack.totalBoostedUnits, event.params.reaper)
@@ -114,6 +128,7 @@ export function handleMoved(event: MovedEvent): void {
   }
   fromStack.save()
 
+  // Update To Stack
   let toStack = getOrCreateStack(event.params.toStack.toString())
   toStack.totalStandardUnits = toStack.totalStandardUnits.plus(event.params.units)
   toStack.totalBoostedUnits = toStack.totalBoostedUnits.plus(event.params.reaper)
@@ -122,9 +137,13 @@ export function handleMoved(event: MovedEvent): void {
   }
   toStack.save()
 
+  // Update Agent Stacks
   let aStackFrom = getOrCreateAgentStack(event.params.agent, event.params.fromStack)
   aStackFrom.units = safeSubtract(aStackFrom.units, event.params.units)
   aStackFrom.reaper = safeSubtract(aStackFrom.reaper, event.params.reaper)
+  if (aStackFrom.units.equals(BigInt.fromI32(0)) && aStackFrom.reaper.equals(BigInt.fromI32(0))) {
+      aStackFrom.birthBlock = BigInt.fromI32(0)
+  }
   aStackFrom.save()
 
   let aStackTo = getOrCreateAgentStack(event.params.agent, event.params.toStack)
@@ -148,40 +167,74 @@ export function handleKilled(event: KilledEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  // Update Attacker persistent stats (Earned netBounty)
-  updateAgentPnL(event.params.attacker, BigInt.fromI32(0), event.params.netBounty)
+  // Attacker Earned the netBounty
+  updateAgentFinance(event.params.attacker, BigInt.fromI32(0), event.params.netBounty)
 
+  // Update Global Stack Totals
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = safeSubtract(stack.totalStandardUnits, event.params.targetUnitsLost)
   stack.totalBoostedUnits = safeSubtract(stack.totalBoostedUnits, event.params.targetReaperLost)
+  // Attacker losses also affect the stack if they were on the same stack
+  stack.totalStandardUnits = safeSubtract(stack.totalStandardUnits, event.params.attackerUnitsLost)
+  stack.totalBoostedUnits = safeSubtract(stack.totalBoostedUnits, event.params.attackerReaperLost)
+  
   if (stack.totalStandardUnits.equals(BigInt.fromI32(0)) && stack.totalBoostedUnits.equals(BigInt.fromI32(0))) {
     stack.birthBlock = BigInt.fromI32(0)
   }
   stack.save()
 
+  // Update Target's personal stack
   let aStackTarget = getOrCreateAgentStack(event.params.target, event.params.stackId)
   aStackTarget.units = safeSubtract(aStackTarget.units, event.params.targetUnitsLost)
   aStackTarget.reaper = safeSubtract(aStackTarget.reaper, event.params.targetReaperLost)
-  if (event.params.netBounty.gt(BigInt.fromI32(0))) {
+  
+  // Reset birthblock only if they were wiped or took damage that triggered extraction
+  if (aStackTarget.units.equals(BigInt.fromI32(0)) && aStackTarget.reaper.equals(BigInt.fromI32(0))) {
     aStackTarget.birthBlock = BigInt.fromI32(0) 
   }
   aStackTarget.save()
 
+  // Update Attacker's personal stack
   let aStackAttacker = getOrCreateAgentStack(event.params.attacker, event.params.stackId)
   aStackAttacker.units = safeSubtract(aStackAttacker.units, event.params.attackerUnitsLost)
   aStackAttacker.reaper = safeSubtract(aStackAttacker.reaper, event.params.attackerReaperLost)
+  if (aStackAttacker.units.equals(BigInt.fromI32(0)) && aStackAttacker.reaper.equals(BigInt.fromI32(0))) {
+      aStackAttacker.birthBlock = BigInt.fromI32(0)
+  }
   aStackAttacker.save()
+}
+
+/**
+ * @dev New Handler for Defender Payouts
+ * Ensures the defender's earnings from burning attackers are counted in Agent P&L.
+ */
+export function handleDefenderRewarded(event: DefenderRewardedEvent): void {
+  let rewardId = event.transaction.hash.toHex() + "-" + event.logIndex.toString()
+  let reward = new DefenderReward(rewardId)
+  reward.defender = event.params.defender
+  reward.amount = event.params.amount
+  reward.block_number = event.block.number
+  reward.save()
+
+  // Add the reward to defender's total earnings and update Net PnL
+  updateAgentFinance(event.params.defender, BigInt.fromI32(0), event.params.amount)
 }
 
 export function handleGlobalStats(event: GlobalStatsEvent): void {
   let stats = GlobalStat.load("current")
   if (stats == null) {
     stats = new GlobalStat("current")
+    stats.totalPnL = BigInt.fromI32(0)
   }
   stats.totalUnitsKilled = event.params.totalUnitsKilled
   stats.totalReaperKilled = event.params.totalReaperKilled
   stats.killAdded = event.params.killAdded
   stats.killExtracted = event.params.killExtracted
   stats.killBurned = event.params.killBurned
+  
+  // Game P&L = (Everything Paid In) - (Everything Extracted) - (Everything Burned)
+  // This represents the current Treasury holdings
+  stats.totalPnL = stats.killAdded.minus(stats.killExtracted).minus(stats.killBurned)
+  
   stats.save()
 }

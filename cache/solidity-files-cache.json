@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/houseofhufflepuff/Development/kill/contracts/KillGame.sol": {
-      "lastModificationDate": 1771101083740,
-      "contentHash": "b8180a7baff63c0d2b702b434a374be3",
+      "lastModificationDate": 1771185753694,
+      "contentHash": "967c57dcafe7c268399c5addc359bfcb",
       "sourceName": "contracts/KillGame.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -859,8 +859,8 @@
       ]
     },
     "/Users/houseofhufflepuff/Development/kill/contracts/KillToken.sol": {
-      "lastModificationDate": 1770685419910,
-      "contentHash": "7996e20ae531baf9d84c89a0882602f2",
+      "lastModificationDate": 1771177219083,
+      "contentHash": "97004605d6687068a8264315697bfebc",
       "sourceName": "contracts/KillToken.sol",
       "solcConfig": {
         "version": "0.8.24",

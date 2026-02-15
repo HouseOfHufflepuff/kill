@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract KILLToken is ERC20Capped, Ownable {
-    // 666,666,666 with 18 decimals
-    uint256 public constant HARD_CAP = 666666666 * 10**18;
+    // 6,666,666,666 with 18 decimals
+    uint256 public constant HARD_CAP = 6666666666 * 10**18;
 
     constructor() 
         ERC20("KILL", "KILL") 

@@ -435,42 +435,36 @@ function addLog(blockNum, msg, className) {
 
 /**
  * UI: Render Agent P&L Leaderboard
- * FIX: Normalized earned/net by 1e18 and reduced row height.
+ * REPLACEMENT: Uses pre-calculated Subgraph values only.
  */
 function renderPnL(agents) {
     if (!pnlEl) return;
-    if (!agents || agents.length === 0) {
-        pnlEl.innerHTML = '<div style="color:#444; padding:10px; font-size:0.7rem;">SCANNING NETWORK...</div>';
-        return;
-    }
-
-    // 1. Sort by Net P/L descending using normalized values
+    
     const sortedAgents = [...agents].sort((a, b) => {
-        const netA = (parseFloat(a.totalEarned || 0) / 1e18) - parseFloat(a.totalSpent || 0);
-        const netB = (parseFloat(b.totalEarned || 0) / 1e18) - parseFloat(b.totalSpent || 0);
-        return netB - netA;
+        const netA = BigInt(a.totalEarned) - BigInt(a.totalSpent);
+        const netB = BigInt(b.totalEarned) - BigInt(b.totalSpent);
+        return netB > netA ? 1 : -1;
     }).slice(0, 10);
 
-    // 2. Render Rows with Tight Height (padding: 2px 0)
     pnlEl.innerHTML = sortedAgents.map(a => {
-        const spent = parseFloat(a.totalSpent || 0);
-        const earned = parseFloat(a.totalEarned || 0) / 1e18; // FIX: Normalize wei
+        const spent = parseFloat(ethers.formatEther(a.totalSpent || "0"));
+        const earned = parseFloat(ethers.formatEther(a.totalEarned || "0"));
         const net = earned - spent;
         const pnlColor = net >= 0 ? 'var(--cyan)' : 'var(--pink)';
-        const pnlSign = net > 0 ? '+' : '';
 
         return `
-            <div class="stack-row" onmouseover="showAddrTooltip(event, '${a.id}')" onmouseout="if(tooltip) tooltip.style.opacity=0" style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; align-items: center;">
+            <div class="stack-row" style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="width:25%; font-family:monospace; color:#888;">${a.id.substring(0, 8)}</span>
                 <span style="width:25%; text-align:right;">${formatValue(earned)}</span>
                 <span style="width:20%; text-align:right; opacity:0.6;">${formatValue(spent)}</span>
                 <span style="width:30%; text-align:right; color:${pnlColor}; font-weight:bold;">
-                    ${pnlSign}${formatValue(net)}
+                    ${net > 0 ? '+' : ''}${formatValue(net)}
                 </span>
             </div>
         `;
     }).join('');
 }
+
 /**
  * UI: Tooltip for full address hover
  */

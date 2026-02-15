@@ -32,6 +32,13 @@ type Killed @entity(immutable: true) {
   block_number: BigInt!
 }
 
+type DefenderReward @entity(immutable: true) {
+  id: ID!
+  defender: Bytes!
+  amount: BigInt!
+  block_number: BigInt!
+}
+
 type Stack @entity(immutable: false) {
   id: ID! 
   totalStandardUnits: BigInt!
@@ -59,7 +66,8 @@ type GlobalStat @entity(immutable: false) {
   id: ID!
   totalUnitsKilled: BigInt!
   totalReaperKilled: BigInt!
-  killAdded: BigInt!
-  killExtracted: BigInt!
-  killBurned: BigInt!
+  killAdded: BigInt!      # Global Gross Cost (Total Spent by all players)
+  killExtracted: BigInt!  # Global Gross Profit (Total Earned by all players)
+  killBurned: BigInt!     # Total Deflationary Burn
+  totalPnL: BigInt!       # Current Ecosystem Balance (Treasury)
 }

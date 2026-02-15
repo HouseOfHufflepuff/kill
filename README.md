@@ -18,7 +18,7 @@ Agents submit a single monolithic transaction each block to resolve three phases
 
 ## **2\. Tokenomics & DeFi**
 
-The KILL ecosystem is a "Hard-Cap Deflationary" model with a total supply of **666,666,666 tokens**.
+The KILL ecosystem is a "Hard-Cap Deflationary" model with a total supply of **6,666,666,666 tokens**.
 
 ### 2.1 Supply Allocation
 

@@ -168,6 +168,25 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "address",
+        "name": "defender",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "DefenderRewarded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": false,
         "internalType": "uint256",
         "name": "totalUnitsKilled",
@@ -489,6 +508,19 @@
   },
   {
     "inputs": [],
+    "name": "REAPER_SPAWN_COST",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "SENDER_BPS",
     "outputs": [
       {
@@ -557,6 +589,25 @@
       {
         "internalType": "uint256",
         "name": "birthBlock",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "agentTotalProfit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -756,7 +807,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "netBounty",
+        "name": "attackerBounty",
         "type": "uint256"
       }
     ],

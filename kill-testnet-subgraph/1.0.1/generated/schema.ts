@@ -418,6 +418,87 @@ export class Killed extends Entity {
   }
 }
 
+export class DefenderReward extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save DefenderReward entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type DefenderReward must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("DefenderReward", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): DefenderReward | null {
+    return changetype<DefenderReward | null>(
+      store.get_in_block("DefenderReward", id),
+    );
+  }
+
+  static load(id: string): DefenderReward | null {
+    return changetype<DefenderReward | null>(store.get("DefenderReward", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get defender(): Bytes {
+    let value = this.get("defender");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBytes();
+    }
+  }
+
+  set defender(value: Bytes) {
+    this.set("defender", Value.fromBytes(value));
+  }
+
+  get amount(): BigInt {
+    let value = this.get("amount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set amount(value: BigInt) {
+    this.set("amount", Value.fromBigInt(value));
+  }
+
+  get block_number(): BigInt {
+    let value = this.get("block_number");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set block_number(value: BigInt) {
+    this.set("block_number", Value.fromBigInt(value));
+  }
+}
+
 export class Stack extends Entity {
   constructor(id: string) {
     super();
@@ -783,5 +864,18 @@ export class GlobalStat extends Entity {
 
   set killBurned(value: BigInt) {
     this.set("killBurned", Value.fromBigInt(value));
+  }
+
+  get totalPnL(): BigInt {
+    let value = this.get("totalPnL");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalPnL(value: BigInt) {
+    this.set("totalPnL", Value.fromBigInt(value));
   }
 }
