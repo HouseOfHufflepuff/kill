@@ -26,12 +26,11 @@ function getStepTowardHub(currentId, hubId) {
             neighbors.push({ id: i, coords: c2 });
         }
     }
-    const sorted = neighbors.sort((a, b) => {
+    return neighbors.sort((a, b) => {
         const distA = Math.abs(a.coords.x - target.x) + Math.abs(a.coords.y - target.y) + Math.abs(a.coords.z - target.z);
         const distB = Math.abs(b.coords.x - target.x) + Math.abs(b.coords.y - target.y) + Math.abs(b.coords.z - target.z);
         return distA - distB;
-    });
-    return sorted[0].id;
+    })[0].id;
 }
 
 async function main() {
@@ -59,19 +58,12 @@ async function main() {
             const killBalance = await killToken.balanceOf(address);
             const allowance = await killToken.allowance(address, kill_game_addr);
 
-            // DISPLAY BALANCES
             console.log(">> WALLET STATUS:");
             console.log(`   Address: ${address}`);
             console.log(`   ETH:  ${ethers.utils.formatEther(ethBalance)}`);
             console.log(`   KILL: ${ethers.utils.formatUnits(killBalance, 18)}`);
             console.log(`   Allow: ${ethers.utils.formatUnits(allowance, 18)}`);
             console.log("------------------------------------------");
-
-            if (allowance.lt(killBalance)) {
-                console.log("[SETUP] Fixing Allowance...");
-                const tx = await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256);
-                await tx.wait();
-            }
 
             const scanIds = Array.from({ length: 216 }, (_, i) => i + 1);
             const calls = scanIds.map(id => ({ target: kill_game_addr, callData: killGame.interface.encodeFunctionData("getFullStack", [id]) }));
@@ -99,52 +91,62 @@ async function main() {
                 }
             }
 
-            console.log(`>> HUB UNITS: ${myHubState.units.toString()} | INTRUDERS: ${hubIntruders.length}`);
-
-            const actionable = allEnemies.filter(e => e.enemy.units.gte(MIN_TARGET_UNITS)).sort((a,b) => b.enemy.units.sub(a.enemy.units))[0];
+            console.log(`>> HUB STATUS: ${myHubState.units.toString()} Units | Intruders: ${hubIntruders.length}`);
 
             if (hubIntruders.length > 0) {
                 const intruder = hubIntruders[0];
                 const spawnAmt = intruder.units.mul(SPAWN_MULTIPLIER).add(SPAWN_BUFFER);
+                const totalCost = SPAWN_COST.mul(spawnAmt);
+
                 if (myHubState.units.lte(intruder.units)) {
-                    console.log(`[DEFENSE] Spawning ${spawnAmt.toString()} units...`);
-                    const tx = await killGame.connect(wallet).spawn(HUB_STACK, spawnAmt, { gasLimit: 800000 });
-                    await tx.wait();
+                    if (killBalance.lt(totalCost)) {
+                        console.log(`[DEFENSE ERROR] Insufficient KILL. Need ${ethers.utils.formatUnits(totalCost, 18)}`);
+                    } else {
+                        if (allowance.lt(totalCost)) {
+                            console.log("[SETUP] Increasing Allowance...");
+                            await (await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256)).wait();
+                        }
+                        console.log(`[DEFENSE] Spawning ${spawnAmt.toString()} units...`);
+                        await (await killGame.connect(wallet).spawn(HUB_STACK, spawnAmt, { gasLimit: 800000 })).wait();
+                    }
                 }
+                
                 const updated = await killGame.getFullStack(HUB_STACK);
                 const me = updated.find(it => it.occupant.toLowerCase() === address.toLowerCase());
                 if (me && me.units.gt(0)) {
-                    console.log(`[KILL] Executing intruder ${intruder.occupant.slice(0,8)}`);
-                    const tx = await killGame.connect(wallet).kill(intruder.occupant, HUB_STACK, me.units.sub(1), me.reapers, { gasLimit: 800000 });
-                    await tx.wait();
+                    console.log(`[KILL] Removing intruder ${intruder.occupant.slice(0,6)}`);
+                    await (await killGame.connect(wallet).kill(intruder.occupant, HUB_STACK, me.units.sub(1), me.reapers, { gasLimit: 800000 })).wait();
                 }
             } 
-            else if (actionable) {
-                const spawnAmt = actionable.enemy.units.mul(SPAWN_MULTIPLIER).add(SPAWN_BUFFER);
-                const cost = SPAWN_COST.mul(spawnAmt);
-                
-                if (killBalance.gte(cost)) {
-                    console.log(`[ATTACK] Stack ${actionable.id} | Spawning ${spawnAmt.toString()} units...`);
-                    const txS = await killGame.connect(wallet).spawn(actionable.id, spawnAmt, { gasLimit: 800000 });
-                    await txS.wait();
-                    
-                    const fresh = await killGame.getFullStack(actionable.id);
-                    const me = fresh.find(it => it.occupant.toLowerCase() === address.toLowerCase());
-                    if (me && me.units.gt(actionable.enemy.units)) {
-                        console.log(`[KILL] Executing target ${actionable.enemy.occupant.slice(0,8)}`);
-                        const txK = await killGame.connect(wallet).kill(actionable.enemy.occupant, actionable.id, me.units.sub(1), me.reapers, { gasLimit: 800000 });
-                        await txK.wait();
+            else if (allEnemies.length > 0) {
+                const actionable = allEnemies.filter(e => e.enemy.units.gte(MIN_TARGET_UNITS)).sort((a,b) => b.enemy.units.sub(a.enemy.units))[0];
+                if (actionable) {
+                    const spawnAmt = actionable.enemy.units.mul(SPAWN_MULTIPLIER).add(SPAWN_BUFFER);
+                    const totalCost = SPAWN_COST.mul(spawnAmt);
+
+                    if (killBalance.gte(totalCost)) {
+                        if (allowance.lt(totalCost)) {
+                            await (await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256)).wait();
+                        }
+                        console.log(`[ATTACK] Target ${actionable.id} | Spawning ${spawnAmt.toString()}...`);
+                        await (await killGame.connect(wallet).spawn(actionable.id, spawnAmt, { gasLimit: 800000 })).wait();
+                        
+                        const fresh = await killGame.getFullStack(actionable.id);
+                        const me = fresh.find(it => it.occupant.toLowerCase() === address.toLowerCase());
+                        if (me && me.units.gt(actionable.enemy.units)) {
+                            console.log(`[KILL] Eliminating target ${actionable.enemy.occupant.slice(0,6)}`);
+                            await (await killGame.connect(wallet).kill(actionable.enemy.occupant, actionable.id, me.units.sub(1), me.reapers, { gasLimit: 800000 })).wait();
+                        }
+                    } else {
+                        console.log(`[SKIP] Not enough KILL for Stack ${actionable.id}`);
                     }
-                } else {
-                    console.log(`[INSUFFICIENT FUNDS] Need ${ethers.utils.formatUnits(cost, 18)} KILL but only have ${ethers.utils.formatUnits(killBalance, 18)}`);
                 }
             } 
             else if (stragglers.length > 0) {
                 const s = stragglers[0];
                 const next = getStepTowardHub(s.id, HUB_STACK);
                 console.log(`[MOVE] Straggler ${s.id} -> ${next}`);
-                const tx = await killGame.connect(wallet).move(s.id, next, s.units, s.reapers, { gasLimit: 500000 });
-                await tx.wait();
+                await (await killGame.connect(wallet).move(s.id, next, s.units, s.reapers, { gasLimit: 500000 })).wait();
             }
 
         } catch (err) { console.error("\n[RUNTIME ERROR]", err.message); }
