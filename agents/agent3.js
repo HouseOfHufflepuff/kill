@@ -14,9 +14,9 @@ async function main() {
     const killGame = await ethers.getContractAt("KILLGame", KILL_GAME_ADDR);
     const killToken = new ethers.Contract(await killGame.killToken(), ERC20_ABI, agent3Wallet);
 
-    const STACK_A = 121;
-    const STACK_B = 115; // Adjacent to 121 (Y-axis shift)
-    const SPAWN_AMOUNT = 600;
+    const STACK_A = 179;
+    const STACK_B = 178;
+    const SPAWN_AMOUNT = 300;
     const wait = () => new Promise(r => setTimeout(r, 12000));
 
     console.log(`\n--- AGENT3: DYNAMIC UNIT CALCULATOR ---`);
