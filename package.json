@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "kill",
   "main": "app.js",
+  "bin": {
+    "killgame": "./cli.js"
+  },
   "scripts": {
     "test": "NODE_NO_WARNINGS=1 hardhat test"
   },
@@ -12,7 +15,9 @@
     "@alch/alchemy-web3": "^1.1.9",
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "commander": "^11.0.0",
     "dotenv": "^16.4.5",
+    "inquirer": "^8.2.4",
     "truffle-flattener": "^1.6.0",
     "xterm": "^4.16.0"
   },

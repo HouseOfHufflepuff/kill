@@ -55,11 +55,12 @@ async function main() {
         try {
             const ethBalance = await wallet.getBalance();
             const killBalance = await killToken.balanceOf(address);
+            const allowance = await killToken.allowance(address, kill_game_addr);
 
-            // Pre-flight check: Need at least ~0.005 ETH for a smooth experience
-            if (ethBalance.lt(ethers.utils.parseEther("0.002"))) {
-                console.log(`\n[!!!] CRITICAL: LOW ETH GAS`);
-                console.log(`Have: ${ethers.utils.formatEther(ethBalance)} ETH | Need more for gas.`);
+            // AUTO-APPROVAL
+            if (allowance.lt(killBalance)) {
+                console.log("[SETUP] Fixing Allowance...");
+                await (await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256)).wait();
             }
 
             const scanIds = Array.from({ length: 216 }, (_, i) => i + 1);
@@ -90,16 +91,28 @@ async function main() {
 
             console.log(`>> HUB STATUS: ${myHubState.units.toString()} Units | ${hubIntruders.length} Intruders`);
 
+            // TABLE OUTPUT RESTORED
+            if (allEnemies.length > 0) {
+                const tableData = allEnemies
+                    .filter(e => e.enemy.units.gte(MIN_TARGET_UNITS))
+                    .slice(0, 10)
+                    .map(e => ({
+                        Stack: e.id,
+                        Units: e.enemy.units.toString(),
+                        Owner: e.enemy.occupant.slice(0, 6) + "..."
+                    }));
+                console.log("\n>> TARGET RADAR:");
+                console.table(tableData);
+            }
+
             const actionable = allEnemies.filter(e => e.enemy.units.gte(MIN_TARGET_UNITS)).sort((a,b) => b.enemy.units.sub(a.enemy.units))[0];
 
             if (hubIntruders.length > 0) {
                 const intruder = hubIntruders[0];
                 const spawnAmt = intruder.units.mul(SPAWN_MULTIPLIER).add(SPAWN_BUFFER);
                 if (myHubState.units.lte(intruder.units)) {
-                    if (killBalance.gte(SPAWN_COST.mul(spawnAmt)) && ethBalance.gt(0)) {
-                        console.log(`[DEFENSE] Spawning ${spawnAmt.toString()} units...`);
-                        await (await killGame.connect(wallet).spawn(HUB_STACK, spawnAmt, { gasLimit: 800000 })).wait();
-                    }
+                    console.log(`[DEFENSE] Spawning ${spawnAmt.toString()} units...`);
+                    await (await killGame.connect(wallet).spawn(HUB_STACK, spawnAmt, { gasLimit: 800000 })).wait();
                 }
                 const updated = await killGame.getFullStack(HUB_STACK);
                 const me = updated.find(it => it.occupant.toLowerCase() === address.toLowerCase());
@@ -108,15 +121,9 @@ async function main() {
                 }
             } 
             else if (actionable) {
-                const spawnAmt = actionable.enemy.units.mul(SPAWN_MULTIPLIER).add(SPAWY_BUFFER || 1000);
-                const requiredKill = SPAWN_COST.mul(spawnAmt);
-
-                if (killBalance.lt(requiredKill)) {
-                    console.log(`[SKIP] Insufficient KILL for attack.`);
-                } else if (ethBalance.lt(ethers.utils.parseEther("0.0015"))) {
-                    console.log(`[SKIP] ETH Gas too low for attack.`);
-                } else {
-                    console.log(`[ATTACK] Stack ${actionable.id} | Enemy: ${actionable.enemy.units.toString()} | Spawning: ${spawnAmt.toString()}`);
+                const spawnAmt = actionable.enemy.units.mul(SPAWN_MULTIPLIER).add(SPAWN_BUFFER);
+                if (killBalance.gte(SPAWN_COST.mul(spawnAmt))) {
+                    console.log(`[ATTACK] Stack ${actionable.id} | Spawning ${spawnAmt.toString()} units...`);
                     await (await killGame.connect(wallet).spawn(actionable.id, spawnAmt, { gasLimit: 800000 })).wait();
                     const fresh = await killGame.getFullStack(actionable.id);
                     const me = fresh.find(it => it.occupant.toLowerCase() === address.toLowerCase());
@@ -130,11 +137,6 @@ async function main() {
                 const next = getStepTowardHub(s.id, HUB_STACK);
                 console.log(`[MOVE] Straggler ${s.id} -> ${next}`);
                 await (await killGame.connect(wallet).move(s.id, next, s.units, s.reapers, { gasLimit: 500000 })).wait();
-            }
-
-            if (allEnemies.length > 0) {
-                console.log("\n>> MAP ENEMIES:");
-                console.table(allEnemies.slice(0, 5).map(e => ({ Stack: e.id, Units: e.enemy.units.toString(), Target: e.enemy.units.gte(MIN_TARGET_UNITS) ? "YES" : "NO" })));
             }
 
         } catch (err) { console.error("\n[RUNTIME ERROR]", err.message); }
