@@ -18,26 +18,26 @@ async function main() {
     const killToken = await KillToken.attach(KILL_TOKEN);
 
     const [owner] = await ethers.getSigners();
-    // //444M game contract
-    // await killToken.mint(KILL_GAME, "444000000000000000000000000");
+    //4440M game contract
+    await killToken.mint(KILL_GAME, "4440000000000000000000000000");
 
-    // //10M agent0
-    // await killToken.mint(PUBLIC_KEY, "10000000000000000000000000");
+    //100M agent0
+    await killToken.mint(PUBLIC_KEY, "100000000000000000000000000");
 
-    // //5M agent1
-    // await killToken.mint(AGENT1_PUBLIC_KEY, "5000000000000000000000000");
+    // //50M agent1
+    // await killToken.mint(AGENT1_PUBLIC_KEY, "50000000000000000000000000");
 
-    // //1M agent2
+    // //10M agent2
     // await killToken.mint(AGENT2_PUBLIC_KEY, "1000000000000000000000000");
 
-    // //500k agent3
-    // await killToken.mint(AGENT3_PUBLIC_KEY, "500000000000000000000000");
+    //100M agent3
+    await killToken.mint(AGENT3_PUBLIC_KEY, "100000000000000000000000000");
 
     // //100k agent4
     // await killToken.mint(AGENT4_PUBLIC_KEY, "100000000000000000000000");
 
-    //50k agent5
-    await killToken.mint(MAX_PUB, "10000000000000000000000000");
+    //100M max
+    await killToken.mint(MAX_PUB, "100000000000000000000000000");
     console.log("done funding contracts and agents");
 
 }

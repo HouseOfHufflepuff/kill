@@ -11,10 +11,6 @@ async function countdown(seconds) {
     process.stdout.write('\r\x1b[K');
 }
 
-/**
- * Implements the exact _isAdjacent logic from the contract
- * to find neighbors in the 6x6x6 grid.
- */
 function getNeighbors(hubId) {
     const neighbors = [];
     const checkAdjacent = (c1, c2) => {
@@ -22,39 +18,49 @@ function getNeighbors(hubId) {
         const v2 = c2 - 1;
         const x1 = v1 % 6; const y1 = Math.floor(v1 / 6) % 6; const z1 = Math.floor(v1 / 36);
         const x2 = v2 % 6; const y2 = Math.floor(v2 / 6) % 6; const z2 = Math.floor(v2 / 36);
-        
         const dist = Math.abs(x1 - x2) + Math.abs(y1 - y2) + Math.abs(z1 - z2);
         return dist === 1;
     };
-
-    // Scan all possible IDs in the 6x6x6 space (1 to 216)
     for (let i = 1; i <= 216; i++) {
         if (i === hubId) continue;
-        if (checkAdjacent(hubId, i)) {
-            neighbors.push(i);
-        }
+        if (checkAdjacent(hubId, i)) neighbors.push(i);
     }
     return neighbors;
 }
 
 async function main() {
-    if (!process.env.FORTRESS_PK) {
-        throw new Error("Missing FORTRESS_PK in .env file");
-    }
+    if (!process.env.FORTRESS_PK) throw new Error("Missing FORTRESS_PK in .env file");
     
     const wallet = new ethers.Wallet(process.env.FORTRESS_PK, ethers.provider);
     const address = wallet.address;
 
-    const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
+    const configPath = path.join(__dirname, "config.json");
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
     const { kill_game_addr, multicall_addr } = config.network;
     const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, REAPER_MULTIPLE, LOOP_DELAY_SECONDS } = config.settings;
 
+    // Initialize Game Contract
     const killGame = await ethers.getContractAt("KILLGame", kill_game_addr);
+    
+    // Automatically fetch Token Address from Game Contract to prevent "undefined" errors
+    console.log("[INITIALIZING] Fetching token address from contract...");
+    const killTokenAddr = await killGame.killToken(); 
+    const killToken = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", killTokenAddr);
+
     const multicall = new ethers.Contract(
         multicall_addr, 
         ["function aggregate(tuple(address target, bytes callData)[] calls) public view returns (uint256 blockNumber, bytes[] returnData)"], 
         wallet
     );
+
+    // --- AUTO-APPROVAL CHECK ---
+    const allowance = await killToken.allowance(address, kill_game_addr);
+    if (allowance.lt(ethers.utils.parseEther("1000000"))) {
+        console.log("[MAINTENANCE] Allowance low. Approving KILLGame...");
+        const tx = await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256);
+        await tx.wait();
+        console.log("[SUCCESS] Unlimited allowance granted.");
+    }
 
     const TOPUP_THRESHOLD = TARGET_UNITS - REPLENISH_AMT;
     const NEIGHBORS = getNeighbors(HUB_STACK);
@@ -63,6 +69,7 @@ async function main() {
         console.clear();
         console.log(`\n--- FORTRESS AGENT ONLINE ---`);
         console.log(`HUB: ${HUB_STACK} | OPERATING AS: ${address}`);
+        console.log(`TOKEN: ${killTokenAddr}`);
         console.log(`PERIMETER: [${NEIGHBORS.join(", ")}]\n`);
 
         try {

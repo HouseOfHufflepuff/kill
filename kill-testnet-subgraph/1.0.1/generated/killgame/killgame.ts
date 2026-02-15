@@ -300,6 +300,28 @@ export class TransferSingle__Params {
   }
 }
 
+export class TreasuryBpsUpdated extends ethereum.Event {
+  get params(): TreasuryBpsUpdated__Params {
+    return new TreasuryBpsUpdated__Params(this);
+  }
+}
+
+export class TreasuryBpsUpdated__Params {
+  _event: TreasuryBpsUpdated;
+
+  constructor(event: TreasuryBpsUpdated) {
+    this._event = event;
+  }
+
+  get oldBps(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get newBps(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+}
+
 export class URI extends ethereum.Event {
   get params(): URI__Params {
     return new URI__Params(this);
@@ -448,21 +470,6 @@ export class killgame extends ethereum.SmartContract {
 
   try_SPAWN_COST(): ethereum.CallResult<BigInt> {
     let result = super.tryCall("SPAWN_COST", "SPAWN_COST():(uint256)", []);
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  TREASURY_BPS(): BigInt {
-    let result = super.call("TREASURY_BPS", "TREASURY_BPS():(uint256)", []);
-
-    return result[0].toBigInt();
-  }
-
-  try_TREASURY_BPS(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall("TREASURY_BPS", "TREASURY_BPS():(uint256)", []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -940,6 +947,21 @@ export class killgame extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
+  treasuryBps(): BigInt {
+    let result = super.call("treasuryBps", "treasuryBps():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_treasuryBps(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall("treasuryBps", "treasuryBps():(uint256)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   uri(param0: BigInt): string {
     let result = super.call("uri", "uri(uint256):(string)", [
       ethereum.Value.fromUnsignedBigInt(param0),
@@ -1256,6 +1278,36 @@ export class SetApprovalForAllCall__Outputs {
   _call: SetApprovalForAllCall;
 
   constructor(call: SetApprovalForAllCall) {
+    this._call = call;
+  }
+}
+
+export class SetTreasuryBpsCall extends ethereum.Call {
+  get inputs(): SetTreasuryBpsCall__Inputs {
+    return new SetTreasuryBpsCall__Inputs(this);
+  }
+
+  get outputs(): SetTreasuryBpsCall__Outputs {
+    return new SetTreasuryBpsCall__Outputs(this);
+  }
+}
+
+export class SetTreasuryBpsCall__Inputs {
+  _call: SetTreasuryBpsCall;
+
+  constructor(call: SetTreasuryBpsCall) {
+    this._call = call;
+  }
+
+  get _newBps(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+}
+
+export class SetTreasuryBpsCall__Outputs {
+  _call: SetTreasuryBpsCall;
+
+  constructor(call: SetTreasuryBpsCall) {
     this._call = call;
   }
 }

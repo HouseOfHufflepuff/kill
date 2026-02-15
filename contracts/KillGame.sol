@@ -187,6 +187,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     /**
      * @dev Spawn standard units with Reaper bonus logic.
+     * Logic updated to calculate reapers directly from amount (amount / 666).
      */
     function spawn(uint16 stackId, uint256 amount) external nonReentrant {
         require(stackId > 0 && stackId <= 216, "Invalid Stack");
@@ -194,16 +195,17 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         
         require(killToken.transferFrom(msg.sender, address(this), totalCost), "Pay fail");
         
-        uint256 burnAmt = (totalCost * BURN_BPS) / 10000;
-        uint256 treasuryAmt = totalCost - burnAmt;
+        unchecked {
+            uint256 burnAmt = (totalCost * BURN_BPS) / 10000;
+            uint256 treasuryAmt = totalCost - burnAmt;
+            
+            treasuryBalance += treasuryAmt;
+            totalKillBurned += burnAmt; 
+            totalUnitsMinted += amount;
+        }
         
-        treasuryBalance += treasuryAmt;
-        totalKillBurned += burnAmt; 
-        
-        uint256 oldTotal = totalUnitsMinted;
-        totalUnitsMinted += amount;
-        
-        uint256 reaperCount = (totalUnitsMinted / 666) - (oldTotal / 666);
+        // FIXED: Direct calculation for Reapers (e.g., 333,333 / 666 = 500)
+        uint256 reaperCount = amount / 666;
 
         _mintAndReg(msg.sender, uint256(stackId), amount);
         
@@ -224,11 +226,13 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         
         require(killToken.transferFrom(msg.sender, address(this), MOVE_COST), "Pay fail");
 
-        uint256 burnAmt = (MOVE_COST * BURN_BPS) / 10000;
-        uint256 treasuryAmt = MOVE_COST - burnAmt;
+        unchecked {
+            uint256 burnAmt = (MOVE_COST * BURN_BPS) / 10000;
+            uint256 treasuryAmt = MOVE_COST - burnAmt;
 
-        treasuryBalance += treasuryAmt;
-        totalKillBurned += burnAmt;
+            treasuryBalance += treasuryAmt;
+            totalKillBurned += burnAmt;
+        }
 
         if (units > 0) _moveLogic(uint256(fromStack), uint256(toStack), units);
         if (reaper > 0) _moveLogic(uint256(fromStack) + 216, uint256(toStack) + 216, reaper);
@@ -295,8 +299,10 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     }
 
     function _updateGlobalStats(LossReport memory loss) internal {
-        totalUnitsKilled += (loss.aUnits + loss.tUnits);
-        totalReaperKilled += (loss.aReaper + loss.tReaper);
+        unchecked {
+            totalUnitsKilled += (loss.aUnits + loss.tUnits);
+            totalReaperKilled += (loss.aReaper + loss.tReaper);
+        }
     }
 
     function _mintAndReg(address to, uint256 id, uint256 amt) internal {

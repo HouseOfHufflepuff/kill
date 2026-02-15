@@ -9,13 +9,13 @@ describe("KILLGame: Full Suite", function () {
     
     const KillToken = await ethers.getContractFactory("KILLToken"); 
     killToken = await KillToken.deploy();
-    await killToken.deployed(); // v5 syntax
+    await killToken.deployed(); 
 
     const KILLGame = await ethers.getContractFactory("KILLGame");
     killGame = await KILLGame.deploy(killToken.address);
-    await killGame.deployed(); // v5 syntax
+    await killGame.deployed(); 
 
-    const amount = ethers.utils.parseEther("100000"); 
+    const amount = ethers.utils.parseEther("10000000"); // Increased for bulk test
     await killToken.mint(userA.address, amount);
     await killToken.mint(userB.address, amount);
     await killToken.connect(userA).approve(killGame.address, amount);
@@ -27,12 +27,10 @@ describe("KILLGame: Full Suite", function () {
       await expect(killGame.connect(owner).setTreasuryBps(5000))
         .to.emit(killGame, "TreasuryBpsUpdated")
         .withArgs(2500, 5000);
-      
       expect(await killGame.treasuryBps()).to.equal(5000);
     });
 
     it("17. should revert if a non-owner tries to change treasuryBps", async function () {
-      // Custom Error handling works in v5 if using recent @nomicfoundation/hardhat-chai-matchers
       await expect(killGame.connect(userA).setTreasuryBps(5000))
         .to.be.revertedWithCustomError(killGame, "OwnableUnauthorizedAccount")
         .withArgs(userA.address);
@@ -41,23 +39,18 @@ describe("KILLGame: Full Suite", function () {
     it("18. should correctly scale pending rewards when treasuryBps is updated", async function () {
       await killGame.connect(userA).spawn(1, 10);
       for(let i=0; i<10; i++) await ethers.provider.send("evm_mine");
-
       const pendingOld = await killGame.getPendingBounty(userA.address, 1);
-      
       await killGame.connect(owner).setTreasuryBps(5000); 
       const pendingNew = await killGame.getPendingBounty(userA.address, 1);
-      
       expect(pendingNew).to.be.gt(pendingOld.mul(2));
     });
 
     it("19. should allow owner to withdraw tokens from treasury", async function () {
       await killGame.connect(userA).spawn(1, 100);
       const amount = ethers.utils.parseEther("500");
-      
       const ownerBalanceBefore = await killToken.balanceOf(owner.address);
       await killGame.connect(owner).adminWithdraw(amount);
       const ownerBalanceAfter = await killToken.balanceOf(owner.address);
-      
       expect(ownerBalanceAfter.sub(ownerBalanceBefore)).to.equal(amount);
     });
 
@@ -70,30 +63,23 @@ describe("KILLGame: Full Suite", function () {
 
   describe("Bi-directional Looting (Combat Logic)", function () {
     const cube = 1;
-
     it("1. should reward the defender when they successfully repel an attack", async function () {
       await killGame.connect(userA).spawn(cube, 100);
       await killGame.connect(userB).spawn(cube, 10);
-      
       const defenderBalBefore = await killToken.balanceOf(userA.address);
       await killGame.connect(userB).kill(userA.address, cube, 10, 0);
       const defenderBalAfter = await killToken.balanceOf(userA.address);
-      
-      const expectedReward = ethers.utils.parseEther("75"); 
-      expect(defenderBalAfter.sub(defenderBalBefore)).to.equal(expectedReward);
+      expect(defenderBalAfter.sub(defenderBalBefore)).to.equal(ethers.utils.parseEther("75"));
     });
 
     it("2. should reward the attacker for partial damage dealt", async function () {
       await killGame.connect(userA).spawn(cube, 10);
       for(let i=0; i<10; i++) await ethers.provider.send("evm_mine");
-      
       const pendingBefore = await killGame.getPendingBounty(userA.address, cube);
       await killGame.connect(userB).spawn(cube, 100);
-
       const userBBalBefore = await killToken.balanceOf(userB.address);
       await killGame.connect(userB).kill(userA.address, cube, 100, 0);
       const userBBalAfter = await killToken.balanceOf(userB.address);
-
       const expectedPayout = pendingBefore.mul(7500).div(10000);
       expect(userBBalAfter.sub(userBBalBefore)).to.be.closeTo(expectedPayout, ethers.utils.parseEther("0.1"));
     });
@@ -109,7 +95,6 @@ describe("KILLGame: Full Suite", function () {
 
   describe("Combat Mechanics Deep Dive", function () {
     const cube = 1;
-
     it("4. should allow a defender to win if they have more power", async function () {
       await killGame.connect(userA).spawn(cube, 50);
       await killGame.connect(userB).spawn(cube, 10);
@@ -126,7 +111,7 @@ describe("KILLGame: Full Suite", function () {
     });
   });
 
-  describe("Spawn Mechanics", function () {
+  describe("Spawn Mechanics & Bulk Requirements", function () {
     it("6. should mint standard units and set birth block", async function () {
       await killGame.connect(userA).spawn(1, 10);
       expect(await killGame.getBirthBlock(userA.address, 1)).to.be.gt(0);
@@ -142,10 +127,18 @@ describe("KILLGame: Full Suite", function () {
       expect(await killGame.balanceOf(userA.address, 217)).to.equal(2);
     });
 
-    it("9. should award a Reaper when incremental spawns cross the 666 mark", async function () {
+    it("9. should NOT award a Reaper for incremental spawns (New Scalable Logic)", async function () {
       await killGame.connect(userA).spawn(1, 665);
       await killGame.connect(userA).spawn(1, 1);
-      expect(await killGame.balanceOf(userA.address, 217)).to.equal(1);
+      // Under new logic, 1/666 = 0. Incremental spawns don't trigger reapers.
+      expect(await killGame.balanceOf(userA.address, 217)).to.equal(0);
+    });
+
+    it("21. should award exactly 500 Reapers when spawning 333333 units", async function () {
+      const bulkAmount = 333333;
+      await killGame.connect(userA).spawn(1, bulkAmount);
+      // 333,333 / 666 = 500.5 -> rounds down to 500
+      expect(await killGame.balanceOf(userA.address, 217)).to.equal(500);
     });
   });
 
