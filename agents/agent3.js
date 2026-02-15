@@ -14,7 +14,7 @@ async function main() {
     const killGame = await ethers.getContractAt("KILLGame", KILL_GAME_ADDR);
     const killToken = new ethers.Contract(await killGame.killToken(), ERC20_ABI, agent3Wallet);
 
-    const STACK_A = 179;
+    const STACK_A = 138;
     const STACK_B = 178;
     const SPAWN_AMOUNT = 300;
     const wait = () => new Promise(r => setTimeout(r, 12000));
@@ -45,30 +45,30 @@ async function main() {
         console.log("Waiting 12s...");
         await wait();
 
-        // STEP 2: MOVE TO 115
-        console.log(`[2/3] Moving to Stack ${STACK_B}...`);
-        const move1Tx = await killGame.connect(agent3Wallet).move(
-            STACK_A, 
-            STACK_B, 
-            actualUnits, 
-            actualReapers, 
-            { gasLimit: 1000000 }
-        );
-        await move1Tx.wait();
+        // // STEP 2: MOVE TO 115
+        // console.log(`[2/3] Moving to Stack ${STACK_B}...`);
+        // const move1Tx = await killGame.connect(agent3Wallet).move(
+        //     STACK_A, 
+        //     STACK_B, 
+        //     actualUnits, 
+        //     actualReapers, 
+        //     { gasLimit: 1000000 }
+        // );
+        // await move1Tx.wait();
 
-        console.log("Waiting 12s...");
-        await wait();
+        // console.log("Waiting 12s...");
+        // await wait();
 
-        // STEP 3: MOVE BACK TO 121
-        console.log(`[3/3] Moving back to Stack ${STACK_A}...`);
-        const move2Tx = await killGame.connect(agent3Wallet).move(
-            STACK_B, 
-            STACK_A, 
-            actualUnits, 
-            actualReapers, 
-            { gasLimit: 1000000 }
-        );
-        await move2Tx.wait();
+        // // STEP 3: MOVE BACK TO 121
+        // console.log(`[3/3] Moving back to Stack ${STACK_A}...`);
+        // const move2Tx = await killGame.connect(agent3Wallet).move(
+        //     STACK_B, 
+        //     STACK_A, 
+        //     actualUnits, 
+        //     actualReapers, 
+        //     { gasLimit: 1000000 }
+        // );
+        // await move2Tx.wait();
 
         console.log(`\n[SUCCESS] Sequence Complete.`);
     } catch (error) {

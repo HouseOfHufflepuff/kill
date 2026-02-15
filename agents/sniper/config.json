@@ -7,9 +7,10 @@
   },
   "settings": {
     "HUB_STACK": 125,
-    "MIN_TARGET_UNITS": 100,
+    "MIN_TARGET_UNITS": 1,
     "MAX_TARGET_UNITS": 250000,
     "SPAWN_BUFFER": 500,
-    "LOOP_DELAY_SECONDS": 12
+    "LOOP_DELAY_SECONDS": 12,
+    "SPAWN_MULTIPLIER": 3
   }
 }
