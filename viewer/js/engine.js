@@ -75,7 +75,6 @@ function updateNodeParticles(id, units, reaperCount) {
     const node = document.getElementById(`node-${id}`);
     if (!node) return;
     
-    // Calculate targets for unit and reaper visuals
     const targetUnitDots = Math.min(Math.floor(units / 1000), 40);
     const targetReaperDots = Math.min(reaperCount, 40); 
     
@@ -131,7 +130,6 @@ function triggerPulse(id, type) {
     const pulseClass = (type === 'kill') ? 'pulse-kill' : 'pulse-cyan';
     node.classList.remove('pulse-kill', 'pulse-cyan');
     
-    // Reflow to restart animation
     void node.offsetWidth; 
     node.classList.add(pulseClass);
 }
@@ -172,11 +170,17 @@ function showTooltip(e, id) {
 /**
  * UI: Add entry to the system log feed
  */
-function addLog(blockNum, msg, className) {
+function addLog(blockNum, msg, className, subMsg = null) {
     if (!logFeed) return;
     const entry = document.createElement('div');
     entry.className = `log-entry ${className}`;
-    entry.innerHTML = `<span class="log-block">${blockNum}</span> > ${msg}`;
+    
+    let innerHTML = `<span class="log-block">${blockNum}</span> > ${msg}`;
+    if (subMsg) {
+        innerHTML += `<div class="log-subtext" style="font-size:0.65rem; opacity:0.7; border-left: 1px solid currentColor; margin: 4px 0 2px 42px; padding-left: 8px; font-family:monospace; white-space:pre-wrap;">${subMsg}</div>`;
+    }
+    
+    entry.innerHTML = innerHTML;
     logFeed.appendChild(entry);
     
     if (logFeed.childNodes.length > 50) {

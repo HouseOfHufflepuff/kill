@@ -91,43 +91,48 @@ async function syncData() {
     try {
         const query = `{
             globalStat(id: "current") { 
-            totalUnitsKilled 
-            totalReaperKilled 
-            killBurned 
+                totalUnitsKilled 
+                totalReaperKilled 
+                killBurned 
             }
             stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 100) { 
-            id 
-            totalStandardUnits 
-            totalBoostedUnits 
-            birthBlock 
+                id 
+                totalStandardUnits 
+                totalBoostedUnits 
+                birthBlock 
             }
             killeds(first: 50, orderBy: block_number, orderDirection: desc) { 
-            id 
-            attacker 
-            targetUnitsLost 
-            block_number 
-            stackId 
+                id 
+                attacker 
+                stackId 
+                attackerUnitsLost
+                attackerReaperLost
+                targetUnitsLost 
+                targetReaperLost
+                netBounty
+                block_number 
             }
             spawneds(first: 50, orderBy: block_number, orderDirection: desc) { 
-            id 
-            agent 
-            stackId 
-            units
-            reapers
-            block_number 
+                id 
+                agent 
+                stackId 
+                units
+                reapers
+                block_number 
             }
             moveds(first: 50, orderBy: block_number, orderDirection: desc) { 
-            id 
-            agent 
-            fromStack 
-            toStack 
-            units 
-            block_number 
+                id 
+                agent 
+                fromStack 
+                toStack 
+                units 
+                reaper
+                block_number 
             }
             agents(first: 10) {
-            id
-            totalSpent
-            totalEarned
+                id
+                totalSpent
+                totalEarned
             }
         }`;
 
@@ -161,7 +166,11 @@ async function syncData() {
             if (killBurnedEl) killBurnedEl.innerText = `${parseFloat(burned).toLocaleString(undefined, {minimumFractionDigits: 3})} KILL`;
         }
 
-        const events = [...spawneds.map(s => ({...s, type: 'spawn'})), ...killeds.map(k => ({...k, type: 'kill'})), ...moveds.map(m => ({...m, type: 'move'}))].sort((a, b) => Number(a.block_number) - Number(b.block_number));
+        const events = [
+            ...spawneds.map(s => ({...s, type: 'spawn'})), 
+            ...killeds.map(k => ({...k, type: 'kill'})), 
+            ...moveds.map(m => ({...m, type: 'move'}))
+        ].sort((a, b) => Number(a.block_number) - Number(b.block_number));
 
         events.forEach(evt => {
             const addr = (evt.type === 'kill') ? evt.attacker : evt.agent;
@@ -173,9 +182,25 @@ async function syncData() {
                     addLog(evt.block_number, `[SPAWN] ${evt.agent.substring(0,6)} (+${evt.reapers} REAPER)`, 'log-spawn');
                     triggerPulse(evt.stackId, 'spawn');
                 } else if (evt.type === 'kill') {
-                    const amount = parseInt(evt.targetUnitsLost);
-                    agentPnL[addr].earned += amount;
-                    addLog(evt.block_number, `[KILL] ${evt.attacker.substring(0,6)} reaped ${amount}`, 'log-kill');
+                    const uLost = parseInt(evt.targetUnitsLost || 0);
+                    const rLost = parseInt(evt.targetReaperLost || 0);
+                    const rawBounty = evt.netBounty || "0";
+                    const formattedBounty = parseFloat(ethers.formatEther(rawBounty));
+                    
+                    const stack = stackRegistry[evt.stackId] || { units: "0", reaper: "0" };
+                    const defensePower = parseInt(stack.units) + (parseInt(stack.reaper) * 666);
+                    const offensePower = uLost + (rLost * 666);
+                    
+                    agentPnL[addr].earned += formattedBounty;
+                    
+                    const offWon = formattedBounty > 0 ? `<span style="color:var(--cyan)">${formatValue(formattedBounty)} KILL</span>` : `<span style="color:#888">0 KILL</span>`;
+                    const defWon = `<span style="color:#888">0 KILL</span>`;
+                    
+                    const logMsg = `[KILL] ${evt.attacker.substring(0,6)} reaped STACK_${evt.stackId}`;
+                    const line2 = `OFFENSE: ${offensePower.toLocaleString()} | DEFENSE: ${defensePower.toLocaleString()}`;
+                    const line3 = `OFFENSE WON: ${offWon} (${uLost.toLocaleString()}U, ${rLost}R) | DEFENSE WON: ${defWon}`;
+                    
+                    addLog(evt.block_number, logMsg, 'log-kill', `${line2}\n${line3}`);
                     triggerPulse(evt.stackId, 'kill');
                 } else if (evt.type === 'move') {
                     addLog(evt.block_number, `[MOVE] ${evt.agent.substring(0,6)} shifted ${evt.units} to STACK_${evt.toStack}`, 'log-move');

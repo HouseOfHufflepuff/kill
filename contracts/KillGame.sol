@@ -12,8 +12,32 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * Features bi-directional looting, adjacency-based movement, and scalable rewards.
  */
 contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
+    // --- STRUCTS ---
+    struct ReaperStack { uint256 birthBlock; }
+    struct LossReport { uint256 aUnits; uint256 aReaper; uint256 tUnits; uint256 tReaper; }
+    
+    struct BattleSummary {
+        uint256 attackerUnitsSent;    // RESTORED
+        uint256 attackerReaperSent;   // RESTORED
+        uint256 attackerUnitsLost;
+        uint256 attackerReaperLost;
+        uint256 targetUnitsLost;
+        uint256 targetReaperLost;
+        uint256 initialDefenderUnits;
+        uint256 initialDefenderReaper;
+        uint256 attackerBounty;       // Actual KILL Token Amount
+        uint256 defenderBounty;       // Actual KILL Token Amount
+    }
+
+    struct StackInfo {
+        address occupant;
+        uint256 units;
+        uint256 reapers;
+        uint256 age;
+        uint256 pendingBounty;
+    }
+
     // --- EVENTS ---
-    // Added 'reapers' field to Spawned event to ensure Subgraph/API visibility
     event Spawned(address indexed agent, uint256 indexed stackId, uint256 units, uint256 reapers, uint256 birthBlock);
     
     event Moved(address indexed agent, uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper, uint256 birthBlock);
@@ -22,11 +46,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         address indexed attacker, 
         address indexed target, 
         uint16 indexed stackId, 
-        uint256 attackerUnitsLost, 
-        uint256 attackerReaperLost, 
-        uint256 targetUnitsLost, 
-        uint256 targetReaperLost, 
-        uint256 netBounty,
+        BattleSummary summary,
         uint256 targetBirthBlock
     );
     
@@ -39,14 +59,11 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     // --- ECONOMIC CONSTANTS & VARIABLES ---
     uint256 public constant BURN_BPS = 666; 
     uint256 public constant SPAWN_COST = 10 * 10**18;
-    uint256 public constant REAPER_SPAWN_COST = 6660 * 10**18; // 666 * SPAWN_COST
+    uint256 public constant REAPER_SPAWN_COST = 6660 * 10**18; 
     uint256 public constant MOVE_COST = 10 * 10**18;
     
-    // Adjustable treasury emission rate
-    uint256 public treasuryBps = 2500; // 25% initial
-    
-    uint256 public constant BURN_OF_TREASURY_BPS = 666; // 6.66% of the 25%
-    uint256 public constant SENDER_BPS = 7500; // 75%
+    uint256 public treasuryBps = 2500; 
+    uint256 public constant SENDER_BPS = 7500; 
     
     IERC20 public immutable killToken;
     uint256 public treasuryBalance;
@@ -58,17 +75,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     uint256 public totalKillBurned;
 
     // --- STORAGE ---
-    struct ReaperStack { uint256 birthBlock; }
-    struct LossReport { uint256 aUnits; uint256 aReaper; uint256 tUnits; uint256 tReaper; }
-
-    struct StackInfo {
-        address occupant;
-        uint256 units;
-        uint256 reapers;
-        uint256 age;
-        uint256 pendingBounty;
-    }
-
     mapping(address => mapping(uint256 => ReaperStack)) public agentStacks;
     mapping(uint256 => address[]) private stackOccupants;
     mapping(uint256 => mapping(address => bool)) private isOccupying;
@@ -80,9 +86,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     // --- ADMIN FUNCTIONS ---
 
-    /**
-     * @dev Adjust the emission rate. Higher BPS = Higher rewards for players.
-     */
     function setTreasuryBps(uint256 _newBps) external onlyOwner {
         require(_newBps <= 10000, "Max 100%");
         uint256 oldBps = treasuryBps;
@@ -90,9 +93,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         emit TreasuryBpsUpdated(oldBps, _newBps);
     }
 
-    /**
-     * @dev Manual treasury withdrawal for owner/emergency use.
-     */
     function adminWithdraw(uint256 amt) external onlyOwner { 
         killToken.transfer(msg.sender, amt); 
     }
@@ -103,9 +103,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         return agentStacks[agent][id].birthBlock;
     }
 
-    /**
-     * @dev Returns full details of all occupants in a specific cube (stack).
-     */
     function getFullStack(uint16 stackId) external view returns (StackInfo[] memory) {
         uint256 unitId = uint256(stackId);
         uint256 reaperId = unitId + 216;
@@ -121,15 +118,11 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         for (uint256 i = 0; i < occ.length; i++) {
             address target = occ[i];
             if (isOccupying[unitId][target] || isOccupying[reaperId][target]) {
-                uint256 u = balanceOf(target, unitId);
-                uint256 r = balanceOf(target, reaperId);
-                uint256 birth = agentStacks[target][unitId].birthBlock;
-                
                 info[idx] = StackInfo({
                     occupant: target,
-                    units: u,
-                    reapers: r,
-                    age: birth > 0 ? block.number - birth : 0,
+                    units: balanceOf(target, unitId),
+                    reapers: balanceOf(target, reaperId),
+                    age: agentStacks[target][unitId].birthBlock > 0 ? block.number - agentStacks[target][unitId].birthBlock : 0,
                     pendingBounty: getPendingBounty(target, unitId) + getPendingBounty(target, reaperId)
                 });
                 idx++;
@@ -138,26 +131,16 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         return info;
     }
 
-    /**
-     * @dev Uses the actual token balance of the contract as the treasury.
-     */
     function getPendingBounty(address agent, uint256 id) public view returns (uint256) {
         uint256 birth = agentStacks[agent][id].birthBlock;
         if(birth == 0 || block.number <= birth) return 0;
-
-        // Reference the actual token balance directly
         uint256 actualTreasury = killToken.balanceOf(address(this));
         uint256 age = block.number - birth;
-        
         return (actualTreasury * age * treasuryBps) / 10000000000; 
     }
 
     // --- CORE GAME LOGIC ---
 
-    /**
-    * @dev KILL function v2.1 - Bi-directional Looting (Stack-Safe)
-    * Solves combat between two agents and transfers bounties based on units lost.
-    */
     function kill(address target, uint16 stackId, uint256 sentUnits, uint256 sentReaper) 
         external 
         nonReentrant 
@@ -169,20 +152,33 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         require(balanceOf(msg.sender, unitId) >= sentUnits && 
                 balanceOf(msg.sender, reaperId) >= sentReaper, "Lack units");
 
+        BattleSummary memory sum;
+        sum.attackerUnitsSent = sentUnits;
+        sum.attackerReaperSent = sentReaper;
+        sum.initialDefenderUnits = balanceOf(target, unitId);
+        sum.initialDefenderReaper = balanceOf(target, reaperId);
         uint256 targetBirth = agentStacks[target][unitId].birthBlock; 
+
         LossReport memory loss = _resolveCombat(msg.sender, target, unitId, reaperId, sentUnits, sentReaper);
 
-        if (loss.tUnits == balanceOf(target, unitId)) isOccupying[unitId][target] = false;
-        if (loss.tReaper == balanceOf(target, reaperId)) isOccupying[reaperId][target] = false;
+        sum.attackerUnitsLost = loss.aUnits;
+        sum.attackerReaperLost = loss.aReaper;
+        sum.targetUnitsLost = loss.tUnits;
+        sum.targetReaperLost = loss.tReaper;
 
-        // Attacker Reward
+        // Cleanup occupancy
+        if (loss.tUnits == sum.initialDefenderUnits) isOccupying[unitId][target] = false;
+        if (loss.tReaper == sum.initialDefenderReaper) isOccupying[reaperId][target] = false;
+
+        // Attacker Loot
         if (loss.tUnits > 0 || loss.tReaper > 0) {
             attackerBounty = _calculateLoot(target, unitId, loss.tUnits, loss.tReaper);
             _transferBounty(msg.sender, attackerBounty);
             agentTotalProfit[msg.sender] += attackerBounty;
         }
+        sum.attackerBounty = attackerBounty;
 
-        // Defender Reward (75% of the attacker's lost unit value)
+        // Defender Rebate
         uint256 defenderBounty = 0;
         if (loss.aUnits > 0 || loss.aReaper > 0) {
             defenderBounty = (loss.aUnits * SPAWN_COST) + (loss.aReaper * REAPER_SPAWN_COST);
@@ -190,69 +186,52 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
             _transferBounty(target, defenderBounty);
             agentTotalProfit[target] += defenderBounty;
         }
+        sum.defenderBounty = defenderBounty;
 
         _updateGlobalStats(loss);
 
-        // Standard Burns
+        // State changes
         if (loss.tUnits > 0) _burn(target, unitId, loss.tUnits);
         if (loss.tReaper > 0) _burn(target, reaperId, loss.tReaper);
         if (loss.aUnits > 0) _burn(msg.sender, unitId, loss.aUnits);
         if (loss.aReaper > 0) _burn(msg.sender, reaperId, loss.aReaper);
 
-        emit Killed(msg.sender, target, stackId, loss.aUnits, loss.aReaper, loss.tUnits, loss.tReaper, attackerBounty, targetBirth);
+        emit Killed(msg.sender, target, stackId, sum, targetBirth);
         emit DefenderRewarded(target, defenderBounty);
         emit GlobalStats(totalUnitsKilled, totalReaperKilled, totalUnitsMinted * SPAWN_COST, totalKillExtracted, totalKillBurned);
         
         return attackerBounty;
     }
 
-    /**
-     * @dev Spawn standard units with Reaper bonus logic.
-     * Guaranteed 500 Reapers for 333,333 standard units.
-     */
     function spawn(uint16 stackId, uint256 amount) external nonReentrant {
         require(stackId > 0 && stackId <= 216, "Invalid Stack");
         uint256 totalCost = amount * SPAWN_COST;
-        
         require(killToken.transferFrom(msg.sender, address(this), totalCost), "Pay fail");
         
         unchecked {
             uint256 burnAmt = (totalCost * BURN_BPS) / 10000;
-            uint256 treasuryAmt = totalCost - burnAmt;
-            
-            treasuryBalance += treasuryAmt;
+            treasuryBalance += (totalCost - burnAmt);
             totalKillBurned += burnAmt; 
             totalUnitsMinted += amount;
         }
         
-        // Direct calculation: 333,333 / 666 = 500
         uint256 reaperCount = amount / 666;
-
         _mintAndReg(msg.sender, uint256(stackId), amount);
-        
         if (reaperCount > 0) {
             _mintAndReg(msg.sender, uint256(stackId) + 216, reaperCount);
         }
         
-        // Updated event emission with reaperCount for API indexing
         emit Spawned(msg.sender, stackId, amount, reaperCount, block.number);
         emit GlobalStats(totalUnitsKilled, totalReaperKilled, totalUnitsMinted * SPAWN_COST, totalKillExtracted, totalKillBurned);
     }
 
-    /**
-     * @dev Move function with BirthBlock reset logic.
-     */
     function move(uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper) external nonReentrant {
-        require(fromStack > 0 && fromStack <= 216, "Invalid From");
-        require(toStack > 0 && toStack <= 216 && _isAdjacent(fromStack, toStack), "Bad move");
-        
+        require(fromStack > 0 && fromStack <= 216 && toStack > 0 && toStack <= 216 && _isAdjacent(fromStack, toStack), "Bad move");
         require(killToken.transferFrom(msg.sender, address(this), MOVE_COST), "Pay fail");
 
         unchecked {
             uint256 burnAmt = (MOVE_COST * BURN_BPS) / 10000;
-            uint256 treasuryAmt = MOVE_COST - burnAmt;
-
-            treasuryBalance += treasuryAmt;
+            treasuryBalance += (MOVE_COST - burnAmt);
             totalKillBurned += burnAmt;
         }
 
@@ -265,21 +244,10 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     // --- INTERNAL HELPERS ---
 
-    /**
-    * @dev Internal combat resolution math.
-    */
-    function _resolveCombat(
-        address attacker, 
-        address target, 
-        uint256 uId, 
-        uint256 rId, 
-        uint256 sU, 
-        uint256 sR
-    ) internal view returns (LossReport memory loss) {
+    function _resolveCombat(address attacker, address target, uint256 uId, uint256 rId, uint256 sU, uint256 sR) internal view returns (LossReport memory loss) {
         uint256 atkP = sU + (sR * 666);
         uint256 defU = balanceOf(target, uId);
         uint256 defR = balanceOf(target, rId);
-        
         if (attacker == target) { defU -= sU; defR -= sR; }
 
         uint256 defP = (defU + (defR * 666)) * 110 / 100;
@@ -288,8 +256,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         if (atkP > defP) {
             loss.tUnits = defU;
             loss.tReaper = defR;
-            loss.aUnits = 0;
-            loss.aReaper = 0;
         } else {
             loss.aUnits = sU;
             loss.aReaper = sR;
@@ -301,36 +267,21 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         return loss;
     }
 
-/**
-     * @dev Separation of Base Harvest (100% of 2.5 KILL) and Age Bonus (75% of interest)
-     * This prevents the "2.5 KILL" refund from being taxed twice and aligns with your test expectations.
-     */
     function _calculateLoot(address target, uint256 uId, uint256 tU, uint256 tR) internal view returns (uint256) {
         uint256 totalPending = getPendingBounty(target, uId) + getPendingBounty(target, uId + 216);
         uint256 totalAtStake = balanceOf(target, uId) + (balanceOf(target, uId + 216) * 666);
         if (totalAtStake == 0) return 0;
-        
         uint256 damagePower = tU + (tR * 666);
-        
-        // 1. Time-based Loot (The "Bonus"): Attacker gets 75% of this.
         uint256 timeLoot = (totalPending * damagePower) / totalAtStake;
         uint256 attackerBonus = (timeLoot * SENDER_BPS) / 10000;
-
-        // 2. Base Harvest (The "Refund"): Attacker gets 100% of the 25% "unit scrap" value.
-        // Formula: Units Killed * 10 Cost * 25%
         uint256 baseHarvest = (damagePower * SPAWN_COST * 25) / 100;
-
         uint256 totalLoot = baseHarvest + attackerBonus;
-
-        // 3. Safety Guard: Max payout is 5% of treasury
         uint256 cap = killToken.balanceOf(address(this)) / 20;
         return totalLoot > cap ? cap : totalLoot;
     }
 
     function _transferBounty(address recipient, uint256 amount) internal {
         if (amount > 0) {
-            // No need to subtract from a state variable; just check liquidity
-            require(killToken.balanceOf(address(this)) >= amount, "Treasury empty");
             totalKillExtracted += amount;
             require(killToken.transfer(recipient, amount), "Payout fail");
         }
@@ -355,26 +306,20 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     function _moveLogic(uint256 fId, uint256 tId, uint256 amt) internal {
         require(balanceOf(msg.sender, fId) >= amt, "Insufficient units");
         _burn(msg.sender, fId, amt);
-        
         if (balanceOf(msg.sender, fId) == 0) {
             isOccupying[fId][msg.sender] = false;
             delete agentStacks[msg.sender][fId];
         }
-
         _mint(msg.sender, tId, amt, "");
         if (agentStacks[msg.sender][tId].birthBlock == 0) {
             agentStacks[msg.sender][tId].birthBlock = block.number;
         }
-
         if (!isOccupying[tId][msg.sender]) {
             stackOccupants[tId].push(msg.sender);
             isOccupying[tId][msg.sender] = true;
         }
     }
 
-    /**
-     * @dev Adjacency math for a 6x6x6 cube grid.
-     */
     function _isAdjacent(uint16 c1, uint16 c2) internal pure returns (bool) {
         uint16 v1 = c1 - 1; uint16 v2 = c2 - 1;
         int16 x1 = int16(v1 % 6); int16 y1 = int16((v1 / 6) % 6); int16 z1 = int16(v1 / 36);

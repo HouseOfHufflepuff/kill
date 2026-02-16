@@ -80,26 +80,18 @@ describe("KILLGame: Full Suite", function () {
     it("2. should reward the attacker for partial damage dealt", async function () {
       await killGame.connect(userA).spawn(cube, 10);
       for(let i=0; i<10; i++) await ethers.provider.send("evm_mine");
-      
       const pendingInterestAtSnapshot = await killGame.getPendingBounty(userA.address, cube);
       await killGame.connect(userB).spawn(cube, 100);
-      
-      // Math: Base Harvest (25 KILL) + 75% of Pending Interest
       const baseHarvest = ethers.utils.parseEther("25"); 
       const bonusShare = pendingInterestAtSnapshot.mul(7500).div(10000);
       const expectedAtSnapshot = baseHarvest.add(bonusShare);
-
       const userBBalBefore = await killToken.balanceOf(userB.address);
       const tx = await killGame.connect(userB).kill(userA.address, cube, 100, 0);
       const receipt = await tx.wait();
-      
       const event = receipt.events.find(e => e.event === 'Killed');
-      const actualBounty = event.args.netBounty;
-
+      const actualBounty = event.args.summary.attackerBounty;
       const userBBalAfter = await killToken.balanceOf(userB.address);
-
       expect(userBBalAfter.sub(userBBalBefore)).to.equal(actualBounty);
-      // Increased tolerance to 0.5 KILL to account for interest accrued during the 'kill' tx itself
       expect(actualBounty).to.be.closeTo(expectedAtSnapshot, ethers.utils.parseEther("0.5"));
     });
 
@@ -170,10 +162,10 @@ describe("KILLGame: Full Suite", function () {
 
     it("11. should NOT reset birth block if moving into a stack already occupied", async function () {
       await killGame.connect(userA).move(1, 2, 5, 0);
-      const firstBirth = await killGame.getBirthBlock(userA.address, 2);
+      const b1 = await killGame.getBirthBlock(userA.address, 2);
       await ethers.provider.send("evm_mine");
       await killGame.connect(userA).move(1, 2, 5, 0);
-      expect(await killGame.getBirthBlock(userA.address, 2)).to.equal(firstBirth);
+      expect(await killGame.getBirthBlock(userA.address, 2)).to.equal(b1);
     });
 
     it("12. should move units and set birth block at destination", async function () {
@@ -198,6 +190,73 @@ describe("KILLGame: Full Suite", function () {
       await killGame.connect(userB).spawn(1, 20);
       await killGame.connect(userB).kill(userA.address, 1, 20, 0);
       expect(await killGame.totalUnitsKilled()).to.equal(10);
+    });
+  });
+
+describe("Economic Simulation: Massive Treasury", function () {
+    // Shared logging helper for this block
+    const logSim = (title, s) => {
+      console.log(`\n--- ${title} ---`);
+      console.log("Attacker Units Sent:      ", s.attackerUnitsSent.toString());
+      console.log("Attacker Reaper Sent:     ", s.attackerReaperSent.toString());
+      console.log("Attacker Units Lost:      ", s.attackerUnitsLost.toString());
+      console.log("Attacker Reaper Lost:     ", s.attackerReaperLost.toString());
+      console.log("Target Units Lost:        ", s.targetUnitsLost.toString());
+      console.log("Target Reaper Lost:       ", s.targetReaperLost.toString());
+      console.log("Initial Defender Units:   ", s.initialDefenderUnits.toString());
+      console.log("Initial Defender Reaper:  ", s.initialDefenderReaper.toString());
+      console.log("Attacker Bounty:          ", ethers.utils.formatEther(s.attackerBounty), "KILL");
+      console.log("Defender Bounty:          ", ethers.utils.formatEther(s.defenderBounty), "KILL");
+      console.log("--------------------------------------------\n");
+    };
+
+    it("Should handle 4B KILL seed and display full combat summary", async function () {
+      const hugeSeed = ethers.utils.parseEther("4000000000"); 
+      await killToken.mint(owner.address, hugeSeed);
+      await killToken.connect(owner).transfer(killGame.address, hugeSeed);
+
+      await killGame.connect(userA).spawn(1, 666);
+      await killGame.connect(userB).spawn(1, 666);
+
+      for(let i=0; i<5; i++) await ethers.provider.send("evm_mine");
+
+      const tx = await killGame.connect(userB).kill(userA.address, 1, 666, 1);
+      const receipt = await tx.wait();
+      const event = receipt.events.find(e => e.event === 'Killed');
+      logSim("ECONOMIC SIMULATION: 4B SEED RESULTS", event.args.summary);
+
+      expect(event.args.summary.attackerBounty).to.be.gt(0);
+    });
+
+    it("SIM: Attacker sends 3x the Defender (Overwhelming Force)", async function () {
+      const cube = 50;
+      await killGame.connect(userA).spawn(cube, 100); // Defender
+      await killGame.connect(userB).spawn(cube, 300); // Attacker (3x)
+      
+      const tx = await killGame.connect(userB).kill(userA.address, cube, 300, 0);
+      const receipt = await tx.wait();
+      const event = receipt.events.find(e => e.event === 'Killed');
+      logSim("SIM: ATTACKER 3X FORCE", event.args.summary);
+      
+      // With 3x force, target should be wiped, attacker should lose nothing
+      expect(event.args.summary.targetUnitsLost).to.equal(100);
+      expect(event.args.summary.attackerUnitsLost).to.equal(0);
+    });
+
+    it("SIM: Defender has 3x the Attacker (Superior Defense)", async function () {
+      const cube = 51;
+      await killGame.connect(userA).spawn(cube, 300); // Defender (3x)
+      await killGame.connect(userB).spawn(cube, 100); // Attacker
+      
+      const tx = await killGame.connect(userB).kill(userA.address, cube, 100, 0);
+      const receipt = await tx.wait();
+      const event = receipt.events.find(e => e.event === 'Killed');
+      logSim("SIM: DEFENDER 3X FORCE", event.args.summary);
+      
+      // Attacker loses everything (100), Defender takes small partial loss
+      expect(event.args.summary.attackerUnitsLost).to.equal(100);
+      expect(event.args.summary.targetUnitsLost).to.be.gt(0);
+      expect(event.args.summary.targetUnitsLost).to.be.lt(100);
     });
   });
 });
