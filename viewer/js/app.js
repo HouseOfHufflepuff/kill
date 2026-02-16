@@ -457,12 +457,15 @@ function renderPnL(agents) {
         const spent = parseFloat(ethers.formatEther(a.totalSpent || "0"));
         const earned = parseFloat(ethers.formatEther(a.totalEarned || "0"));
         const net = earned - spent;
-        const pnlColor = net >= 0 ? 'var(--cyan)' : 'var(--pink)';
+
+        // Logic for Cyan Earned and Net P/L
+        const earnedColor = earned > 0 ? 'var(--cyan)' : '#eee';
+        const pnlColor = net > 0 ? 'var(--cyan)' : 'var(--pink)';
 
         return `
             <div class="stack-row" style="display: flex; justify-content: space-between; padding: 2px 0;">
-                <span style="width:25%; font-family:monospace; color:#888;">${a.id.substring(0, 8)}</span>
-                <span style="width:25%; text-align:right;">${formatValue(earned)}</span>
+                <span onmouseover="showAddrTooltip(event, '${a.id}')" onmouseout="if(tooltip) tooltip.style.opacity=0" style="width:25%; font-family:monospace; color:#888; cursor:help;">${a.id.substring(0, 8)}</span>
+                <span style="width:25%; text-align:right; color:${earnedColor}; font-weight:bold;">${formatValue(earned)}</span>
                 <span style="width:20%; text-align:right; opacity:0.6;">${formatValue(spent)}</span>
                 <span style="width:30%; text-align:right; color:${pnlColor}; font-weight:bold;">
                     ${net > 0 ? '+' : ''}${formatValue(net)}
