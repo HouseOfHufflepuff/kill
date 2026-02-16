@@ -242,34 +242,62 @@
         "type": "uint16"
       },
       {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "attackerUnitsSent",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "attackerReaperSent",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "attackerUnitsLost",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "attackerReaperLost",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "targetUnitsLost",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "targetReaperLost",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "initialDefenderUnits",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "initialDefenderReaper",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "attackerBounty",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "defenderBounty",
+            "type": "uint256"
+          }
+        ],
         "indexed": false,
-        "internalType": "uint256",
-        "name": "attackerUnitsLost",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "attackerReaperLost",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "targetUnitsLost",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "targetReaperLost",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "netBounty",
-        "type": "uint256"
+        "internalType": "struct KILLGame.BattleSummary",
+        "name": "summary",
+        "type": "tuple"
       },
       {
         "indexed": false,
@@ -495,19 +523,6 @@
   {
     "inputs": [],
     "name": "BURN_BPS",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "BURN_OF_TREASURY_BPS",
     "outputs": [
       {
         "internalType": "uint256",

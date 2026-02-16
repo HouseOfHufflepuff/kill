@@ -117,28 +117,56 @@ export class Killed__Params {
     return this._event.parameters[2].value.toI32();
   }
 
-  get attackerUnitsLost(): BigInt {
-    return this._event.parameters[3].value.toBigInt();
-  }
-
-  get attackerReaperLost(): BigInt {
-    return this._event.parameters[4].value.toBigInt();
-  }
-
-  get targetUnitsLost(): BigInt {
-    return this._event.parameters[5].value.toBigInt();
-  }
-
-  get targetReaperLost(): BigInt {
-    return this._event.parameters[6].value.toBigInt();
-  }
-
-  get netBounty(): BigInt {
-    return this._event.parameters[7].value.toBigInt();
+  get summary(): KilledSummaryStruct {
+    return changetype<KilledSummaryStruct>(
+      this._event.parameters[3].value.toTuple(),
+    );
   }
 
   get targetBirthBlock(): BigInt {
-    return this._event.parameters[8].value.toBigInt();
+    return this._event.parameters[4].value.toBigInt();
+  }
+}
+
+export class KilledSummaryStruct extends ethereum.Tuple {
+  get attackerUnitsSent(): BigInt {
+    return this[0].toBigInt();
+  }
+
+  get attackerReaperSent(): BigInt {
+    return this[1].toBigInt();
+  }
+
+  get attackerUnitsLost(): BigInt {
+    return this[2].toBigInt();
+  }
+
+  get attackerReaperLost(): BigInt {
+    return this[3].toBigInt();
+  }
+
+  get targetUnitsLost(): BigInt {
+    return this[4].toBigInt();
+  }
+
+  get targetReaperLost(): BigInt {
+    return this[5].toBigInt();
+  }
+
+  get initialDefenderUnits(): BigInt {
+    return this[6].toBigInt();
+  }
+
+  get initialDefenderReaper(): BigInt {
+    return this[7].toBigInt();
+  }
+
+  get attackerBounty(): BigInt {
+    return this[8].toBigInt();
+  }
+
+  get defenderBounty(): BigInt {
+    return this[9].toBigInt();
   }
 }
 
@@ -383,29 +411,6 @@ export class killgame extends ethereum.SmartContract {
 
   try_BURN_BPS(): ethereum.CallResult<BigInt> {
     let result = super.tryCall("BURN_BPS", "BURN_BPS():(uint256)", []);
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  BURN_OF_TREASURY_BPS(): BigInt {
-    let result = super.call(
-      "BURN_OF_TREASURY_BPS",
-      "BURN_OF_TREASURY_BPS():(uint256)",
-      [],
-    );
-
-    return result[0].toBigInt();
-  }
-
-  try_BURN_OF_TREASURY_BPS(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "BURN_OF_TREASURY_BPS",
-      "BURN_OF_TREASURY_BPS():(uint256)",
-      [],
-    );
     if (result.reverted) {
       return new ethereum.CallResult();
     }

@@ -3,6 +3,8 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
+
+//hardhat run agents/fortress/agent.js --network basesepolia
 async function countdown(seconds) {
     for (let i = seconds; i > 0; i--) {
         process.stdout.write(`\r[WAIT] Next scan in ${i}s... `);

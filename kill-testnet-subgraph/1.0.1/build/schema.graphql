@@ -3,16 +3,16 @@ type Spawned @entity(immutable: true) {
   agent: Bytes!
   stackId: BigInt!
   units: BigInt!
-  reapers: BigInt! # Ensure this is here
-  birthBlock: BigInt! # Ensure this is here
+  reapers: BigInt!
+  birthBlock: BigInt!
   block_number: BigInt!
 }
 
 type Moved @entity(immutable: true) {
   id: ID!
   agent: Bytes!
-  fromStack: Int!
-  toStack: Int!
+  fromStack: BigInt!
+  toStack: BigInt!
   units: BigInt!
   reaper: BigInt!
   birthBlock: BigInt!
@@ -23,12 +23,17 @@ type Killed @entity(immutable: true) {
   id: ID!
   attacker: Bytes!
   target: Bytes!
-  stackId: Int!
+  stackId: BigInt!
+  attackerUnitsSent: BigInt!
+  attackerReaperSent: BigInt!
   attackerUnitsLost: BigInt!
   attackerReaperLost: BigInt!
   targetUnitsLost: BigInt!
   targetReaperLost: BigInt!
-  netBounty: BigInt!
+  initialDefenderUnits: BigInt!
+  initialDefenderReaper: BigInt!
+  attackerBounty: BigInt!
+  defenderBounty: BigInt!
   targetBirthBlock: BigInt!
   block_number: BigInt!
 }
@@ -50,7 +55,7 @@ type Stack @entity(immutable: false) {
 type AgentStack @entity(immutable: false) {
   id: ID! 
   agent: Bytes!
-  stackId: Int!
+  stackId: BigInt!
   birthBlock: BigInt!
   units: BigInt!
   reaper: BigInt!

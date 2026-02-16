@@ -182,30 +182,30 @@ export class Moved extends Entity {
     this.set("agent", Value.fromBytes(value));
   }
 
-  get fromStack(): i32 {
+  get fromStack(): BigInt {
     let value = this.get("fromStack");
     if (!value || value.kind == ValueKind.NULL) {
-      return 0;
+      throw new Error("Cannot return null for a required field.");
     } else {
-      return value.toI32();
+      return value.toBigInt();
     }
   }
 
-  set fromStack(value: i32) {
-    this.set("fromStack", Value.fromI32(value));
+  set fromStack(value: BigInt) {
+    this.set("fromStack", Value.fromBigInt(value));
   }
 
-  get toStack(): i32 {
+  get toStack(): BigInt {
     let value = this.get("toStack");
     if (!value || value.kind == ValueKind.NULL) {
-      return 0;
+      throw new Error("Cannot return null for a required field.");
     } else {
-      return value.toI32();
+      return value.toBigInt();
     }
   }
 
-  set toStack(value: i32) {
-    this.set("toStack", Value.fromI32(value));
+  set toStack(value: BigInt) {
+    this.set("toStack", Value.fromBigInt(value));
   }
 
   get units(): BigInt {
@@ -326,17 +326,43 @@ export class Killed extends Entity {
     this.set("target", Value.fromBytes(value));
   }
 
-  get stackId(): i32 {
+  get stackId(): BigInt {
     let value = this.get("stackId");
     if (!value || value.kind == ValueKind.NULL) {
-      return 0;
+      throw new Error("Cannot return null for a required field.");
     } else {
-      return value.toI32();
+      return value.toBigInt();
     }
   }
 
-  set stackId(value: i32) {
-    this.set("stackId", Value.fromI32(value));
+  set stackId(value: BigInt) {
+    this.set("stackId", Value.fromBigInt(value));
+  }
+
+  get attackerUnitsSent(): BigInt {
+    let value = this.get("attackerUnitsSent");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set attackerUnitsSent(value: BigInt) {
+    this.set("attackerUnitsSent", Value.fromBigInt(value));
+  }
+
+  get attackerReaperSent(): BigInt {
+    let value = this.get("attackerReaperSent");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set attackerReaperSent(value: BigInt) {
+    this.set("attackerReaperSent", Value.fromBigInt(value));
   }
 
   get attackerUnitsLost(): BigInt {
@@ -391,8 +417,8 @@ export class Killed extends Entity {
     this.set("targetReaperLost", Value.fromBigInt(value));
   }
 
-  get netBounty(): BigInt {
-    let value = this.get("netBounty");
+  get initialDefenderUnits(): BigInt {
+    let value = this.get("initialDefenderUnits");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -400,8 +426,47 @@ export class Killed extends Entity {
     }
   }
 
-  set netBounty(value: BigInt) {
-    this.set("netBounty", Value.fromBigInt(value));
+  set initialDefenderUnits(value: BigInt) {
+    this.set("initialDefenderUnits", Value.fromBigInt(value));
+  }
+
+  get initialDefenderReaper(): BigInt {
+    let value = this.get("initialDefenderReaper");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set initialDefenderReaper(value: BigInt) {
+    this.set("initialDefenderReaper", Value.fromBigInt(value));
+  }
+
+  get attackerBounty(): BigInt {
+    let value = this.get("attackerBounty");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set attackerBounty(value: BigInt) {
+    this.set("attackerBounty", Value.fromBigInt(value));
+  }
+
+  get defenderBounty(): BigInt {
+    let value = this.get("defenderBounty");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set defenderBounty(value: BigInt) {
+    this.set("defenderBounty", Value.fromBigInt(value));
   }
 
   get targetBirthBlock(): BigInt {
@@ -643,17 +708,17 @@ export class AgentStack extends Entity {
     this.set("agent", Value.fromBytes(value));
   }
 
-  get stackId(): i32 {
+  get stackId(): BigInt {
     let value = this.get("stackId");
     if (!value || value.kind == ValueKind.NULL) {
-      return 0;
+      throw new Error("Cannot return null for a required field.");
     } else {
-      return value.toI32();
+      return value.toBigInt();
     }
   }
 
-  set stackId(value: i32) {
-    this.set("stackId", Value.fromI32(value));
+  set stackId(value: BigInt) {
+    this.set("stackId", Value.fromBigInt(value));
   }
 
   get birthBlock(): BigInt {
