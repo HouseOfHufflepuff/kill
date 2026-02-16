@@ -9,6 +9,7 @@
 const NETWORK = "Base Sepolia";
 const ALCHEMY_URL = "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs";
 const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.1/gn";
+const BLOCK_EXPLORER = "https://sepolia.basescan.org"; // Added Explorer Base URL
 
 // --- ETHER INTERFACE ---
 const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
@@ -458,13 +459,19 @@ function renderPnL(agents) {
         const earned = parseFloat(ethers.formatEther(a.totalEarned || "0"));
         const net = earned - spent;
 
-        // Logic for Cyan Earned and Net P/L
         const earnedColor = earned > 0 ? 'var(--cyan)' : '#eee';
         const pnlColor = net > 0 ? 'var(--cyan)' : 'var(--pink)';
 
         return `
-            <div class="stack-row" style="display: flex; justify-content: space-between; padding: 2px 0;">
-                <span onmouseover="showAddrTooltip(event, '${a.id}')" onmouseout="if(tooltip) tooltip.style.opacity=0" style="width:25%; font-family:monospace; color:#888; cursor:help;">${a.id.substring(0, 8)}</span>
+            <div class="stack-row" 
+                 onmouseover="showLeaderboardTooltip(event, '${a.id}', ${earned}, ${spent}, ${net})" 
+                 onmouseout="if(tooltip) tooltip.style.opacity=0" 
+                 style="display: flex; justify-content: space-between; padding: 2px 0; cursor: default;">
+                <span style="width:25%; font-family:monospace;">
+                    <a href="${BLOCK_EXPLORER}/address/${a.id}" target="_blank" style="color:#888; text-decoration:none;">
+                        ${a.id.substring(0, 8)}
+                    </a>
+                </span>
                 <span style="width:25%; text-align:right; color:${earnedColor}; font-weight:bold;">${formatValue(earned)}</span>
                 <span style="width:20%; text-align:right; opacity:0.6;">${formatValue(spent)}</span>
                 <span style="width:30%; text-align:right; color:${pnlColor}; font-weight:bold;">
@@ -476,16 +483,30 @@ function renderPnL(agents) {
 }
 
 /**
- * UI: Tooltip for full address hover
+ * UI: Enhanced Tooltip for Leaderboard Rows
  */
-function showAddrTooltip(e, addr) {
+function showLeaderboardTooltip(e, addr, earned, spent, net) {
     if (!tooltip) return;
-    tooltip.style.opacity = 1; 
-    tooltip.style.left = (e.pageX + 15) + 'px'; 
+    const pnlColor = net > 0 ? 'var(--cyan)' : 'var(--pink)';
+    
+    tooltip.style.opacity = 1;
+    tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
+    
     tooltip.innerHTML = `
-        <span style="color:var(--pink)">FULL ADDR:</span><br>
-        <span style="font-size:0.6rem;">${addr}</span>
+        <div style="padding: 2px; min-width: 200px;">
+            <strong style="color:var(--pink); font-size: 0.65rem;">AGENT_IDENTITY</strong><br>
+            <span style="font-size:0.7rem; color:var(--cyan); word-break:break-all;">${addr}</span>
+            <hr style="border:0; border-top:1px solid #333; margin:8px 0;">
+            <div style="display:flex; justify-content:space-between;"><span>EARNED:</span> <span>${formatValue(earned)}</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>SPENT:</span> <span>${formatValue(spent)}</span></div>
+            <div style="display:flex; justify-content:space-between; margin-top:4px; font-weight:bold; color:${pnlColor};">
+                <span>NET P/L:</span> <span>${net > 0 ? '+' : ''}${formatValue(net)}</span>
+            </div>
+            <div style="font-size:0.55rem; color:#666; margin-top:8px; font-style:italic; text-align:center;">
+                Click ID to view on Basescan
+            </div>
+        </div>
     `;
 }
 
