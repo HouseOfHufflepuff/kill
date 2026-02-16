@@ -1,6 +1,6 @@
 /**
- * KILL SYSTEM STYLES - PRODUCTION v1.0.4
- * FULL UNTRUNCATED BUILD + MOBILE FLEX STACK
+ * KILL SYSTEM STYLES - PRODUCTION v1.0.5
+ * FULL UNTRUNCATED BUILD + MOBILE FLEX STACK FIX
  */
 
 :root {
@@ -135,7 +135,7 @@ header {
 }
 
 .stack-row.header { 
-    color: #888; /* Changed from #666 to match .log-block */
+    color: #888; 
     border-bottom: 1px solid #444; 
     font-weight: bold; 
     margin-bottom: 4px; 
@@ -397,25 +397,6 @@ header {
 }
 .btn-copy:hover { background: var(--cyan); color: #000; }
 
-/* --- CODE DISPLAY --- */
-.code-wrapper { 
-    position: relative; 
-    background: #111; 
-    padding: 15px; 
-    border-left: 2px solid var(--cyan); 
-    margin-top: 20px; 
-}
-.code-block { font-size: 0.75rem; color: var(--cyan); }
-.btn-copy { 
-    position: absolute; 
-    right: 10px; top: 10px; 
-    background: none; 
-    border: 1px solid #333; 
-    color: #555; font-size: 0.6rem; 
-    padding: 3px 7px; 
-    cursor: pointer; 
-}
-
 /* --- FOOTER --- */
 footer {
     height: 60px; background: var(--pink); color: #000;
@@ -429,8 +410,8 @@ footer {
 /* --- MOBILE VERTICAL FLEX OVERRIDES --- */
 @media (max-width: 1024px) {
     body, html {
-        overflow: auto; 
-        height: auto;
+        overflow-y: auto !important; 
+        height: auto !important;
     }
 
     header {
@@ -441,60 +422,61 @@ footer {
     }
 
     .main-stage {
-        display: flex;
-        flex-direction: column;
-        height: auto;
-        overflow: visible;
-        max-height: none;
-        grid-template-columns: 1fr; /* Break the grid */
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        overflow: visible !important;
+        max-height: none !important;
+        grid-template-columns: 1fr !important;
+        padding: 10px !important;
     }
 
     .center-field { 
-        order: 1; 
-        width: 100%;
-        min-height: 450px;
+        order: 1 !important; 
+        width: 100% !important;
+        height: 450px !important;
+        min-height: 450px !important;
+        flex-grow: 0 !important;
     }
 
-    .panel:first-of-type { 
-        order: 2; 
+    .panel { 
         width: 100% !important; 
+        height: auto !important;
+        min-height: 300px !important;
+        overflow: visible !important;
+        margin-bottom: 20px !important;
     }
 
-    .panel:last-of-type { 
-        order: 3; 
-        width: 100% !important; 
-    }
+    .panel:first-of-type { order: 2 !important; }
+    .panel:last-of-type { order: 3 !important; }
 
-    #leaderboard {
-        max-height: 400px;
-        flex-grow: 0;
+    #ripe-stacks, #log-feed, #leaderboard {
+        max-height: 400px !important;
+        height: auto !important;
     }
 
     .scene {
         transform: scale(0.8) translateY(0);
-        margin: 10px 0;
+        margin: 20px 0;
+        height: 350px !important;
     }
 
     .arena-legend {
         flex-direction: column;
         width: 100%;
-        box-sizing: border-box;
+        gap: 10px;
+        padding: 15px;
     }
 
     footer {
         height: auto;
         flex-direction: column;
-        padding: 15px;
+        padding: 20px;
         text-align: center;
     }
     
     .footer-economy {
         text-align: center;
         margin-top: 10px;
-    }
-    
-    .modal-content {
-        width: 90%;
-        padding: 20px;
     }
 }
