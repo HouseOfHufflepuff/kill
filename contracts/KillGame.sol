@@ -139,11 +139,17 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     }
 
     /**
-     * @dev Calculates bounty based on treasury balance, time elapsed, and treasuryBps.
+     * @dev Uses the actual token balance of the contract as the treasury.
      */
     function getPendingBounty(address agent, uint256 id) public view returns (uint256) {
-        if(agentStacks[agent][id].birthBlock == 0) return 0;
-        return (treasuryBalance * (block.number - agentStacks[agent][id].birthBlock) * treasuryBps) / (10000 * 1000000); 
+        uint256 birth = agentStacks[agent][id].birthBlock;
+        if(birth == 0 || block.number <= birth) return 0;
+
+        // Reference the actual token balance directly
+        uint256 actualTreasury = killToken.balanceOf(address(this));
+        uint256 age = block.number - birth;
+        
+        return (actualTreasury * age * treasuryBps) / 10000000000; 
     }
 
     // --- CORE GAME LOGIC ---
@@ -164,22 +170,19 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
                 balanceOf(msg.sender, reaperId) >= sentReaper, "Lack units");
 
         uint256 targetBirth = agentStacks[target][unitId].birthBlock; 
-        
-        // Internal combat resolution
         LossReport memory loss = _resolveCombat(msg.sender, target, unitId, reaperId, sentUnits, sentReaper);
 
-        // Occupancy cleanup
         if (loss.tUnits == balanceOf(target, unitId)) isOccupying[unitId][target] = false;
         if (loss.tReaper == balanceOf(target, reaperId)) isOccupying[reaperId][target] = false;
 
-        // 1. Attacker gets bounty for defender units killed
+        // Attacker Reward
         if (loss.tUnits > 0 || loss.tReaper > 0) {
             attackerBounty = _calculateLoot(target, unitId, loss.tUnits, loss.tReaper);
             _transferBounty(msg.sender, attackerBounty);
             agentTotalProfit[msg.sender] += attackerBounty;
         }
 
-        // 2. Defender gets bounty for attacker units killed
+        // Defender Reward (75% of the attacker's lost unit value)
         uint256 defenderBounty = 0;
         if (loss.aUnits > 0 || loss.aReaper > 0) {
             defenderBounty = (loss.aUnits * SPAWN_COST) + (loss.aReaper * REAPER_SPAWN_COST);
@@ -190,7 +193,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
         _updateGlobalStats(loss);
 
-        // Final Burns
+        // Standard Burns
         if (loss.tUnits > 0) _burn(target, unitId, loss.tUnits);
         if (loss.tReaper > 0) _burn(target, reaperId, loss.tReaper);
         if (loss.aUnits > 0) _burn(msg.sender, unitId, loss.aUnits);
@@ -298,20 +301,36 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         return loss;
     }
 
+/**
+     * @dev Separation of Base Harvest (100% of 2.5 KILL) and Age Bonus (75% of interest)
+     * This prevents the "2.5 KILL" refund from being taxed twice and aligns with your test expectations.
+     */
     function _calculateLoot(address target, uint256 uId, uint256 tU, uint256 tR) internal view returns (uint256) {
         uint256 totalPending = getPendingBounty(target, uId) + getPendingBounty(target, uId + 216);
         uint256 totalAtStake = balanceOf(target, uId) + (balanceOf(target, uId + 216) * 666);
         if (totalAtStake == 0) return 0;
         
         uint256 damagePower = tU + (tR * 666);
-        uint256 loot = (totalPending * damagePower) / totalAtStake;
-        return (loot * SENDER_BPS) / 10000;
+        
+        // 1. Time-based Loot (The "Bonus"): Attacker gets 75% of this.
+        uint256 timeLoot = (totalPending * damagePower) / totalAtStake;
+        uint256 attackerBonus = (timeLoot * SENDER_BPS) / 10000;
+
+        // 2. Base Harvest (The "Refund"): Attacker gets 100% of the 25% "unit scrap" value.
+        // Formula: Units Killed * 10 Cost * 25%
+        uint256 baseHarvest = (damagePower * SPAWN_COST * 25) / 100;
+
+        uint256 totalLoot = baseHarvest + attackerBonus;
+
+        // 3. Safety Guard: Max payout is 5% of treasury
+        uint256 cap = killToken.balanceOf(address(this)) / 20;
+        return totalLoot > cap ? cap : totalLoot;
     }
 
     function _transferBounty(address recipient, uint256 amount) internal {
         if (amount > 0) {
-            require(treasuryBalance >= amount, "Treasury underflow");
-            treasuryBalance -= amount;
+            // No need to subtract from a state variable; just check liquidity
+            require(killToken.balanceOf(address(this)) >= amount, "Treasury empty");
             totalKillExtracted += amount;
             require(killToken.transfer(recipient, amount), "Payout fail");
         }
