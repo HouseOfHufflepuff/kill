@@ -3,8 +3,26 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
+// --- COORDINATE MATH (Mirroring Contract) ---
+function getCoords(id) {
+    const v = Number(id) - 1;
+    return { x: v % 6, y: Math.floor(v / 6) % 6, z: Math.floor(v / 36) };
+}
 
-//hardhat run agents/fortress/agent.js --network basesepolia
+function getManhattanDist(id1, id2) {
+    const c1 = getCoords(id1);
+    const c2 = getCoords(id2);
+    return Math.abs(c1.x - c2.x) + Math.abs(c1.y - c2.y) + Math.abs(c1.z - c2.z);
+}
+
+function isAdjacent(id1, id2) {
+    return getManhattanDist(id1, id2) === 1;
+}
+
+function calcPower(units, reapers) {
+    return units.add(reapers.mul(666));
+}
+
 async function countdown(seconds) {
     for (let i = seconds; i > 0; i--) {
         process.stdout.write(`\r[WAIT] Next scan in ${i}s... `);
@@ -13,149 +31,105 @@ async function countdown(seconds) {
     process.stdout.write('\r\x1b[K');
 }
 
-function getNeighbors(hubId) {
-    const neighbors = [];
-    const checkAdjacent = (c1, c2) => {
-        const v1 = c1 - 1; 
-        const v2 = c2 - 1;
-        const x1 = v1 % 6; const y1 = Math.floor(v1 / 6) % 6; const z1 = Math.floor(v1 / 36);
-        const x2 = v2 % 6; const y2 = Math.floor(v2 / 6) % 6; const z2 = Math.floor(v2 / 36);
-        const dist = Math.abs(x1 - x2) + Math.abs(y1 - y2) + Math.abs(z1 - z2);
-        return dist === 1;
-    };
-    for (let i = 1; i <= 216; i++) {
-        if (i === hubId) continue;
-        if (checkAdjacent(hubId, i)) neighbors.push(i);
-    }
-    return neighbors;
-}
-
 async function main() {
-    if (!process.env.FORTRESS_PK) throw new Error("Missing FORTRESS_PK in .env file");
-    
     const wallet = new ethers.Wallet(process.env.FORTRESS_PK, ethers.provider);
     const address = wallet.address;
-
-    const configPath = path.join(__dirname, "config.json");
-    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
     const { kill_game_addr, multicall_addr } = config.network;
-    const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, REAPER_MULTIPLE, LOOP_DELAY_SECONDS } = config.settings;
+    const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, LOOP_DELAY_SECONDS, HUB_PERIMETER } = config.settings;
 
-    // Initialize Game Contract
     const killGame = await ethers.getContractAt("KILLGame", kill_game_addr);
-    
-    // Automatically fetch Token Address from Game Contract to prevent "undefined" errors
-    console.log("[INITIALIZING] Fetching token address from contract...");
-    const killTokenAddr = await killGame.killToken(); 
-    const killToken = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", killTokenAddr);
+    const multicall = new ethers.Contract(multicall_addr, ["function aggregate(tuple(address target, bytes callData)[] calls) public view returns (uint256 blockNumber, bytes[] returnData)"], wallet);
 
-    const multicall = new ethers.Contract(
-        multicall_addr, 
-        ["function aggregate(tuple(address target, bytes callData)[] calls) public view returns (uint256 blockNumber, bytes[] returnData)"], 
-        wallet
-    );
-
-    // --- AUTO-APPROVAL CHECK ---
-    const allowance = await killToken.allowance(address, kill_game_addr);
-    if (allowance.lt(ethers.utils.parseEther("1000000"))) {
-        console.log("[MAINTENANCE] Allowance low. Approving KILLGame...");
-        const tx = await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256);
-        await tx.wait();
-        console.log("[SUCCESS] Unlimited allowance granted.");
-    }
-
-    const TOPUP_THRESHOLD = TARGET_UNITS - REPLENISH_AMT;
-    const NEIGHBORS = getNeighbors(HUB_STACK);
+    // Definitive 24-stack patrol zone + Hub
+    const ALL_IDS = Array.from({length: 216}, (_, i) => i + 1);
+    const PATROL_ZONE = ALL_IDS.filter(id => id !== HUB_STACK && getManhattanDist(HUB_STACK, id) <= HUB_PERIMETER);
+    const SAFE_ZONE = [HUB_STACK, ...PATROL_ZONE];
 
     while (true) {
         console.clear();
-        console.log(`\n--- FORTRESS AGENT ONLINE ---`);
-        console.log(`HUB: ${HUB_STACK} | OPERATING AS: ${address}`);
-        console.log(`TOKEN: ${killTokenAddr}`);
-        console.log(`PERIMETER: [${NEIGHBORS.join(", ")}]\n`);
+        console.log(`\n--- FORTRESS AGENT ONLINE [Hub: ${HUB_STACK}] ---`);
 
         try {
-            const scanIds = [HUB_STACK, ...NEIGHBORS];
-            const calls = scanIds.map(id => ({
-                target: kill_game_addr,
-                callData: killGame.interface.encodeFunctionData("getFullStack", [id])
-            }));
-
+            const calls = ALL_IDS.map(id => ({ target: kill_game_addr, callData: killGame.interface.encodeFunctionData("getFullStack", [id]) }));
             const [, returnData] = await multicall.aggregate(calls);
+
             let hubState = { self: null, enemies: [] };
-            let neighborData = [];
-            let neighborEnemies = [];
-            let friendliesToConsolidate = [];
+            let validTargets = [];
+            let myActiveStacks = [];
+            let myTotalUnitsGlobal = ethers.BigNumber.from(0);
+            let tacticalData = [];
 
             for (let i = 0; i < returnData.length; i++) {
-                const stackId = scanIds[i];
+                const stackId = ALL_IDS[i];
                 const items = killGame.interface.decodeFunctionResult("getFullStack", returnData[i])[0];
                 const self = items.find(it => it.occupant.toLowerCase() === address.toLowerCase());
                 const enemies = items.filter(it => it.occupant.toLowerCase() !== address.toLowerCase() && (it.units.gt(0) || it.reapers.gt(0)));
+                const dist = getManhattanDist(HUB_STACK, stackId);
+
+                if (self && (self.units.gt(0) || self.reapers.gt(0))) {
+                    myTotalUnitsGlobal = myTotalUnitsGlobal.add(self.units);
+                    myActiveStacks.push({ id: stackId, units: self.units, reapers: self.reapers, power: calcPower(self.units, self.reapers), dist });
+                }
+
+                const enemyPower = enemies.reduce((acc, e) => acc.add(calcPower(e.units, e.reapers)), ethers.BigNumber.from(0));
+
+                if (SAFE_ZONE.includes(stackId) || (self && self.units.gt(0))) {
+                    tacticalData.push({
+                        ID: stackId,
+                        Dist: dist,
+                        EnemyPower: enemyPower.toString(),
+                        MyPower: self ? calcPower(self.units, self.reapers).toString() : "0",
+                        Status: (dist > HUB_PERIMETER && stackId !== HUB_STACK) ? "OUTSIDE" : (enemies.length > 0 ? "TARGET" : "OWNED")
+                    });
+                }
 
                 if (stackId === HUB_STACK) {
-                    hubState.self = self;
-                    hubState.enemies = enemies;
-                } else {
-                    neighborData.push({
-                        Stack: stackId,
-                        EnemyUnits: enemies.reduce((a, b) => a.add(b.units), ethers.BigNumber.from(0)).toString(),
-                        MyUnits: self ? self.units.toString() : "0",
-                        Status: enemies.length > 0 ? "TARGET" : (self ? "STRAGGLER" : "CLEAR")
-                    });
-                    
-                    if (enemies.length > 0) neighborEnemies.push({ id: stackId, target: enemies[0] });
-                    if (self && enemies.length === 0 && (self.units.gt(0) || self.reapers.gt(0))) {
-                        friendliesToConsolidate.push({ id: stackId, units: self.units, reapers: self.reapers });
-                    }
-                }
-            }
-
-            const currentHubUnits = hubState.self ? hubState.self.units.toNumber() : 0;
-
-            // STRATEGY
-            if (friendliesToConsolidate.length > 0) {
-                const f = friendliesToConsolidate[0];
-                console.log(`[CONSOLIDATE] Returning ${f.units.toString()} from Stack ${f.id}`);
-                await (await killGame.connect(wallet).move(f.id, HUB_STACK, f.units, f.reapers, { gasLimit: 500000 })).wait();
-            } 
-            else if (currentHubUnits <= TOPUP_THRESHOLD) {
-                const amt = currentHubUnits === 0 ? TARGET_UNITS : REPLENISH_AMT;
-                console.log(`[MAINTENANCE] Spawning ${amt}...`);
-                await (await killGame.connect(wallet).spawn(HUB_STACK, amt, { gasLimit: 800000 })).wait();
-            } 
-            else if (hubState.enemies.length > 0) {
-                const target = hubState.enemies[0];
-                console.log(`[DEFEND] Purging Hub...`);
-                await (await killGame.connect(wallet).kill(target.occupant, HUB_STACK, hubState.self.units.sub(1), hubState.self.reapers, { gasLimit: 800000 })).wait();
-            } 
-            else if (neighborEnemies.length > 0 && currentHubUnits > (TARGET_UNITS / 2)) {
-                const raid = neighborEnemies[0];
-                const targetPower = raid.target.units.add(raid.target.reapers.mul(REAPER_MULTIPLE));
-                let moveUnits = targetPower.mul(3);
-                if (moveUnits.gt(hubState.self.units.sub(1))) moveUnits = hubState.self.units.sub(1);
-
-                console.log(`[RAID] Attacking Stack ${raid.id}`);
-                await (await killGame.connect(wallet).move(HUB_STACK, raid.id, moveUnits, 0, { gasLimit: 600000 })).wait();
-                
-                const itemsAfter = await killGame.getFullStack(raid.id);
-                const me = itemsAfter.find(it => it.occupant.toLowerCase() === address.toLowerCase());
-                if (me && me.units.gt(1)) {
-                    await (await killGame.connect(wallet).kill(raid.target.occupant, raid.id, me.units.sub(1), me.reapers, { gasLimit: 800000 })).wait();
+                    hubState.self = self; hubState.enemies = enemies;
+                } else if (PATROL_ZONE.includes(stackId) && enemies.length > 0) {
+                    validTargets.push({ id: stackId, target: enemies[0], dist });
                 }
             }
 
             console.log("\n>> HUB STATUS:");
-            console.table([{ Hub: HUB_STACK, Units: currentHubUnits.toLocaleString() }]);
-            console.log(">> PERIMETER:");
-            console.table(neighborData);
+            console.table([{ ID: HUB_STACK, GlobalUnits: myTotalUnitsGlobal.toString(), Status: hubState.enemies.length > 0 ? "UNDER ATTACK" : "SECURE" }]);
+            console.log("\n>> TACTICAL SCAN:");
+            console.table(tacticalData.sort((a,b) => a.Dist - b.Dist || a.ID - b.ID));
 
-        } catch (error) {
-            console.error("[FORTRESS ERROR]:", error.message);
-        }
+            const txOpt = { gasLimit: 600000 };
+            const lostArmy = myActiveStacks.find(s => s.dist > HUB_PERIMETER && s.id !== HUB_STACK);
+            const battle = myActiveStacks.find(s => (s.id === HUB_STACK && hubState.enemies.length > 0) || validTargets.some(t => t.id === s.id));
 
+            if (lostArmy) {
+                // Recovery: Must move to a neighbor that is in the SAFE_ZONE
+                let step = ALL_IDS.filter(id => isAdjacent(lostArmy.id, id) && SAFE_ZONE.includes(id))
+                    .sort((a,b) => getManhattanDist(a, HUB_STACK) - getManhattanDist(b, HUB_STACK))[0];
+                console.log(`[RECOVERY] Illegal Pos ${lostArmy.id} -> Returning to Safe ${step}`);
+                await (await killGame.connect(wallet).move(lostArmy.id, step, lostArmy.units, lostArmy.reapers, txOpt)).wait();
+            } else if (battle) {
+                const target = (battle.id === HUB_STACK) ? hubState.enemies[0] : validTargets.find(t => t.id === battle.id).target;
+                console.log(`[KILL] Engaging target at Stack ${battle.id}`);
+                await (await killGame.connect(wallet).kill(target.occupant, battle.id, battle.units.sub(1), battle.reapers, txOpt)).wait();
+            } else if (myTotalUnitsGlobal.lt(TARGET_UNITS - REPLENISH_AMT)) {
+                await (await killGame.connect(wallet).spawn(HUB_STACK, REPLENISH_AMT, txOpt)).wait();
+            } else if (validTargets.length > 0) {
+                const raid = validTargets.sort((a,b) => a.dist - b.dist)[0];
+                const army = myActiveStacks.sort((a,b) => b.power.sub(a.power))[0];
+                // OFFENSE CRITICAL: Filter steps to ONLY those inside the SAFE_ZONE
+                let step = ALL_IDS.filter(id => isAdjacent(army.id, id) && SAFE_ZONE.includes(id))
+                    .sort((a,b) => getManhattanDist(a, raid.id) - getManhattanDist(b, raid.id))[0];
+                
+                console.log(`[OFFENSE] ${army.id} -> ${step} (Targeting ${raid.id} via Safe Path)`);
+                await (await killGame.connect(wallet).move(army.id, step, army.units, army.reapers, txOpt)).wait();
+            } else if (myActiveStacks.some(s => s.id !== HUB_STACK)) {
+                const army = myActiveStacks.find(s => s.id !== HUB_STACK);
+                let step = ALL_IDS.filter(id => isAdjacent(army.id, id) && SAFE_ZONE.includes(id))
+                    .sort((a,b) => getManhattanDist(a, HUB_STACK) - getManhattanDist(b, HUB_STACK))[0];
+                console.log(`[RETURN] ${army.id} -> ${step}`);
+                await (await killGame.connect(wallet).move(army.id, step, army.units, army.reapers, txOpt)).wait();
+            }
+        } catch (e) { console.error("[ERROR]:", e.message); }
         await countdown(LOOP_DELAY_SECONDS);
     }
 }
-
-main().catch(console.error);
+main();

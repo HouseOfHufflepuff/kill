@@ -147,6 +147,9 @@ function updateTopStacks(stacks, activeReaperMap) {
 /**
  * CORE: Main Data Synchronization Loop
  */
+/**
+ * CORE: Main Data Synchronization Loop
+ */
 async function syncData() {
     await updateHeartbeat();
     
@@ -197,7 +200,7 @@ async function syncData() {
                 reaper
                 block_number 
             }
-            agents(first: 10, orderBy: netPnL, orderDirection: desc) {
+            agents(first: 100, orderBy: netPnL, orderDirection: desc) {
                 id
                 totalSpent
                 totalEarned
@@ -227,6 +230,24 @@ async function syncData() {
 
         updateTopStacks(stacks, activeReaperMap);
         
+        // --- GLOBAL METRICS CALCULATION ---
+        let totalEarned = 0;
+        let totalSpent = 0;
+
+        agents.forEach(a => {
+            totalEarned += parseFloat(ethers.formatEther(a.totalEarned || "0"));
+            totalSpent += parseFloat(ethers.formatEther(a.totalSpent || "0"));
+        });
+
+        const totalNet = totalEarned - totalSpent;
+
+        if (gameProfitEl) gameProfitEl.innerText = formatValue(totalEarned);
+        if (gameCostEl) gameCostEl.innerText = formatValue(totalSpent);
+        if (gamePnlEl) {
+            gamePnlEl.innerText = (totalNet > 0 ? "+" : "") + formatValue(totalNet);
+            gamePnlEl.style.color = totalNet >= 0 ? "var(--cyan)" : "var(--pink)";
+        }
+
         if (globalStat) {
             if (unitsKilledEl) unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
             if (reaperKilledEl) reaperKilledEl.innerText = parseInt(globalStat.totalReaperKilled).toLocaleString();
@@ -244,14 +265,11 @@ async function syncData() {
         events.forEach(evt => {
             if (!knownIds.has(evt.id)) {
                 if (evt.type === 'spawn') {
-                    // Updated to show address and stack on main line, units/reapers on second line
                     const logMsg = `[SPAWN] ${evt.agent.substring(0, 8)} to STACK_${evt.stackId}`;
                     const subMsg = `UNITS: ${parseInt(evt.units).toLocaleString()}\nREAPER: ${evt.reapers}`;
-                    
                     addLog(evt.block_number, logMsg, 'log-spawn', subMsg);
                     triggerPulse(evt.stackId, 'spawn');
                 } else if (evt.type === 'kill') {
-                    // ... existing kill logic ...
                     const atkUnitsSent = parseInt(evt.attackerUnitsSent || 0);
                     const atkReaperSent = parseInt(evt.attackerReaperSent || 0);
                     const defUnitsInit = parseInt(evt.initialDefenderUnits || 0);
@@ -278,7 +296,7 @@ async function syncData() {
             }
         });
 
-        renderPnL(agents);
+        renderPnL(agents.slice(0, 10)); // Maintain Top 10 display but use 100 for global math
 
     } catch (e) { console.error("Sync fail", e); }
 }

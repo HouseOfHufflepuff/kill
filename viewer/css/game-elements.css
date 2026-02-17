@@ -102,7 +102,7 @@
 .layer-toggle:hover { color: #fff; }
 
 /* --- LEFT PANEL SPECIALS --- */
-.specs-text, .lethal-row { font-size: 0.75rem; line-height: 1.6; color: #ccc; }
+.specs-text, .lethal-row { font-size: 0.65rem; line-height: 1.6; color: #ccc; }
 .lethal-metrics { 
     background: rgba(255, 45, 117, 0.05); 
     padding: 10px; 

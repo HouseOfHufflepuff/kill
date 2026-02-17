@@ -24,6 +24,9 @@ const statusEl = document.getElementById('system-status');
 const totalUnitsActiveEl = document.getElementById('total-units-active');
 const totalReapersActiveEl = document.getElementById('total-reapers-active');
 const totalKillBountyEl = document.getElementById('total-kill-bounty');
+const gameProfitEl = document.getElementById('stat-game-profit');
+const gameCostEl = document.getElementById('stat-game-cost');
+const gamePnlEl = document.getElementById('stat-game-pnl');
 
 /**
  * VISUALIZATION: Toggle layer visibility
