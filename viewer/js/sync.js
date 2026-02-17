@@ -67,7 +67,7 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
                 <span>UNITS:</span> <span>${units.toLocaleString()}</span>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
-                <span>REAPERS:</span> <span>${reapers}</span>
+                <span>REAPER:</span> <span>${reapers}</span>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.6;">
                 <span>BASE POWER:</span> <span>${basePower.toLocaleString()}</span>
@@ -244,9 +244,14 @@ async function syncData() {
         events.forEach(evt => {
             if (!knownIds.has(evt.id)) {
                 if (evt.type === 'spawn') {
-                    addLog(evt.block_number, `[SPAWN] ${evt.agent.substring(0,6)} (+${evt.reapers} REAPER)`, 'log-spawn');
+                    // Updated to show address and stack on main line, units/reapers on second line
+                    const logMsg = `[SPAWN] ${evt.agent.substring(0, 8)} to STACK_${evt.stackId}`;
+                    const subMsg = `UNITS: ${parseInt(evt.units).toLocaleString()}\nREAPER: ${evt.reapers}`;
+                    
+                    addLog(evt.block_number, logMsg, 'log-spawn', subMsg);
                     triggerPulse(evt.stackId, 'spawn');
                 } else if (evt.type === 'kill') {
+                    // ... existing kill logic ...
                     const atkUnitsSent = parseInt(evt.attackerUnitsSent || 0);
                     const atkReaperSent = parseInt(evt.attackerReaperSent || 0);
                     const defUnitsInit = parseInt(evt.initialDefenderUnits || 0);

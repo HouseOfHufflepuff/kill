@@ -164,7 +164,7 @@ function showTooltip(e, id) {
             <span style="opacity:0.6">CURRENT_AGE:</span> ${age.toLocaleString()} blocks
             <hr style="border:0; border-top:1px solid #333; margin:6px 0;">
             UNITS: ${u.toLocaleString()}<br>
-            REAPERS: ${r}<br>
+            REAPER: ${r}<br>
             <span style="opacity:0.6">BASE_POWER:</span> ${basePower.toLocaleString()}<br>
             <span style="color:var(--cyan)">BOUNTY: ${bountyMultiplier.toFixed(3)}x</span><br>
             <div style="border-top:1px solid #333; margin-top:4px; padding-top:4px;">
