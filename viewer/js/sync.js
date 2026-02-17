@@ -37,6 +37,52 @@ async function updateHeartbeat() {
     }
 }
 
+function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
+    if (!tooltip) return;
+    
+    // Console log for debugging the Factor of 2/Registry error
+    console.log(`DEBUG STACK_${id}:`, {
+        ID: id,
+        UNIT: units,
+        R: reapers,
+        BOUNTY: bounty,
+        INCOMING_KILL: totalKill
+    });
+
+    console.log("BLah")
+
+    tooltip.style.opacity = 1;
+    tooltip.style.left = (e.pageX + 15) + 'px';
+    tooltip.style.top = (e.pageY + 15) + 'px';
+    
+    // FORCED CALCULATION: Matches Top Stacks exactly
+    const basePower = units + (reapers * 666);
+    const correctedKill = basePower * bounty;
+    
+    tooltip.innerHTML = `
+        <div style="padding: 5px; min-width: 180px; font-family: 'Courier New', monospace;">
+            <strong style="color:var(--pink); font-size: 0.7rem;">STACK_IDENTITY: ${id}</strong>
+            <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem;">
+                <span>UNITS:</span> <span>${units.toLocaleString()}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
+                <span>REAPERS:</span> <span>${reapers}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.6;">
+                <span>BASE POWER:</span> <span>${basePower.toLocaleString()}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
+                <span>MULTIPLIER:</span> <span>${bounty.toFixed(3)}x</span>
+            </div>
+            <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
+            <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--pink); font-size:0.75rem;">
+                <span>VALUE:</span> <span>${Math.floor(correctedKill).toLocaleString()} KILL</span>
+            </div>
+        </div>
+    `;
+}
+
 /**
  * UI: Render the Top Stacks leaderboard rows
  */
@@ -49,14 +95,27 @@ function updateTopStacks(stacks, activeReaperMap) {
         const r = activeReaperMap[s.id] || parseInt(s.totalBoostedUnits) || 0;
         const bBlock = parseInt(s.birthBlock);
         const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
+        
         const multiplier = (1 + (age / 1000));
-        const totalKillValue = u * multiplier;
+        const basePower = u + (r * 666);
+        const totalKillValue = basePower * multiplier;
 
         globalUnits += u; 
         globalReapers += r; 
         globalBountyKill += totalKillValue;
-        stackRegistry[s.id] = { units: s.totalStandardUnits, reaper: r.toString(), birthBlock: s.birthBlock }; 
-        updateNodeParticles(s.id, s.totalStandardUnits, r);
+        
+        // BUG FIXED: We now store the calculated totals in the registry
+        // so the Layered Game View (Map) has access to the Reaper-adjusted value.
+        stackRegistry[s.id] = { 
+            units: u, 
+            reaper: r, 
+            birthBlock: s.birthBlock,
+            bounty: multiplier,
+            totalKill: totalKillValue
+        }; 
+        
+        updateNodeParticles(s.id, u, r);
+        
         return { id: s.id, units: u, reapers: r, bounty: multiplier, kill: totalKillValue };
     });
 
@@ -72,7 +131,10 @@ function updateTopStacks(stacks, activeReaperMap) {
     }
 
     topStacksEl.innerHTML = sorted.map(item => `
-        <div class="stack-row" onmouseover="showTooltip(event, '${item.id}')" onmouseout="if(tooltip) tooltip.style.opacity=0" style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0;">
+        <div class="stack-row" 
+             onmouseover="showStackTooltip(event, '${item.id}', ${item.units}, ${item.reapers}, ${item.bounty}, ${item.kill})" 
+             onmouseout="if(tooltip) tooltip.style.opacity=0" 
+             style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; cursor: crosshair;">
             <span style="width:10%; color:#555;">${item.id}</span>
             <span style="width:20%">${item.units >= 1000 ? (item.units / 1000).toFixed(1) + 'K' : item.units}</span>
             <span style="width:10%; color:var(--cyan)">${item.reapers}</span>
@@ -185,29 +247,20 @@ async function syncData() {
                     addLog(evt.block_number, `[SPAWN] ${evt.agent.substring(0,6)} (+${evt.reapers} REAPER)`, 'log-spawn');
                     triggerPulse(evt.stackId, 'spawn');
                 } else if (evt.type === 'kill') {
-                    // Extracting all fields for the requested log format
                     const atkUnitsSent = parseInt(evt.attackerUnitsSent || 0);
                     const atkReaperSent = parseInt(evt.attackerReaperSent || 0);
                     const defUnitsInit = parseInt(evt.initialDefenderUnits || 0);
                     const defReaperInit = parseInt(evt.initialDefenderReaper || 0);
-
                     const atkUnitsLost = parseInt(evt.attackerUnitsLost || 0);
                     const atkReaperLost = parseInt(evt.attackerReaperLost || 0);
                     const defUnitsLost = parseInt(evt.targetUnitsLost || 0);
                     const defReaperLost = parseInt(evt.targetReaperLost || 0);
-
                     const atkBounty = parseFloat(ethers.formatEther(evt.attackerBounty || "0"));
                     const defBounty = parseFloat(ethers.formatEther(evt.defenderBounty || "0"));
 
                     const logMsg = `[KILL] ${evt.attacker.substring(0,6)} raided STACK_${evt.stackId}`;
-                    
-                    // Row 1: BATTLE OFFENSE (Sent) | DEFENSE (Initial)
                     const line1 = `BATTLE OFFENSE: ${atkUnitsSent} units, ${atkReaperSent} reaper | DEFENSE: ${defUnitsInit} units, ${defReaperInit} reaper`;
-                    
-                    // Row 2: KILL OFFENSE (Atk Lost) | DEFENSE (Def Lost)
                     const line2 = `KILL OFFENSE: ${atkUnitsLost} units, ${atkReaperLost} reaper | DEFENSE: ${defUnitsLost} units, ${defReaperLost} reaper`;
-                    
-                    // Row 3: ECONOMY (Bounties)
                     const line3 = `ECONOMY OFFENSE: +${formatValue(atkBounty)} KILL | DEFENSE: +${formatValue(defBounty)} KILL`;
 
                     addLog(evt.block_number, logMsg, 'log-kill', `${line1}\n${line2}\n${line3}`);
@@ -258,13 +311,13 @@ function showLeaderboardTooltip(e, addr, earned, spent, net) {
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
     tooltip.innerHTML = `
-        <div style="padding: 2px; min-width: 200px;">
+        <div style="padding: 2px; min-width: 200px; font-family: 'Courier New', monospace;">
             <strong style="color:var(--pink); font-size: 0.65rem;">AGENT_IDENTITY</strong><br>
             <span style="font-size:0.7rem; color:var(--cyan); word-break:break-all;">${addr}</span>
             <hr style="border:0; border-top:1px solid #333; margin:8px 0;">
-            <div style="display:flex; justify-content:space-between;"><span>EARNED:</span> <span>${formatValue(earned)}</span></div>
-            <div style="display:flex; justify-content:space-between;"><span>SPENT:</span> <span>${formatValue(spent)}</span></div>
-            <div style="display:flex; justify-content:space-between; margin-top:4px; font-weight:bold; color:${pnlColor};">
+            <div style="display:flex; justify-content:space-between; font-size:0.7rem;"><span>EARNED:</span> <span>${formatValue(earned)}</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.7rem;"><span>SPENT:</span> <span>${formatValue(spent)}</span></div>
+            <div style="display:flex; justify-content:space-between; margin-top:4px; font-weight:bold; color:${pnlColor}; font-size:0.75rem;">
                 <span>NET P/L:</span> <span>${net > 0 ? '+' : ''}${formatValue(net)}</span>
             </div>
         </div>

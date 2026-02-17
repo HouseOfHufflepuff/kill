@@ -136,6 +136,7 @@ function triggerPulse(id, type) {
 
 /**
  * UI: Show contextual information for a stack node
+ * BUG FIXED: Added Reaper Power (666) to the base calculation
  */
 function showTooltip(e, id) {
     if (!tooltip) return;
@@ -147,22 +148,28 @@ function showTooltip(e, id) {
     
     const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
     const bountyMultiplier = (1 + (age / 1000));
-    const totalKillValue = (u * bountyMultiplier);
+    
+    // FIX: Multiply reapers by 666 and add to units before multiplying by bounty
+    const basePower = u + (r * 666);
+    const totalKillValue = basePower * bountyMultiplier;
 
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
     
     tooltip.innerHTML = `
-        <div style="padding: 2px;">
+        <div style="padding: 2px; font-family: monospace; font-size: 0.75rem; line-height: 1.2;">
             <strong style="color:var(--cyan); letter-spacing:1px;">STACK_${id}</strong><br>
             <span style="opacity:0.6">BIRTH_BLOCK:</span> ${bBlock > 0 ? bBlock : '---'}<br>
             <span style="opacity:0.6">CURRENT_AGE:</span> ${age.toLocaleString()} blocks
-            <hr style="border:0; border-top:1px solid #333; margin:8px 0;">
+            <hr style="border:0; border-top:1px solid #333; margin:6px 0;">
             UNITS: ${u.toLocaleString()}<br>
             REAPERS: ${r}<br>
+            <span style="opacity:0.6">BASE_POWER:</span> ${basePower.toLocaleString()}<br>
             <span style="color:var(--cyan)">BOUNTY: ${bountyMultiplier.toFixed(3)}x</span><br>
-            <span style="color:var(--pink); font-weight:bold; font-size:0.9rem;">VALUE: ${Math.floor(totalKillValue).toLocaleString()} KILL</span>
+            <div style="border-top:1px solid #333; margin-top:4px; padding-top:4px;">
+                <span style="color:var(--pink); font-weight:bold; font-size:0.85rem;">VALUE: ${Math.floor(totalKillValue).toLocaleString()} KILL</span>
+            </div>
         </div>
     `;
 }
