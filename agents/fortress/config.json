@@ -7,7 +7,7 @@
   },
   "settings": {
     "HUB_STACK": 122,
-    "TARGET_UNITS": 333333,
+    "TARGET_UNITS": 33333,
     "REPLENISH_AMT": 33333,
     "REAPER_MULTIPLE": 666,
     "LOOP_DELAY_SECONDS": 12,
