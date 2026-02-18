@@ -838,6 +838,19 @@ export class Agent extends Entity {
   set netPnL(value: BigInt) {
     this.set("netPnL", Value.fromBigInt(value));
   }
+
+  get lastActiveBlock(): BigInt {
+    let value = this.get("lastActiveBlock");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set lastActiveBlock(value: BigInt) {
+    this.set("lastActiveBlock", Value.fromBigInt(value));
+  }
 }
 
 export class GlobalStat extends Entity {
@@ -955,5 +968,31 @@ export class GlobalStat extends Entity {
 
   set totalPnL(value: BigInt) {
     this.set("totalPnL", Value.fromBigInt(value));
+  }
+
+  get currentTreasury(): BigInt {
+    let value = this.get("currentTreasury");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set currentTreasury(value: BigInt) {
+    this.set("currentTreasury", Value.fromBigInt(value));
+  }
+
+  get maxBounty(): BigInt {
+    let value = this.get("maxBounty");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set maxBounty(value: BigInt) {
+    this.set("maxBounty", Value.fromBigInt(value));
   }
 }

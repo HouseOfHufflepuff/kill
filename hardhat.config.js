@@ -45,6 +45,9 @@ module.exports = {
     basesepolia: {
       url: API_URL || "https://sepolia.base.org",
       accounts: accounts,
+      gasPrice: 2000000000, // 2 Gwei base
+      pollingInterval: 1000,
+      timeout: 360000
     }
   },
   etherscan: {

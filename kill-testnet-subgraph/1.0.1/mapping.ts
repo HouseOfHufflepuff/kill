@@ -25,7 +25,7 @@ const MOVE_COST_WEI = BigInt.fromI32(10).times(KILL_DECIMALS);
 
 // --- HELPERS ---
 
-function getOrCreateAgent(address: Bytes): Agent {
+function getOrCreateAgent(address: Bytes, blockNumber: BigInt): Agent {
   let id = address.toHex()
   let agent = Agent.load(id)
   if (agent == null) {
@@ -33,16 +33,18 @@ function getOrCreateAgent(address: Bytes): Agent {
     agent.totalSpent = BigInt.fromI32(0)
     agent.totalEarned = BigInt.fromI32(0)
     agent.netPnL = BigInt.fromI32(0)
+    agent.lastActiveBlock = blockNumber // Initialize mandatory field
     agent.save()
   }
   return agent
 }
 
-function updateAgentFinance(address: Bytes, spent: BigInt, earned: BigInt): void {
-  let agent = getOrCreateAgent(address)
+function updateAgentFinance(address: Bytes, spent: BigInt, earned: BigInt, blockNumber: BigInt): void {
+  let agent = getOrCreateAgent(address, blockNumber)
   agent.totalSpent = agent.totalSpent.plus(spent)
   agent.totalEarned = agent.totalEarned.plus(earned)
   agent.netPnL = agent.totalEarned.minus(agent.totalSpent)
+  agent.lastActiveBlock = blockNumber // Update on every activity
   agent.save()
 }
 
@@ -89,7 +91,7 @@ export function handleSpawned(event: SpawnedEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  updateAgentFinance(event.params.agent, event.params.units.times(UNIT_PRICE_WEI), BigInt.fromI32(0))
+  updateAgentFinance(event.params.agent, event.params.units.times(UNIT_PRICE_WEI), BigInt.fromI32(0), event.block.number)
 
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = stack.totalStandardUnits.plus(event.params.units)
@@ -118,7 +120,7 @@ export function handleMoved(event: MovedEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  updateAgentFinance(event.params.agent, MOVE_COST_WEI, BigInt.fromI32(0))
+  updateAgentFinance(event.params.agent, MOVE_COST_WEI, BigInt.fromI32(0), event.block.number)
 
   let fromStack = getOrCreateStack(fromStackId.toString())
   fromStack.totalStandardUnits = safeSubtract(fromStack.totalStandardUnits, event.params.units)
@@ -165,8 +167,8 @@ export function handleKilled(event: KilledEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  updateAgentFinance(event.params.attacker, BigInt.fromI32(0), summary.attackerBounty)
-  updateAgentFinance(event.params.target, BigInt.fromI32(0), summary.defenderBounty)
+  updateAgentFinance(event.params.attacker, BigInt.fromI32(0), summary.attackerBounty, event.block.number)
+  updateAgentFinance(event.params.target, BigInt.fromI32(0), summary.defenderBounty, event.block.number)
 
   let stack = getOrCreateStack(stackId.toString())
   stack.totalStandardUnits = safeSubtract(stack.totalStandardUnits, summary.targetUnitsLost.plus(summary.attackerUnitsLost))
@@ -191,7 +193,7 @@ export function handleDefenderRewarded(event: DefenderRewardedEvent): void {
   reward.block_number = event.block.number
   reward.save()
 
-  updateAgentFinance(event.params.defender, BigInt.fromI32(0), event.params.amount)
+  updateAgentFinance(event.params.defender, BigInt.fromI32(0), event.params.amount, event.block.number)
 }
 
 export function handleGlobalStats(event: GlobalStatsEvent): void {
@@ -203,5 +205,9 @@ export function handleGlobalStats(event: GlobalStatsEvent): void {
   stats.killExtracted = event.params.killExtracted
   stats.killBurned = event.params.killBurned
   stats.totalPnL = stats.killAdded.minus(stats.killExtracted).minus(stats.killBurned)
+
+  stats.currentTreasury = stats.killAdded.minus(stats.killExtracted).minus(stats.killBurned)
+  stats.maxBounty = stats.currentTreasury.times(BigInt.fromI32(5)).div(BigInt.fromI32(100))
+  
   stats.save()
 }

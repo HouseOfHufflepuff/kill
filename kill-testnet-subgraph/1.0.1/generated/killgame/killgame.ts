@@ -398,6 +398,31 @@ export class killgame__getFullStackResultValue0Struct extends ethereum.Tuple {
   }
 }
 
+export class killgame__getTreasuryStatsResult {
+  value0: BigInt;
+  value1: BigInt;
+
+  constructor(value0: BigInt, value1: BigInt) {
+    this.value0 = value0;
+    this.value1 = value1;
+  }
+
+  toMap(): TypedMap<string, ethereum.Value> {
+    let map = new TypedMap<string, ethereum.Value>();
+    map.set("value0", ethereum.Value.fromUnsignedBigInt(this.value0));
+    map.set("value1", ethereum.Value.fromUnsignedBigInt(this.value1));
+    return map;
+  }
+
+  getTotalTreasury(): BigInt {
+    return this.value0;
+  }
+
+  getGlobalMaxBounty(): BigInt {
+    return this.value1;
+  }
+}
+
 export class killgame extends ethereum.SmartContract {
   static bind(address: Address): killgame {
     return new killgame("killgame", address);
@@ -433,44 +458,6 @@ export class killgame extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
-  REAPER_SPAWN_COST(): BigInt {
-    let result = super.call(
-      "REAPER_SPAWN_COST",
-      "REAPER_SPAWN_COST():(uint256)",
-      [],
-    );
-
-    return result[0].toBigInt();
-  }
-
-  try_REAPER_SPAWN_COST(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "REAPER_SPAWN_COST",
-      "REAPER_SPAWN_COST():(uint256)",
-      [],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  SENDER_BPS(): BigInt {
-    let result = super.call("SENDER_BPS", "SENDER_BPS():(uint256)", []);
-
-    return result[0].toBigInt();
-  }
-
-  try_SENDER_BPS(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall("SENDER_BPS", "SENDER_BPS():(uint256)", []);
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
   SPAWN_COST(): BigInt {
     let result = super.call("SPAWN_COST", "SPAWN_COST():(uint256)", []);
 
@@ -479,6 +466,25 @@ export class killgame extends ethereum.SmartContract {
 
   try_SPAWN_COST(): ethereum.CallResult<BigInt> {
     let result = super.tryCall("SPAWN_COST", "SPAWN_COST():(uint256)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  THERMAL_PARITY(): BigInt {
+    let result = super.call("THERMAL_PARITY", "THERMAL_PARITY():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_THERMAL_PARITY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "THERMAL_PARITY",
+      "THERMAL_PARITY():(uint256)",
+      [],
+    );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -688,6 +694,37 @@ export class killgame extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  getTreasuryStats(): killgame__getTreasuryStatsResult {
+    let result = super.call(
+      "getTreasuryStats",
+      "getTreasuryStats():(uint256,uint256)",
+      [],
+    );
+
+    return new killgame__getTreasuryStatsResult(
+      result[0].toBigInt(),
+      result[1].toBigInt(),
+    );
+  }
+
+  try_getTreasuryStats(): ethereum.CallResult<killgame__getTreasuryStatsResult> {
+    let result = super.tryCall(
+      "getTreasuryStats",
+      "getTreasuryStats():(uint256,uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(
+      new killgame__getTreasuryStatsResult(
+        value[0].toBigInt(),
+        value[1].toBigInt(),
+      ),
+    );
   }
 
   isApprovedForAll(account: Address, operator: Address): boolean {
@@ -901,52 +938,6 @@ export class killgame extends ethereum.SmartContract {
     let result = super.tryCall(
       "totalUnitsKilled",
       "totalUnitsKilled():(uint256)",
-      [],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  totalUnitsMinted(): BigInt {
-    let result = super.call(
-      "totalUnitsMinted",
-      "totalUnitsMinted():(uint256)",
-      [],
-    );
-
-    return result[0].toBigInt();
-  }
-
-  try_totalUnitsMinted(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "totalUnitsMinted",
-      "totalUnitsMinted():(uint256)",
-      [],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  treasuryBalance(): BigInt {
-    let result = super.call(
-      "treasuryBalance",
-      "treasuryBalance():(uint256)",
-      [],
-    );
-
-    return result[0].toBigInt();
-  }
-
-  try_treasuryBalance(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "treasuryBalance",
-      "treasuryBalance():(uint256)",
       [],
     );
     if (result.reverted) {

@@ -66,6 +66,7 @@ type Agent @entity(immutable: false) {
   totalSpent: BigInt!
   totalEarned: BigInt!
   netPnL: BigInt!
+  lastActiveBlock: BigInt!
 }
 
 type GlobalStat @entity(immutable: false) {
@@ -75,5 +76,7 @@ type GlobalStat @entity(immutable: false) {
   killAdded: BigInt!      # Global Gross Cost (Total Spent by all players)
   killExtracted: BigInt!  # Global Gross Profit (Total Earned by all players)
   killBurned: BigInt!     # Total Deflationary Burn
-  totalPnL: BigInt!       # Current Ecosystem Balance (Treasury)
+  totalPnL: BigInt!       # Current Ecosystem Balance (Calculated PnL)
+  currentTreasury: BigInt! # Actual Token Balance in Game Contract
+  maxBounty: BigInt!      # The 5% Thermal Parity Cap
 }
