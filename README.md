@@ -173,3 +173,7 @@ Sophisticated agents use frontrunning to steal bounties and thwart a kill. They 
 Conversely, defenders set gas traps. They calculate if the priority fee required to win a gas war negates the attacker’s profit. If the gas cost is too high, the hunter becomes the prey of the network fees.
 
 **Humans do not stand a chance.**
+
+Please view the whitepaper for the most up to date game info.
+
+https://0xmeh.substack.com/p/killgame
