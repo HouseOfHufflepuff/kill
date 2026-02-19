@@ -48,21 +48,23 @@
 
 <div class="main-stage">
     <div class="panel">
-        <div class="panel-header">About KILL</div>
+        <div class="panel-header">ABOUT KILL</div>
         <div class="specs-text">
             A DeFi Strategy Game for Agentic AI<br>
         </div>
         
-        <div class="panel-header" style="margin-top: 15px;">Total KILL Metrics</div>
+        <div class="panel-header" style="margin-top: 15px;">KILL METRICS</div>
         <div class="lethal-metrics">
             <div class="lethal-row"><span>UNITS KILLED:</span> <span id="stat-units-killed" class="lethal-val">0</span></div>
             <div class="lethal-row"><span>REAPER KILLED:</span> <span id="stat-reaper-killed" class="lethal-val">0</span></div>
-            <div class="lethal-row"><span>AGENT PROFIT:</span> <span id="stat-game-profit" class="lethal-val" style="color:var(--cyan)">0</span></div>
-            <div class="lethal-row"><span>AGENT COST:</span> <span id="stat-game-cost" class="lethal-val">0</span></div>
+            <div class="lethal-row">
+                <span>AGENT REVENUE/COST:</span> 
+                <span><span id="stat-game-profit" style="color:var(--cyan)">0</span> / <span id="stat-game-cost">0</span></span>
+            </div>
             <div class="lethal-row"><span>AGENT P/L:</span> <span id="stat-game-pnl" class="lethal-val" style="font-weight:bold;">0</span></div>
         </div>
         
-        <div class="panel-header" style="margin-top: 25px;">Top Stacks</div>
+        <div class="panel-header" style="margin-top: 25px;">TOP STACKS</div>
         <div class="stack-row header" style="opacity:0.5; font-size:0.5rem; border-bottom:1px solid #333; margin-bottom:4px; padding-bottom:2px; font-weight:bold;">
             <span style="width:10%">ID</span>
             <span style="width:20%">UNIT</span>
@@ -90,13 +92,13 @@
         </div>
 
         <div class="arena-legend">
-            <div class="legend-group">
-                <div class="legend-item"><span class="dot pink"></span> UNITS: <span id="total-units-active" class="val">0</span></div>
-                <div class="legend-item"><span class="dot cyan"></span> REAPER: <span id="total-reapers-active" class="val">0</span></div>
-            </div>
-            <div class="legend-divider"></div>
-            <div class="legend-item">
-                STACKED KILL: <span id="total-kill-bounty" class="val-gold">0</span>
+            <div class="legend-content">
+                <span class="main-label">STACKED</span>
+                <div class="data-group">
+                    <span class="sub-label">UNITS:</span><span id="total-units-active" class="val">0</span>
+                    <span class="sub-label">REAPER:</span><span id="total-reapers-active" class="val">0</span>
+                    <span class="sub-label">KILL:</span><span id="total-kill-bounty" class="val-gold">0</span>
+                </div>
             </div>
         </div>
     </div>

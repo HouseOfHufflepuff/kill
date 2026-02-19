@@ -77,18 +77,21 @@
 }
 
 .arena-legend {
-    display: flex; align-items: center; gap: 20px;
-    background: rgba(0,0,0,0.85); border: 1px solid #333; 
-    padding: 10px 20px; border-radius: 4px; font-size: 0.65rem; 
-    margin-bottom: 5px; flex-shrink: 0;
+    display: flex; 
+    align-items: center;
+    background: rgba(5, 5, 5, 0.9); 
+    border: 1px solid #222; 
+    padding: 12px 25px; 
+    font-size: 0.65rem; 
+    margin-bottom: 5px; 
+    flex-shrink: 0;
 }
-.legend-group { display: flex; gap: 15px; }
-.legend-item { display: flex; align-items: center; gap: 8px; }
-.val-gold { color: var(--cyan); font-weight: bold; text-shadow: 0 0 10px rgba(0,240,255,0.4); }
-.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.dot.pink { background: var(--pink); }
-.dot.cyan { background: var(--cyan); }
-.legend-divider { width: 1px; height: 15px; background: #333; }
+.legend-content { display: flex; align-items: center; }
+.main-label { color: #fff; font-weight: normal; letter-spacing: 2px; margin-right: 25px; }
+.data-group { display: flex; align-items: center; }
+.sub-label { color: #555; font-weight: bold; margin-left: 20px; margin-right: 6px; }
+.val { color: var(--pink); font-weight: bold; }
+.val-gold { color: var(--cyan); font-weight: bold; text-shadow: 0 0 8px rgba(0,240,255,0.3); }
 
 .layer-controls {
     position: relative; z-index: 1000;
@@ -104,13 +107,13 @@
 /* --- LEFT PANEL SPECIALS --- */
 .specs-text, .lethal-row { font-size: 0.65rem; line-height: 1.6; color: #ccc; }
 .lethal-metrics { 
-    background: rgba(255, 45, 117, 0.05); 
-    padding: 10px; 
-    border: 1px solid rgba(255, 45, 117, 0.2); 
-    margin-top: 10px; 
+    background: none; 
+    padding: 0; 
+    border: none; 
+    margin-top: 5px; 
     flex-shrink: 0;
 }
-.lethal-row { display: flex; justify-content: space-between; align-items: center; }
+.lethal-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
 
 /* --- DATA FEEDS & SCROLLING --- */
 #ripe-stacks, #log-feed, #leaderboard {
