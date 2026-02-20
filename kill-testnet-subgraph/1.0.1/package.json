@@ -1,28 +1,38 @@
 {
-  "name": "kill-game",
-  "version": "1.0.0",
-  "description": "Unified CLI management for KILLGame agents",
-  "main": "cli.js",
+  "name": "kill",
+  "version": "0.0.1",
+  "description": "kill",
+  "main": "app.js",
   "bin": {
     "killgame": "./cli.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "NODE_NO_WARNINGS=1 hardhat test"
   },
-  "keywords": [
-    "blockchain",
-    "game-agent",
-    "cli"
-  ],
-  "author": "",
-  "license": "ISC",
+  "author": "houseofhufflepuff",
+  "license": "MIT",
   "dependencies": {
-    "@graphprotocol/graph-ts": "^0.38.2",
-    "@nomicfoundation/hardhat-toolbox": "^2.0.0",
+    "@alch/alchemy-web3": "^1.1.9",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "commander": "^11.0.0",
-    "dotenv": "^16.0.0",
-    "ethers": "^5.7.0",
-    "hardhat": "^2.19.0",
-    "inquirer": "^8.2.4"
+    "dotenv": "^16.4.5",
+    "inquirer": "^8.2.4",
+    "truffle-flattener": "^1.6.0",
+    "xterm": "^4.16.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@openzeppelin/contracts-ethereum-package": "^3.0.0",
+    "@openzeppelin/hardhat-upgrades": "^1.28.0",
+    "@openzeppelin/test-helpers": "^0.5.16",
+    "chai": "^4.3.7",
+    "ethereum-waffle": "^3.4.4",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.28.4",
+    "hardhat-contract-sizer": "^2.10.1",
+    "keccak256": "1.0.6",
+    "merkletreejs": "0.2.31",
+    "mocha": "10.2.0"
   }
 }

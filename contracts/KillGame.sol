@@ -64,10 +64,12 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     uint256 public treasuryBps = 2500; 
     IERC20 public immutable killToken;
     
+    // --- GLOBAL TRACKERS ---
     uint256 public totalUnitsKilled;
     uint256 public totalReaperKilled;
-    uint256 public totalKillExtracted;
-    uint256 public totalKillBurned;
+    uint256 public totalKillAdded;      // Track total tokens entering system
+    uint256 public totalKillExtracted;  // Track total tokens paid as bounty
+    uint256 public totalKillBurned;     // Track total tokens designated as burned
 
     // --- STORAGE ---
     mapping(address => mapping(uint256 => ReaperStack)) public agentStacks;
@@ -145,10 +147,11 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         sum.targetReaperLost = loss.tReaper;
 
         attackerBounty = _applyRewards(target, uId, loss, sum);
-        _updateGlobalStats(loss);
+        _updateCombatGlobalStats(loss);
         _executeCombatEffects(msg.sender, target, uId, rId, loss, sum);
 
         emit Killed(msg.sender, target, stackId, sum, targetBirth);
+        _emitGlobalStats(); // Update Subgraph Metrics
         return attackerBounty;
     }
 
@@ -188,13 +191,17 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         require(killToken.transferFrom(msg.sender, address(this), totalCost), "Pay fail");
         
         unchecked {
-            totalKillBurned += (totalCost * BURN_BPS) / 10000;
+            uint256 burnAmt = (totalCost * BURN_BPS) / 10000;
+            totalKillBurned += burnAmt;
+            totalKillAdded += totalCost;
         }
         
         uint256 reaperCount = amount / 666;
         _mintAndReg(msg.sender, uint256(stackId), amount);
         if (reaperCount > 0) _mintAndReg(msg.sender, uint256(stackId) + 216, reaperCount);
+        
         emit Spawned(msg.sender, stackId, amount, reaperCount, block.number);
+        _emitGlobalStats(); // Update Subgraph Metrics
     }
 
     function move(uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper) external nonReentrant {
@@ -202,12 +209,16 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         require(killToken.transferFrom(msg.sender, address(this), MOVE_COST), "Pay fail");
         
         unchecked {
-            totalKillBurned += (MOVE_COST * BURN_BPS) / 10000;
+            uint256 burnAmt = (MOVE_COST * BURN_BPS) / 10000;
+            totalKillBurned += burnAmt;
+            totalKillAdded += MOVE_COST;
         }
         
         if (units > 0) _moveLogic(uint256(fromStack), uint256(toStack), units);
         if (reaper > 0) _moveLogic(uint256(fromStack) + 216, uint256(toStack) + 216, reaper);
+        
         emit Moved(msg.sender, fromStack, toStack, units, reaper, block.number);
+        _emitGlobalStats(); // Update Subgraph Metrics
     }
 
     function _resolveCombat(address, address target, uint256 uId, uint256 rId, uint256 sU, uint256 sR) internal view returns (LossReport memory loss) {
@@ -254,11 +265,21 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         }
     }
 
-    function _updateGlobalStats(LossReport memory loss) internal {
+    function _updateCombatGlobalStats(LossReport memory loss) internal {
         unchecked {
             totalUnitsKilled += (loss.aUnits + loss.tUnits);
             totalReaperKilled += (loss.aReaper + loss.tReaper);
         }
+    }
+
+    function _emitGlobalStats() internal {
+        emit GlobalStats(
+            totalUnitsKilled,
+            totalReaperKilled,
+            totalKillAdded,
+            totalKillExtracted,
+            totalKillBurned
+        );
     }
 
     function _mintAndReg(address to, uint256 id, uint256 amt) internal {
