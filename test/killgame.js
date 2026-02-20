@@ -188,6 +188,32 @@ describe("KILLGame: Full Suite", function () {
     it("14. should revert with 'Bad move' for non-adjacent cubes", async function () {
       await expect(killGame.connect(userA).move(1, 3, 1, 0)).to.be.revertedWith("Bad move");
     });
+
+    it("22. should reset birth block on BOTH origin and destination for partial moves", async function () {
+      // 1. Setup user with units in stack 1
+      await killGame.connect(userA).spawn(1, 100);
+      const initialBirth = await killGame.getBirthBlock(userA.address, 1);
+      
+      // 2. Advance time (5 blocks)
+      for(let i=0; i<5; i++) await ethers.provider.send("evm_mine");
+      
+      // 3. Perform a partial move (move 50, leave 50 behind)
+      await killGame.connect(userA).move(1, 2, 50, 0);
+      
+      const sourceBirthAfter = await killGame.getBirthBlock(userA.address, 1);
+      const destBirthAfter = await killGame.getBirthBlock(userA.address, 2);
+      
+      // 4. Verification
+      // Source birth block should be updated to a newer block number (higher index)
+      expect(sourceBirthAfter).to.be.gt(initialBirth);
+      // Destination birth block should be the same as the source reset (same transaction)
+      expect(destBirthAfter).to.equal(sourceBirthAfter);
+      
+      // 5. Ensure age in view function reflects this (Age should be 0 immediately after move)
+      const stackInfo = await killGame.getFullStack(1);
+      const userAInfo = stackInfo.find(s => s.occupant === userA.address);
+      expect(userAInfo.age).to.equal(0);
+    });
   });
 
   describe("Global Statistics", function () {

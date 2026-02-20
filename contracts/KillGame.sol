@@ -290,19 +290,31 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     }
 
     function _moveLogic(uint256 fId, uint256 tId, uint256 amt) internal {
-        _burn(msg.sender, fId, amt);
+        // 1. Identify base stack IDs (1-216) for age tracking
         uint256 baseF = (fId > 216) ? fId - 216 : fId;
         uint256 baseT = (tId > 216) ? tId - 216 : tId;
 
-        delete agentStacks[msg.sender][baseF];
-        isOccupying[baseF][msg.sender] = (balanceOf(msg.sender, baseF) > 0 || balanceOf(msg.sender, baseF + 216) > 0);
-        
+        // 2. Execute the state change (Burn from source, Mint to destination)
+        _burn(msg.sender, fId, amt);
         _mint(msg.sender, tId, amt, "");
+
+        // 3. FORCE RESET AGE: Source stack resets to now
+        agentStacks[msg.sender][baseF].birthBlock = block.number;
         
+        // 4. FORCE RESET AGE: Destination stack resets to now
         agentStacks[msg.sender][baseT].birthBlock = block.number;
+
+        // 5. REGISTRATION: Ensure destination occupancy is tracked
         if (!isOccupying[baseT][msg.sender]) {
             stackOccupants[baseT].push(msg.sender);
             isOccupying[baseT][msg.sender] = true;
+        }
+
+        // 6. CLEANUP: If source stack is now completely empty (0 units AND 0 reapers), remove occupancy
+        if (balanceOf(msg.sender, baseF) == 0 && balanceOf(msg.sender, baseF + 216) == 0) {
+            isOccupying[baseF][msg.sender] = false;
+            delete agentStacks[msg.sender][baseF]; 
+            // Note: We only delete if they are GONE. If they stay, birthBlock remains block.number.
         }
     }
 
