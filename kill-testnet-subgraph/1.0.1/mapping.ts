@@ -120,17 +120,25 @@ export function handleMoved(event: MovedEvent): void {
   let fromStack = getOrCreateStack(fromStackId.toString())
   fromStack.totalStandardUnits = safeSubtract(fromStack.totalStandardUnits, event.params.units)
   fromStack.totalBoostedUnits = safeSubtract(fromStack.totalBoostedUnits, event.params.reaper)
+  // If source stack is emptied, reset its birth block
+  if (fromStack.totalStandardUnits.equals(BigInt.fromI32(0))) {
+    fromStack.birthBlock = BigInt.fromI32(0)
+  }
   fromStack.save()
 
   let toStack = getOrCreateStack(toStackId.toString())
   toStack.totalStandardUnits = toStack.totalStandardUnits.plus(event.params.units)
   toStack.totalBoostedUnits = toStack.totalBoostedUnits.plus(event.params.reaper)
-  if (toStack.birthBlock.equals(BigInt.fromI32(0))) toStack.birthBlock = event.params.birthBlock
+  // FIXED: Always update birthBlock on move to mirror contract reset logic
+  toStack.birthBlock = event.params.birthBlock
   toStack.save()
 
   let aStackFrom = getOrCreateAgentStack(event.params.agent, fromStackId)
   aStackFrom.units = safeSubtract(aStackFrom.units, event.params.units)
   aStackFrom.reaper = safeSubtract(aStackFrom.reaper, event.params.reaper)
+  if (aStackFrom.units.equals(BigInt.fromI32(0))) {
+    aStackFrom.birthBlock = BigInt.fromI32(0)
+  }
   aStackFrom.save()
 
   let aStackTo = getOrCreateAgentStack(event.params.agent, toStackId)

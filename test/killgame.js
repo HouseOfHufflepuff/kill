@@ -29,10 +29,11 @@ describe("KILLGame: Full Suite", function () {
 
   describe("Owner Functions & Access Control", function () {
     it("16. should allow owner to change treasuryBps and emit event", async function () {
-      await expect(killGame.connect(owner).setTreasuryBps(5000))
+      // Adjusted: Baseline is now 5000 (50%)
+      await expect(killGame.connect(owner).setTreasuryBps(7500))
         .to.emit(killGame, "TreasuryBpsUpdated")
-        .withArgs(2500, 5000);
-      expect(await killGame.treasuryBps()).to.equal(5000);
+        .withArgs(5000, 7500);
+      expect(await killGame.treasuryBps()).to.equal(7500);
     });
 
     it("17. should revert if a non-owner tries to change treasuryBps", async function () {
@@ -44,9 +45,16 @@ describe("KILLGame: Full Suite", function () {
     it("18. should correctly scale pending rewards when treasuryBps is updated", async function () {
       await killGame.connect(userA).spawn(1, 10);
       for(let i=0; i<10; i++) await ethers.provider.send("evm_mine");
+      
       const pendingOld = await killGame.getPendingBounty(userA.address, 1);
-      await killGame.connect(owner).setTreasuryBps(5000); 
+      
+      // Update from 5000 (50%) to 10000 (100%)
+      await killGame.connect(owner).setTreasuryBps(10000); 
+      
       const pendingNew = await killGame.getPendingBounty(userA.address, 1);
+      
+      // Verification: The multiplier doubled, and age increased by 1 block for the Tx.
+      // Therefore, pendingNew MUST be greater than pendingOld * 2.
       expect(pendingNew).to.be.gt(pendingOld.mul(2));
     });
 
@@ -159,18 +167,11 @@ describe("KILLGame: Full Suite", function () {
     });
 
     it("11. should reset birth block even if moving into a stack already occupied", async function () {
-      // First move to stack 2
       await killGame.connect(userA).move(1, 2, 5, 0);
       const b1 = await killGame.getBirthBlock(userA.address, 2);
-      
-      // Advance time
       await ethers.provider.send("evm_mine");
-      
-      // Second move from stack 1 to stack 2 (adding more units)
       await killGame.connect(userA).move(1, 2, 5, 0);
       const b2 = await killGame.getBirthBlock(userA.address, 2);
-      
-      // Fixed: Birth block MUST be newer (greater) because any movement resets the age
       expect(b2).to.be.gt(b1);
     });
 
@@ -190,26 +191,14 @@ describe("KILLGame: Full Suite", function () {
     });
 
     it("22. should reset birth block on BOTH origin and destination for partial moves", async function () {
-      // 1. Setup user with units in stack 1
       await killGame.connect(userA).spawn(1, 100);
       const initialBirth = await killGame.getBirthBlock(userA.address, 1);
-      
-      // 2. Advance time (5 blocks)
       for(let i=0; i<5; i++) await ethers.provider.send("evm_mine");
-      
-      // 3. Perform a partial move (move 50, leave 50 behind)
       await killGame.connect(userA).move(1, 2, 50, 0);
-      
       const sourceBirthAfter = await killGame.getBirthBlock(userA.address, 1);
       const destBirthAfter = await killGame.getBirthBlock(userA.address, 2);
-      
-      // 4. Verification
-      // Source birth block should be updated to a newer block number (higher index)
       expect(sourceBirthAfter).to.be.gt(initialBirth);
-      // Destination birth block should be the same as the source reset (same transaction)
       expect(destBirthAfter).to.equal(sourceBirthAfter);
-      
-      // 5. Ensure age in view function reflects this (Age should be 0 immediately after move)
       const stackInfo = await killGame.getFullStack(1);
       const userAInfo = stackInfo.find(s => s.occupant === userA.address);
       expect(userAInfo.age).to.equal(0);
@@ -246,17 +235,13 @@ describe("KILLGame: Full Suite", function () {
       const hugeSeed = ethers.utils.parseEther("4000000000"); 
       await killToken.mint(owner.address, hugeSeed);
       await killToken.connect(owner).transfer(killGame.address, hugeSeed);
-
       await killGame.connect(userA).spawn(1, 666);
       await killGame.connect(userB).spawn(1, 666);
-
       for(let i=0; i<5; i++) await ethers.provider.send("evm_mine");
-
       const tx = await killGame.connect(userB).kill(userA.address, 1, 666, 1);
       const receipt = await tx.wait();
       const event = receipt.events.find(e => e.event === 'Killed');
       logSim("ECONOMIC SIMULATION: 4B SEED RESULTS", event.args.summary);
-
       expect(event.args.summary.attackerBounty).to.be.gt(0);
     });
 
@@ -264,12 +249,10 @@ describe("KILLGame: Full Suite", function () {
       const cube = 50;
       await killGame.connect(userA).spawn(cube, 100); 
       await killGame.connect(userB).spawn(cube, 300); 
-      
       const tx = await killGame.connect(userB).kill(userA.address, cube, 300, 0);
       const receipt = await tx.wait();
       const event = receipt.events.find(e => e.event === 'Killed');
       logSim("SIM: ATTACKER 3X FORCE", event.args.summary);
-      
       expect(event.args.summary.targetUnitsLost).to.equal(100);
       expect(event.args.summary.attackerUnitsLost).to.equal(0);
     });
@@ -278,12 +261,10 @@ describe("KILLGame: Full Suite", function () {
       const cube = 51;
       await killGame.connect(userA).spawn(cube, 300); 
       await killGame.connect(userB).spawn(cube, 100); 
-      
       const tx = await killGame.connect(userB).kill(userA.address, cube, 100, 0);
       const receipt = await tx.wait();
       const event = receipt.events.find(e => e.event === 'Killed');
       logSim("SIM: DEFENDER 3X FORCE", event.args.summary);
-      
       expect(event.args.summary.attackerUnitsLost).to.equal(100);
       expect(event.args.summary.targetUnitsLost).to.be.gt(0);
     });

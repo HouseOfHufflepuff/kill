@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Multicall.sol";
 
 /**
  * @title KILLGame
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * 2. Pace: 50x cap potential reached in ~3 days (approx 21,600 blocks).
  * 3. Age Reset: Any movement resets birthBlock for both source and destination.
  */
-contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
+contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     // --- STRUCTS ---
     struct ReaperStack { 
         uint256 birthBlock; 
@@ -61,7 +62,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     uint256 public constant MOVE_COST = 10 * 10**18;
     uint256 public constant THERMAL_PARITY = 666;
     
-    uint256 public treasuryBps = 2500; 
+    uint256 public treasuryBps = 5000; 
     IERC20 public immutable killToken;
     
     // --- GLOBAL TRACKERS ---
