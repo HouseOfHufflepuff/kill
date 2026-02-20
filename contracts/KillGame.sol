@@ -67,9 +67,9 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
     // --- GLOBAL TRACKERS ---
     uint256 public totalUnitsKilled;
     uint256 public totalReaperKilled;
-    uint256 public totalKillAdded;      // Track total tokens entering system
-    uint256 public totalKillExtracted;  // Track total tokens paid as bounty
-    uint256 public totalKillBurned;     // Track total tokens designated as burned
+    uint256 public totalKillAdded;      
+    uint256 public totalKillExtracted;  
+    uint256 public totalKillBurned;     
 
     // --- STORAGE ---
     mapping(address => mapping(uint256 => ReaperStack)) public agentStacks;
@@ -91,6 +91,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     function adminWithdraw(uint256 amt) external onlyOwner { 
         killToken.transfer(msg.sender, amt); 
+        // We do not track admin withdrawals as "Extracted" because they aren't player bounties
     }
 
     // --- VIEWS / HELPERS ---
@@ -107,13 +108,9 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         
         uint256 actualTreasury = killToken.balanceOf(address(this));
         
-        // 1. Potential based on Age and Treasury Bps
         uint256 potential = (actualTreasury * (block.number - birth) * treasuryBps) / 10000000000;
-        
-        // 2. Global Cap: 5% of Treasury
         uint256 globalCap = (actualTreasury * 5) / 100;
 
-        // 3. Stack Multiplier Cap: 50x of the SPAWN_COST for the current units/reapers
         uint256 stackUnits = balanceOf(agent, uId) + (balanceOf(agent, rId) * 666);
         uint256 spawnValue = stackUnits * SPAWN_COST;
         uint256 multiplierCap = spawnValue * 50;
@@ -141,33 +138,33 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         uint256 targetBirth = agentStacks[target][uId].birthBlock; 
 
         LossReport memory loss = _resolveCombat(msg.sender, target, uId, rId, sentUnits, sentReaper);
+        
+        // Update accurately based on resolution
         sum.attackerUnitsLost = loss.aUnits;
         sum.attackerReaperLost = loss.aReaper;
         sum.targetUnitsLost = loss.tUnits;
         sum.targetReaperLost = loss.tReaper;
 
         attackerBounty = _applyRewards(target, uId, loss, sum);
+        
+        // --- UPDATING CORE METRICS ---
         _updateCombatGlobalStats(loss);
         _executeCombatEffects(msg.sender, target, uId, rId, loss, sum);
 
         emit Killed(msg.sender, target, stackId, sum, targetBirth);
-        _emitGlobalStats(); // Update Subgraph Metrics
+        _emitGlobalStats(); 
         return attackerBounty;
     }
 
     function _applyRewards(address target, uint256 uId, LossReport memory loss, BattleSummary memory sum) internal returns (uint256 aB) {
-        uint256 battlePool;
         uint256 tPLost = loss.tUnits + (loss.tReaper * 666);
         uint256 aPLost = loss.aUnits + (loss.aReaper * 666);
         uint256 totalPLost = tPLost + aPLost;
         
         if (totalPLost == 0) return 0;
 
-        { 
-            uint256 pending = getPendingBounty(target, uId);
-            battlePool = totalPLost >= THERMAL_PARITY ? pending : (pending * totalPLost) / THERMAL_PARITY;
-        }
-
+        uint256 pending = getPendingBounty(target, uId);
+        uint256 battlePool = totalPLost >= THERMAL_PARITY ? pending : (pending * totalPLost) / THERMAL_PARITY;
         uint256 participantPool = (battlePool * 7500) / 10000; 
 
         if (participantPool > 0) {
@@ -193,7 +190,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         unchecked {
             uint256 burnAmt = (totalCost * BURN_BPS) / 10000;
             totalKillBurned += burnAmt;
-            totalKillAdded += totalCost;
+            totalKillAdded += totalCost; // Update correctly here
         }
         
         uint256 reaperCount = amount / 666;
@@ -201,7 +198,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         if (reaperCount > 0) _mintAndReg(msg.sender, uint256(stackId) + 216, reaperCount);
         
         emit Spawned(msg.sender, stackId, amount, reaperCount, block.number);
-        _emitGlobalStats(); // Update Subgraph Metrics
+        _emitGlobalStats(); 
     }
 
     function move(uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper) external nonReentrant {
@@ -211,14 +208,14 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         unchecked {
             uint256 burnAmt = (MOVE_COST * BURN_BPS) / 10000;
             totalKillBurned += burnAmt;
-            totalKillAdded += MOVE_COST;
+            totalKillAdded += MOVE_COST; // Update correctly here
         }
         
         if (units > 0) _moveLogic(uint256(fromStack), uint256(toStack), units);
         if (reaper > 0) _moveLogic(uint256(fromStack) + 216, uint256(toStack) + 216, reaper);
         
         emit Moved(msg.sender, fromStack, toStack, units, reaper, block.number);
-        _emitGlobalStats(); // Update Subgraph Metrics
+        _emitGlobalStats(); 
     }
 
     function _resolveCombat(address, address target, uint256 uId, uint256 rId, uint256 sU, uint256 sR) internal view returns (LossReport memory loss) {
@@ -260,13 +257,14 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
 
     function _transferBounty(address recipient, uint256 amount) internal {
         if (amount > 0) {
-            totalKillExtracted += amount;
+            totalKillExtracted += amount; // Confirming correct update
             require(killToken.transfer(recipient, amount), "Payout fail");
         }
     }
 
     function _updateCombatGlobalStats(LossReport memory loss) internal {
         unchecked {
+            // Confirming accurate additive updates
             totalUnitsKilled += (loss.aUnits + loss.tUnits);
             totalReaperKilled += (loss.aReaper + loss.tReaper);
         }
@@ -343,9 +341,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable {
         return info;
     }
 
-    /**
-     * @notice Returns the current liquid treasury and the 5% hard cap for any single kill.
-     */
     function getTreasuryStats() external view returns (uint256 totalTreasury, uint256 globalMaxBounty) {
         totalTreasury = killToken.balanceOf(address(this));
         globalMaxBounty = (totalTreasury * 5) / 100;
