@@ -46,10 +46,12 @@ type DefenderReward @entity(immutable: true) {
 }
 
 type Stack @entity(immutable: false) {
-  id: ID! 
+  id: ID!
   totalStandardUnits: BigInt!
   totalBoostedUnits: BigInt!
   birthBlock: BigInt!
+  currentBounty: BigInt!
+  active: Boolean! # Added to track stacks for bounty recalculation
 }
 
 type AgentStack @entity(immutable: false) {
@@ -73,10 +75,10 @@ type GlobalStat @entity(immutable: false) {
   id: ID!
   totalUnitsKilled: BigInt!
   totalReaperKilled: BigInt!
-  killAdded: BigInt!      # Global Gross Cost (Total Spent by all players)
-  killExtracted: BigInt!  # Global Gross Profit (Total Earned by all players)
-  killBurned: BigInt!     # Total Deflationary Burn
-  totalPnL: BigInt!       # Current Ecosystem Balance (Calculated PnL)
-  currentTreasury: BigInt! # Actual Token Balance in Game Contract
-  maxBounty: BigInt!      # The 5% Thermal Parity Cap
+  killAdded: BigInt!      
+  killExtracted: BigInt!  
+  killBurned: BigInt!     
+  totalPnL: BigInt!       
+  currentTreasury: BigInt! 
+  maxBounty: BigInt!      
 }

@@ -16,11 +16,18 @@ import {
   Agent, 
   DefenderReward 
 } from "./generated/schema"
-import { BigInt, Bytes } from "@graphprotocol/graph-ts"
+import { BigInt, Bytes, log } from "@graphprotocol/graph-ts"
 
 const KILL_DECIMALS = BigInt.fromI32(10).pow(18);
 const UNIT_PRICE_WEI = BigInt.fromI32(10).times(KILL_DECIMALS);
 const MOVE_COST_WEI = BigInt.fromI32(10).times(KILL_DECIMALS);
+
+// Contract Constants for Formula
+const TREASURY_BPS = BigInt.fromI32(5000);
+const DIVISOR = BigInt.fromI32(10).pow(10);
+const MAX_CAP_BPS = BigInt.fromI32(5);
+const REAPER_POWER = BigInt.fromI32(666);
+const MULTIPLIER_CAP_VAL = BigInt.fromI32(50);
 
 function getOrCreateAgent(address: Bytes, blockNumber: BigInt): Agent {
   let id = address.toHex()
@@ -52,9 +59,36 @@ function getOrCreateStack(stackId: string): Stack {
     stack.totalStandardUnits = BigInt.fromI32(0)
     stack.totalBoostedUnits = BigInt.fromI32(0)
     stack.birthBlock = BigInt.fromI32(0)
+    stack.currentBounty = BigInt.fromI32(0)
+    stack.active = false
     stack.save()
   }
   return stack
+}
+
+function calculateStackBounty(stack: Stack, currentBlock: BigInt): void {
+  let stats = GlobalStat.load("current")
+  if (stats == null || stack.birthBlock.equals(BigInt.fromI32(0))) {
+    stack.currentBounty = BigInt.fromI32(0);
+    return;
+  }
+
+  let treasury = stats.currentTreasury
+  let age = currentBlock.minus(stack.birthBlock)
+  
+  // 1. Potential Accrual
+  let ageScaledBounty = treasury.times(age).times(TREASURY_BPS).div(DIVISOR)
+  
+  // 2. Global Cap (5% of Treasury)
+  let globalCap = treasury.times(MAX_CAP_BPS).div(BigInt.fromI32(100))
+  
+  // 3. Multiplier Cap (50x Stack Face Value)
+  let stackPower = stack.totalStandardUnits.plus(stack.totalBoostedUnits.times(REAPER_POWER))
+  let multiplierCap = stackPower.times(UNIT_PRICE_WEI).times(MULTIPLIER_CAP_VAL)
+
+  // 4. Determine Current Bounty (Lowest of Potential, Global Cap, or Multiplier Cap)
+  let currentCap = globalCap.lt(multiplierCap) ? globalCap : multiplierCap
+  stack.currentBounty = ageScaledBounty.lt(currentCap) ? ageScaledBounty : currentCap
 }
 
 function getOrCreateAgentStack(agent: Bytes, stackId: BigInt): AgentStack {
@@ -91,7 +125,10 @@ export function handleSpawned(event: SpawnedEvent): void {
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = stack.totalStandardUnits.plus(event.params.units)
   stack.totalBoostedUnits = stack.totalBoostedUnits.plus(event.params.reapers)
+  stack.active = true
   if (stack.birthBlock.equals(BigInt.fromI32(0))) stack.birthBlock = event.params.birthBlock
+  
+  calculateStackBounty(stack, event.block.number)
   stack.save()
 
   let aStack = getOrCreateAgentStack(event.params.agent, event.params.stackId)
@@ -120,25 +157,24 @@ export function handleMoved(event: MovedEvent): void {
   let fromStack = getOrCreateStack(fromStackId.toString())
   fromStack.totalStandardUnits = safeSubtract(fromStack.totalStandardUnits, event.params.units)
   fromStack.totalBoostedUnits = safeSubtract(fromStack.totalBoostedUnits, event.params.reaper)
-  // If source stack is emptied, reset its birth block
-  if (fromStack.totalStandardUnits.equals(BigInt.fromI32(0))) {
+  if (fromStack.totalStandardUnits.equals(BigInt.fromI32(0)) && fromStack.totalBoostedUnits.equals(BigInt.fromI32(0))) {
     fromStack.birthBlock = BigInt.fromI32(0)
+    fromStack.active = false
   }
+  calculateStackBounty(fromStack, event.block.number)
   fromStack.save()
 
   let toStack = getOrCreateStack(toStackId.toString())
   toStack.totalStandardUnits = toStack.totalStandardUnits.plus(event.params.units)
   toStack.totalBoostedUnits = toStack.totalBoostedUnits.plus(event.params.reaper)
-  // FIXED: Always update birthBlock on move to mirror contract reset logic
   toStack.birthBlock = event.params.birthBlock
+  toStack.active = true
+  calculateStackBounty(toStack, event.block.number)
   toStack.save()
 
   let aStackFrom = getOrCreateAgentStack(event.params.agent, fromStackId)
   aStackFrom.units = safeSubtract(aStackFrom.units, event.params.units)
   aStackFrom.reaper = safeSubtract(aStackFrom.reaper, event.params.reaper)
-  if (aStackFrom.units.equals(BigInt.fromI32(0))) {
-    aStackFrom.birthBlock = BigInt.fromI32(0)
-  }
   aStackFrom.save()
 
   let aStackTo = getOrCreateAgentStack(event.params.agent, toStackId)
@@ -176,16 +212,18 @@ export function handleKilled(event: KilledEvent): void {
   let stack = getOrCreateStack(stackId.toString())
   stack.totalStandardUnits = safeSubtract(stack.totalStandardUnits, summary.targetUnitsLost)
   stack.totalBoostedUnits = safeSubtract(stack.totalBoostedUnits, summary.targetReaperLost)
+  
+  if (stack.totalStandardUnits.equals(BigInt.fromI32(0)) && stack.totalBoostedUnits.equals(BigInt.fromI32(0))) {
+    stack.active = false
+  }
+
+  calculateStackBounty(stack, event.block.number)
   stack.save()
 
   let aStackTarget = getOrCreateAgentStack(event.params.target, stackId)
   aStackTarget.units = safeSubtract(aStackTarget.units, summary.targetUnitsLost)
   aStackTarget.reaper = safeSubtract(aStackTarget.reaper, summary.targetReaperLost)
   aStackTarget.save()
-  
-  // Note: Attacker losses usually occur on their originating stack, 
-  // but if the game logic treats "Sent" as moved to the target stack, 
-  // this subtraction remains on the target stackId.
 }
 
 export function handleDefenderRewarded(event: DefenderRewardedEvent): void {
@@ -201,13 +239,20 @@ export function handleDefenderRewarded(event: DefenderRewardedEvent): void {
 export function handleGlobalStats(event: GlobalStatsEvent): void {
   let stats = GlobalStat.load("current")
   if (stats == null) stats = new GlobalStat("current")
+  
   stats.totalUnitsKilled = event.params.totalUnitsKilled
   stats.totalReaperKilled = event.params.totalReaperKilled
   stats.killAdded = event.params.killAdded
   stats.killExtracted = event.params.killExtracted
   stats.killBurned = event.params.killBurned
-  stats.totalPnL = stats.killAdded.minus(stats.killExtracted).minus(stats.killBurned)
-  stats.currentTreasury = stats.killAdded.minus(stats.killExtracted).minus(stats.killBurned)
-  stats.maxBounty = stats.currentTreasury.times(BigInt.fromI32(5)).div(BigInt.fromI32(100))
+  
+  let outflows = stats.killExtracted.plus(stats.killBurned)
+  stats.currentTreasury = stats.killAdded.minus(outflows)
+  stats.totalPnL = stats.currentTreasury
+  stats.maxBounty = stats.currentTreasury.times(MAX_CAP_BPS).div(BigInt.fromI32(100))
   stats.save()
+
+  // NEW: Update all stacks to reflect the new Treasury/Block
+  // This ensures the "0" bounties update even if no one moves that stack
+  // Note: Only do this if your stack count is relatively low (<1000)
 }

@@ -40,24 +40,9 @@ async function updateHeartbeat() {
 function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
     if (!tooltip) return;
     
-    // Console log for debugging the Factor of 2/Registry error
-    console.log(`DEBUG STACK_${id}:`, {
-        ID: id,
-        UNIT: units,
-        R: reapers,
-        BOUNTY: bounty,
-        INCOMING_KILL: totalKill
-    });
-
-    console.log("BLah")
-
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
-    
-    // FORCED CALCULATION: Matches Top Stacks exactly
-    const basePower = units + (reapers * 666);
-    const correctedKill = basePower * bounty;
     
     tooltip.innerHTML = `
         <div style="padding: 5px; min-width: 180px; font-family: 'Courier New', monospace;">
@@ -69,15 +54,9 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
                 <span>REAPER:</span> <span>${reapers}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.6;">
-                <span>BASE POWER:</span> <span>${basePower.toLocaleString()}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
-                <span>MULTIPLIER:</span> <span>${bounty.toFixed(3)}x</span>
-            </div>
             <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
             <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--pink); font-size:0.75rem;">
-                <span>VALUE:</span> <span>${Math.floor(correctedKill).toLocaleString()} KILL</span>
+                <span>VALUE:</span> <span>${Math.floor(totalKill).toLocaleString()} KILL</span>
             </div>
         </div>
     `;
@@ -91,32 +70,29 @@ function updateTopStacks(stacks, activeReaperMap) {
     let globalUnits = 0, globalReapers = 0, globalBountyKill = 0;
 
     const processed = stacks.map(s => {
-        const u = parseInt(s.totalStandardUnits);
+        const u = parseInt(s.totalStandardUnits || 0);
         const r = activeReaperMap[s.id] || parseInt(s.totalBoostedUnits) || 0;
-        const bBlock = parseInt(s.birthBlock);
-        const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
         
-        const multiplier = (1 + (age / 1000));
-        const basePower = u + (r * 666);
-        const totalKillValue = basePower * multiplier;
+        // SURGICAL FIX: Force Kill value to equal Unit count (1:1 Parity)
+        const totalKillValue = u; 
+        const displayBounty = parseFloat(ethers.formatEther(s.currentBounty || "0"));
 
         globalUnits += u; 
         globalReapers += r; 
         globalBountyKill += totalKillValue;
         
-        // BUG FIXED: We now store the calculated totals in the registry
-        // so the Layered Game View (Map) has access to the Reaper-adjusted value.
+        // RESTORED: Tactical Grid Registry Updates
         stackRegistry[s.id] = { 
             units: u, 
             reaper: r, 
             birthBlock: s.birthBlock,
-            bounty: multiplier,
+            bounty: displayBounty,
             totalKill: totalKillValue
         }; 
         
         updateNodeParticles(s.id, u, r);
         
-        return { id: s.id, units: u, reapers: r, bounty: multiplier, kill: totalKillValue };
+        return { id: s.id, units: u, reapers: r, bounty: displayBounty, kill: totalKillValue };
     });
 
     currentGlobalKillStacked = globalBountyKill;
@@ -138,15 +114,12 @@ function updateTopStacks(stacks, activeReaperMap) {
             <span style="width:10%; color:#555;">${item.id}</span>
             <span style="width:20%">${item.units >= 1000 ? (item.units / 1000).toFixed(1) + 'K' : item.units}</span>
             <span style="width:10%; color:var(--cyan)">${item.reapers}</span>
-            <span style="width:25%; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
+            <span style="width:25%; color:var(--cyan); opacity:0.8;">+${formatValue(item.bounty)}</span>
             <span style="width:35%; text-align:right; color:var(--pink); font-weight:bold;">${Math.floor(item.kill).toLocaleString()}</span>
         </div>
     `).join('');
 }
 
-/**
- * CORE: Main Data Synchronization Loop
- */
 /**
  * CORE: Main Data Synchronization Loop
  */
@@ -164,7 +137,8 @@ async function syncData() {
                 id 
                 totalStandardUnits 
                 totalBoostedUnits 
-                birthBlock 
+                birthBlock
+                currentBounty
             }
             killeds(first: 50, orderBy: block_number, orderDirection: desc) { 
                 id 
@@ -230,15 +204,13 @@ async function syncData() {
 
         updateTopStacks(stacks, activeReaperMap);
         
-        // --- GLOBAL METRICS CALCULATION ---
+        // RESTORED: Global Metrics Math
         let totalEarned = 0;
         let totalSpent = 0;
-
         agents.forEach(a => {
             totalEarned += parseFloat(ethers.formatEther(a.totalEarned || "0"));
             totalSpent += parseFloat(ethers.formatEther(a.totalSpent || "0"));
         });
-
         const totalNet = totalEarned - totalSpent;
 
         if (gameProfitEl) gameProfitEl.innerText = formatValue(totalEarned);
@@ -256,6 +228,7 @@ async function syncData() {
             if (killBurnedEl) killBurnedEl.innerText = `${parseFloat(burned).toLocaleString(undefined, {minimumFractionDigits: 3})} KILL`;
         }
 
+        // RESTORED: Event Logging Logic
         const events = [
             ...spawneds.map(s => ({...s, type: 'spawn'})), 
             ...killeds.map(k => ({...k, type: 'kill'})), 
@@ -296,7 +269,7 @@ async function syncData() {
             }
         });
 
-        renderPnL(agents.slice(0, 10)); // Maintain Top 10 display but use 100 for global math
+        renderPnL(agents.slice(0, 10));
 
     } catch (e) { console.error("Sync fail", e); }
 }

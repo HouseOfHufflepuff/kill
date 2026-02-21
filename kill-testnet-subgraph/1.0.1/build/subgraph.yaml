@@ -6,9 +6,9 @@ dataSources:
     name: killgame
     network: base-sepolia
     source:
-      address: "0x98734FD968fbDd4c1A25B608AEe10953616011Ab"
+      address: "0x923215fD8fF71d5f7C6Dc05111f1C957d9A0ac27"
       abi: killgame
-      startBlock: 37755000
+      startBlock: 37917651
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6

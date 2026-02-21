@@ -22,7 +22,7 @@ async function main() {
     //await killToken.mint(KILL_GAME, "4440000000000000000000000000");
 
     //100M agent0
-    //await killToken.mint(PUBLIC_KEY, "10000000000000000000000000");
+    await killToken.mint(PUBLIC_KEY, "10000000000000000000000000");
 
     // // //100M agent1
     // await killToken.mint(AGENT1_PUBLIC_KEY, "10000000000000000000000000");
@@ -31,14 +31,16 @@ async function main() {
     // await killToken.mint(AGENT2_PUBLIC_KEY, "10000000000000000000000000");
 
     // //100M agent3
-    // await killToken.mint(AGENT3_PUBLIC_KEY, "10000000000000000000000000");
+    await killToken.mint(AGENT3_PUBLIC_KEY, "10000000000000000000000000");
 
     // // //100k agent4
     // // await killToken.mint(AGENT4_PUBLIC_KEY, "100000000000000000000000");
 
     // //100M max
-    // await killToken.mint(MAX_PUB, "10000000000000000000000000");
-    // console.log("done funding contracts and agents");
+    await killToken.mint(MAX_PUB, "10000000000000000000000000");
+    
+    
+    console.log("done funding contracts and agents");
 
 }
 

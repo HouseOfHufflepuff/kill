@@ -654,6 +654,32 @@ export class Stack extends Entity {
   set birthBlock(value: BigInt) {
     this.set("birthBlock", Value.fromBigInt(value));
   }
+
+  get currentBounty(): BigInt {
+    let value = this.get("currentBounty");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set currentBounty(value: BigInt) {
+    this.set("currentBounty", Value.fromBigInt(value));
+  }
+
+  get active(): boolean {
+    let value = this.get("active");
+    if (!value || value.kind == ValueKind.NULL) {
+      return false;
+    } else {
+      return value.toBoolean();
+    }
+  }
+
+  set active(value: boolean) {
+    this.set("active", Value.fromBoolean(value));
+  }
 }
 
 export class AgentStack extends Entity {

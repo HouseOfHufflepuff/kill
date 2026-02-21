@@ -6,9 +6,6 @@ const KILL_TOKEN = process.env.KILL_TOKEN;
 const KILL_GAME = process.env.KILL_GAME;
 
 
-
-
-
 //hardhat run scripts/deploy.js --network basesepolia
 //hardhat run scripts/deploy.js --network base
 async function main() {
