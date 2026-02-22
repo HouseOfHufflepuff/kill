@@ -18,10 +18,10 @@ async function main() {
     const killToken = await KillToken.attach(KILL_TOKEN);
 
     const [owner] = await ethers.getSigners();
-    //4440M game contract
-    //await killToken.mint(KILL_GAME, "4440000000000000000000000000");
+    //666M game contract
+    //await killToken.mint(KILL_GAME, "666000000000000000000000000");
 
-    //100M agent0
+    //10M agent0
     await killToken.mint(PUBLIC_KEY, "10000000000000000000000000");
 
     // // //100M agent1
@@ -30,13 +30,13 @@ async function main() {
     // // //10M agent2
     // await killToken.mint(AGENT2_PUBLIC_KEY, "10000000000000000000000000");
 
-    // //100M agent3
+    // //10M agent3
     await killToken.mint(AGENT3_PUBLIC_KEY, "10000000000000000000000000");
 
     // // //100k agent4
     // // await killToken.mint(AGENT4_PUBLIC_KEY, "100000000000000000000000");
 
-    // //100M max
+    // //10M max
     await killToken.mint(MAX_PUB, "10000000000000000000000000");
     
     

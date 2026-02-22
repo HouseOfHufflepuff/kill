@@ -3,11 +3,11 @@
   "network": {
     "network_name" : "basesepolia",
     "rpc_url": "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs",
-    "kill_game_addr": "0x923215fD8fF71d5f7C6Dc05111f1C957d9A0ac27"
+    "kill_game_addr": "0xD225036472Aceb033C82ee72FbE5851bB5F5e82A"
   },
   "settings": {
     "SEED_AMOUNT": 6660,
-    "LOOP_DELAY_SECONDS": 60,
+    "LOOP_DELAY_SECONDS": 12,
     "BATCH_SEED": 20
   }
 }
