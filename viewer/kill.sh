@@ -1,4 +1,5 @@
 #!/bin/bash
+# Ensure the URL matches your GitHub structure exactly
 BASE_URL="https://raw.githubusercontent.com/HouseOfHufflepuff/kill/main"
 
 echo "🦞 KILLGame Installer: Fetching via CURL..."
@@ -6,11 +7,32 @@ echo "🦞 KILLGame Installer: Fetching via CURL..."
 # 1. Scaffolding
 mkdir -p agents/sniper agents/fortress agents/seed
 
-# 2. Fetch Agent Files
+# 2. Fetch Agent Files with Success Verification
 for ROLE in sniper fortress seed; do
-  echo "Fetching $ROLE..."
-  curl -s "$BASE_URL/agents/$ROLE/agent.js" -o "agents/$ROLE/agent.js"
-  curl -s "$BASE_URL/agents/$ROLE/config.json" -o "agents/$ROLE/config.json"
+  echo "Checking $ROLE..."
+  
+  # Fetch agent.js
+  curl -f -s "$BASE_URL/agents/$ROLE/agent.js" -o "agents/$ROLE/agent.js"
+  if [ $? -ne 0 ]; then echo "⚠️ Warning: agent.js not found for $ROLE"; fi
+  
+  # Fetch config.json
+  curl -f -s "$BASE_URL/agents/$ROLE/config.json" -o "agents/$ROLE/config.json"
+  if [ $? -ne 0 ]; then 
+    echo "⚠️ config.json not found for $ROLE. Creating default..."
+    cat <<EOT > "agents/$ROLE/config.json"
+{
+  "network_name": "basesepolia",
+  "network": { "kill_game_addr": "0x923215fD8fF71d5f7C6Dc05111f1C957d9A0ac27" },
+  "settings": {
+    "HUB_STACK": 125,
+    "MIN_SPAWN": 666,
+    "KILL_MULTIPLIER": 2,
+    "SPAWN_PROFITABILITY_THRESHOLD": 0.01,
+    "LOOP_DELAY_SECONDS": 5
+  }
+}
+EOT
+  fi
 done
 
 # 3. Generate Hardhat Config
@@ -28,7 +50,7 @@ module.exports = {
 };
 EOT
 
-# 4. Generate CLI Router (cli.js)
+# 4. Generate CLI Router
 cat <<EOT > cli.js
 #!/usr/bin/env node
 const { program } = require('commander');
@@ -47,13 +69,10 @@ program.command('setup').action(async () => {
   const envPath = path.join(ROOT, '.env');
   let content = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
   const key = \`\${ans.role.toUpperCase()}_PK\`;
-  
-  // Clean existing entries for this key
   const lines = content.split('\n').filter(l => !l.startsWith(key) && l.trim() !== '');
   lines.push(\`\${key}=\${ans.pk}\`);
-  
   fs.writeFileSync(envPath, lines.join('\n') + '\n');
-  console.log('✅ Registered ' + key + ' in .env');
+  console.log('✅ Registered ' + key);
 });
 
 program.command('start <role>').action((role) => {
@@ -61,35 +80,20 @@ program.command('start <role>').action((role) => {
   const agentPath = path.join(agentDir, 'agent.js');
   const configPath = path.join(agentDir, 'config.json');
 
-  if (!fs.existsSync(agentPath)) {
-    console.error('❌ Agent file missing at: ' + agentPath);
-    process.exit(1);
-  }
+  if (!fs.existsSync(agentPath)) return console.error('❌ Agent file missing.');
 
-  // Read network from config, fallback to basesepolia
   let network = 'basesepolia';
   if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      network = config.network_name || network;
-    } catch (e) {}
+      network = JSON.parse(fs.readFileSync(configPath, 'utf8')).network_name || network;
   }
 
-  console.log(\`🚀 Launching \${role} on \${network}...\`);
-
-  // stdio: inherit ensures the terminal handles the tables/colors/clears
-  const child = spawn('npx', ['hardhat', 'run', agentPath, '--network', network], {
+  spawn('npx', ['hardhat', 'run', agentPath, '--network', network], {
     cwd: ROOT,
     stdio: 'inherit',
     shell: true,
     env: { ...process.env, FORCE_COLOR: "1" }
   });
-
-  child.on('close', (code) => {
-    if (code !== 0) console.log(\`Agent exited with code \${code}\`);
-  });
 });
-
 program.parse(process.argv);
 EOT
 
@@ -99,6 +103,4 @@ npm install
 npm link --force
 
 echo "------------------------------------------------"
-echo "🎉 SUCCESS: Files pulled via curl."
-echo "1. killgame setup"
-echo "2. killgame start sniper"
+echo "🎉 SUCCESS: KILLGame Suite Installed."
