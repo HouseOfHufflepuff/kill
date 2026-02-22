@@ -11,9 +11,9 @@ import "@openzeppelin/contracts/utils/Multicall.sol";
  * @title KILLGame
  * @dev High-Velocity Economic Model:
  * 1. Base Stack Power: units + (reaper * 666).
- * 2. Multiplier: 0x to 20x over 3 days (1080 blocks per 1x).
- * 3. Treasury Cap: Max payout is 25% of the snapshot treasury balance.
- * 4. Snapshot Protection: Prevents same-block "Spawn and Kill" gaming.
+ * 2. Multiplier: 0x to 20x over 3 days (21,600 blocks).
+ * 3. Treasury Cap: Max payout is 25% of current treasury balance.
+ * 4. Thermal Parity: 666 total power loss required for 100% bounty extraction.
  */
 contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     // --- STRUCTS ---
@@ -63,11 +63,10 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     uint256 public constant MOVE_COST = 10 * 10**18;
     uint256 public constant THERMAL_PARITY = 666;
     uint256 public constant MAX_MULTIPLIER = 20;
-    uint256 public constant BLOCKS_PER_MULTIPLIER = 1080; 
+    uint256 public constant BLOCKS_PER_MULTIPLIER = 1080; // 21,600 blocks / 20x = 1080
     uint256 public constant GLOBAL_CAP_BPS = 2500; // 25%
     
-    uint256 public treasuryBps = 0; 
-    uint256 public snapshotTreasury; 
+    uint256 public treasuryBps = 0; // Adjustable by owner
     IERC20 public immutable killToken;
     
     // --- GLOBAL TRACKERS ---
@@ -85,13 +84,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
 
     constructor(address _tokenAddress) ERC1155("https://api.killgame.ai/metadata/{id}.json") Ownable(msg.sender) {
         killToken = IERC20(_tokenAddress);
-        snapshotTreasury = 0;
-    }
-
-    // --- MODIFIERS ---
-    modifier updateSnapshot() {
-        _;
-        snapshotTreasury = killToken.balanceOf(address(this));
     }
 
     // --- ADMIN ---
@@ -102,7 +94,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         emit TreasuryBpsUpdated(old, _newBps);
     }
 
-    function adminWithdraw(uint256 amt) external onlyOwner updateSnapshot { 
+    function adminWithdraw(uint256 amt) external onlyOwner { 
         killToken.transfer(msg.sender, amt); 
     }
 
@@ -111,6 +103,9 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         return agentStacks[agent][id].birthBlock;
     }
 
+    /**
+     * @dev Calculates bounty using: min(SpawnCost * Multiplier, 25% Treasury)
+     */
     function getPendingBounty(address agent, uint256 id) public view returns (uint256) {
         uint256 birth = agentStacks[agent][id].birthBlock;
         if(birth == 0 || block.number <= birth) return 0;
@@ -118,15 +113,21 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         uint256 uId = (id > 216) ? id - 216 : id;
         uint256 rId = uId + 216;
         
+        // Use current balance as treasury reference
+        uint256 actualTreasury = killToken.balanceOf(address(this));
+        
+        // 1. Calculate Multiplier (Age / 1080) capped at 20
         uint256 ageBlocks = block.number - birth;
         uint256 multiplier = ageBlocks / BLOCKS_PER_MULTIPLIER;
         if (multiplier > MAX_MULTIPLIER) multiplier = MAX_MULTIPLIER;
 
+        // 2. Calculate Raw Bounty (Spawn Value * Multiplier)
         uint256 power = balanceOf(agent, uId) + (balanceOf(agent, rId) * 666);
-        uint256 rawBounty = (power * SPAWN_COST_PER_POWER) * multiplier;
+        uint256 spawnValue = power * SPAWN_COST_PER_POWER;
+        uint256 rawBounty = spawnValue * multiplier;
 
-        // Protection: Use treasury from the start of the block/end of last tx
-        uint256 globalCap = (snapshotTreasury * GLOBAL_CAP_BPS) / 10000;
+        // 3. Apply 25% Global Cap
+        uint256 globalCap = (actualTreasury * GLOBAL_CAP_BPS) / 10000;
 
         return rawBounty > globalCap ? globalCap : rawBounty;
     }
@@ -135,7 +136,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     function kill(address target, uint16 stackId, uint256 sentUnits, uint256 sentReaper) 
         external 
         nonReentrant 
-        updateSnapshot
         returns (uint256 attackerBounty) 
     {
         uint256 uId = uint256(stackId);
@@ -175,10 +175,15 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         if (totalPLost == 0) return 0;
 
         uint256 pending = getPendingBounty(target, uId);
+        
+        // Thermal Parity: Check if enough destruction happened to earn full reward
         uint256 battlePool = totalPLost >= THERMAL_PARITY ? pending : (pending * totalPLost) / THERMAL_PARITY;
+        
+        // 75% of the battle pool goes to participants (Attacker/Defender)
         uint256 participantPool = (battlePool * 7500) / 10000; 
 
         if (participantPool > 0) {
+            // Split based on loss contribution
             aB = (participantPool * tPLost) / totalPLost;
             _transferBounty(msg.sender, aB);
             agentTotalProfit[msg.sender] += aB;
@@ -193,9 +198,11 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         }
     }
 
-    function spawn(uint16 stackId, uint256 amount) external nonReentrant updateSnapshot {
+    function spawn(uint16 stackId, uint256 amount) external nonReentrant {
         require(stackId > 0 && stackId <= 216, "Invalid Stack");
         uint256 reaperCount = amount / 666;
+        
+        // Spawn cost is based on total power provided
         uint256 totalPower = amount + (reaperCount * 666);
         uint256 totalCost = totalPower * SPAWN_COST_PER_POWER;
         
@@ -212,7 +219,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         _emitGlobalStats(); 
     }
 
-    function move(uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper) external nonReentrant updateSnapshot {
+    function move(uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper) external nonReentrant {
         require(fromStack > 0 && fromStack <= 216 && toStack > 0 && toStack <= 216 && _isAdjacent(fromStack, toStack), "Bad move");
         require(killToken.transferFrom(msg.sender, address(this), MOVE_COST), "Pay fail");
         
@@ -231,7 +238,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         uint256 atkP = sU + (sR * 666);
         uint256 defU = balanceOf(target, uId);
         uint256 defR = balanceOf(target, rId);
-        uint256 defP = (defU + (defR * 666)) * 110 / 100;
+        uint256 defP = (defU + (defR * 666)) * 110 / 100; // 10% defender advantage
         if (defP == 0) defP = 1;
         
         if (atkP > defP) {
@@ -310,6 +317,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         _burn(msg.sender, fId, amt);
         _mint(msg.sender, tId, amt, "");
 
+        // Resets birthBlock (Age) for both involved stacks
         agentStacks[msg.sender][baseF].birthBlock = block.number;
         agentStacks[msg.sender][baseT].birthBlock = block.number;
 
