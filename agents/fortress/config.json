@@ -3,15 +3,14 @@
   "network": {
     "network_name" : "basesepolia",
     "rpc_url": "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs",
-    "kill_game_addr": "0x923215fD8fF71d5f7C6Dc05111f1C957d9A0ac27"
+    "kill_game_addr": "0xD225036472Aceb033C82ee72FbE5851bB5F5e82A"
   },
   "settings": {
     "HUB_STACK": 122,
-    "TARGET_UNITS": 33333,
-    "REPLENISH_AMT": 33333,
-    "REAPER_MULTIPLE": 666,
+    "TARGET_UNITS": 66666,
+    "REPLENISH_AMT": 6666,
     "LOOP_DELAY_SECONDS": 12,
     "MAX_GAS_PRICE_GWEI": 5,
-    "HUB_PERIMETER": 2
+    "HUB_PERIMETER": 3
   }
 }

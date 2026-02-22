@@ -37,9 +37,15 @@ async function updateHeartbeat() {
     }
 }
 
+/**
+ * UI: Tooltip for Top Stacks list
+ */
 function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
     if (!tooltip) return;
     
+    // Calculate Base Power for the tooltip display
+    const basePower = units + (reapers * 666);
+
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
@@ -53,6 +59,12 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
                 <span>REAPER:</span> <span>${reapers}</span>
+            </div>
+             <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.8;">
+                <span>BASE_POWER:</span> <span>${basePower.toLocaleString()}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
+                <span>BOUNTY:</span> <span>${bounty.toFixed(3)}x</span>
             </div>
             <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
             <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--pink); font-size:0.75rem;">
@@ -72,20 +84,22 @@ function updateTopStacks(stacks, activeReaperMap) {
     const processed = stacks.map(s => {
         const u = parseInt(s.totalStandardUnits || 0);
         const r = activeReaperMap[s.id] || parseInt(s.totalBoostedUnits) || 0;
+        const bBlock = parseInt(s.birthBlock || 0);
         
-        // SURGICAL FIX: Force Kill value to equal Unit count (1:1 Parity)
-        const totalKillValue = u; 
-        const displayBounty = parseFloat(ethers.formatEther(s.currentBounty || "0"));
+        // Calculate Bounty and Value using contract logic
+        const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
+        const displayBounty = (1 + (age / 1000));
+        const basePower = u + (r * 666);
+        const totalKillValue = basePower * displayBounty;
 
         globalUnits += u; 
         globalReapers += r; 
         globalBountyKill += totalKillValue;
         
-        // RESTORED: Tactical Grid Registry Updates
         stackRegistry[s.id] = { 
             units: u, 
             reaper: r, 
-            birthBlock: s.birthBlock,
+            birthBlock: bBlock,
             bounty: displayBounty,
             totalKill: totalKillValue
         }; 
@@ -114,7 +128,7 @@ function updateTopStacks(stacks, activeReaperMap) {
             <span style="width:10%; color:#555;">${item.id}</span>
             <span style="width:20%">${item.units >= 1000 ? (item.units / 1000).toFixed(1) + 'K' : item.units}</span>
             <span style="width:10%; color:var(--cyan)">${item.reapers}</span>
-            <span style="width:25%; color:var(--cyan); opacity:0.8;">+${formatValue(item.bounty)}</span>
+            <span style="width:25%; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
             <span style="width:35%; text-align:right; color:var(--pink); font-weight:bold;">${Math.floor(item.kill).toLocaleString()}</span>
         </div>
     `).join('');

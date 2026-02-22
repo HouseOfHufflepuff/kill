@@ -139,7 +139,7 @@ function triggerPulse(id, type) {
 
 /**
  * UI: Show contextual information for a stack node
- * BUG FIXED: Added Reaper Power (666) to the base calculation
+ * UPDATED: Aligned with contract logic (Base Power + Age Bounty)
  */
 function showTooltip(e, id) {
     if (!tooltip) return;
@@ -149,10 +149,11 @@ function showTooltip(e, id) {
     const r = parseInt(data.reaper);
     const bBlock = parseInt(data.birthBlock);
     
+    // Formula: 1 + (Age / 1000)
     const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
     const bountyMultiplier = (1 + (age / 1000));
     
-    // FIX: Multiply reapers by 666 and add to units before multiplying by bounty
+    // Base Power: Standard Units + (Reapers * 666)
     const basePower = u + (r * 666);
     const totalKillValue = basePower * bountyMultiplier;
 
@@ -170,6 +171,7 @@ function showTooltip(e, id) {
             REAPER: ${r}<br>
             <span style="opacity:0.6">BASE_POWER:</span> ${basePower.toLocaleString()}<br>
             <span style="color:var(--cyan)">BOUNTY: ${bountyMultiplier.toFixed(3)}x</span><br>
+            <div style="font-size: 0.6rem; opacity: 0.5; margin-bottom: 4px;">(1 + Age/1000)</div>
             <div style="border-top:1px solid #333; margin-top:4px; padding-top:4px;">
                 <span style="color:var(--pink); font-weight:bold; font-size:0.85rem;">VALUE: ${Math.floor(totalKillValue).toLocaleString()} KILL</span>
             </div>
