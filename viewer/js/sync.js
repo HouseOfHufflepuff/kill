@@ -210,10 +210,20 @@ async function syncData() {
         const activeReaperMap = {};
         stacks.forEach(s => activeReaperMap[s.id] = parseInt(s.totalBoostedUnits || "0"));
 
+        // --- Updated System Status Logic ---
         if (statusEl) {
-            statusEl.innerHTML = killeds.length > 0 ? 
-                '<span class="lethal-dot"></span>SYSTEM STATUS: LETHAL' : 
-                'SYSTEM STATUS: OPERATIONAL';
+            let statusText = "OPERATIONAL";
+            const totalStacked = currentGlobalKillStacked;
+
+            if (totalStacked >= 20000000) statusText = "LETHAL";
+            else if (totalStacked >= 15000000) statusText = "CRITICAL";
+            else if (totalStacked >= 10000000) statusText = "VOLATILE";
+            else if (totalStacked >= 5000000)  statusText = "ACTIVE";
+            else if (totalStacked > 0)        statusText = "STABLE";
+
+            statusEl.innerHTML = totalStacked >= 20000000 ? 
+                `<span class="lethal-dot"></span>SYSTEM STATUS: ${statusText}` : 
+                `SYSTEM STATUS: ${statusText}`;
         }
 
         updateTopStacks(stacks, activeReaperMap);
@@ -234,12 +244,20 @@ async function syncData() {
             gamePnlEl.style.color = totalNet >= 0 ? "var(--cyan)" : "var(--pink)";
         }
 
+        // --- Updated Burned & Supply Logic ---
         if (globalStat) {
             if (unitsKilledEl) unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
             if (reaperKilledEl) reaperKilledEl.innerText = parseInt(globalStat.totalReaperKilled).toLocaleString();
             
-            const burned = ethers.formatEther(globalStat.killBurned || "0");
-            if (killBurnedEl) killBurnedEl.innerText = `${parseFloat(burned).toLocaleString(undefined, {minimumFractionDigits: 3})} KILL`;
+            const burned = parseFloat(ethers.formatEther(globalStat.killBurned || "0"));
+            const initialSupply = 6666666666;
+            const circulating = initialSupply - burned;
+
+            if (killBurnedEl) killBurnedEl.innerText = `${burned.toLocaleString(undefined, {minimumFractionDigits: 3})} KILL`;
+            
+            // Target the new circulating ID
+            const circulatingEl = document.getElementById('stat-kill-circulating');
+            if (circulatingEl) circulatingEl.innerText = Math.floor(circulating).toLocaleString();
         }
 
         // RESTORED: Event Logging Logic
