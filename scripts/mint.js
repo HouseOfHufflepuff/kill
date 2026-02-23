@@ -25,8 +25,8 @@ async function main() {
     //10M agent0
     //await killToken.mint(PUBLIC_KEY, "10000000000000000000000000");
 
-    // faucet 16,500,000
-    await killToken.mint(KILL_FAUCET, "16500000000000000000000000");
+    // faucet 666,000,000
+    await killToken.mint(KILL_FAUCET, "666000000000000000000000000");
 
     // // //100M agent1
     // await killToken.mint(AGENT1_PUBLIC_KEY, "10000000000000000000000000");
