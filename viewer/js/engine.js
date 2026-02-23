@@ -2,7 +2,7 @@
  * KILL SYSTEM CORE - engine.js
  */
 
-// --- GLOBAL CONFIGURATION (Moved here for cross-file access) ---
+// --- GLOBAL CONFIGURATION ---
 const NETWORK = "Base Sepolia";
 const ALCHEMY_URL = "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs";
 const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.1/gn";
@@ -17,6 +17,7 @@ const headerBlock = document.getElementById('header-block');
 const networkLabel = document.getElementById('network-label');
 const tooltip = document.getElementById('tooltip');
 const agentModal = document.getElementById('agent-modal');
+const aboutModal = document.getElementById('about-modal'); // New About Modal
 const unitsKilledEl = document.getElementById('stat-units-killed');
 const reaperKilledEl = document.getElementById('stat-reaper-killed');
 const killBurnedEl = document.getElementById('stat-kill-burned');
@@ -27,6 +28,52 @@ const totalKillBountyEl = document.getElementById('total-kill-bounty');
 const gameProfitEl = document.getElementById('stat-game-profit');
 const gameCostEl = document.getElementById('stat-game-cost');
 const gamePnlEl = document.getElementById('stat-game-pnl');
+
+/**
+ * UI: Modal Management
+ */
+function toggleModal(show) { 
+    if (agentModal) agentModal.style.display = show ? 'flex' : 'none'; 
+}
+
+function toggleAboutModal(show) {
+    if (aboutModal) aboutModal.style.display = show ? 'flex' : 'none';
+}
+
+// Close modals when clicking outside the content area
+window.onclick = function(event) {
+    if (event.target == agentModal) toggleModal(false);
+    if (event.target == aboutModal) toggleAboutModal(false);
+};
+
+function copyCommand() {
+    const cmd = document.getElementById('curl-cmd');
+    if (!cmd) return;
+    navigator.clipboard.writeText(cmd.innerText);
+    const btn = document.querySelector('.btn-copy');
+    if (btn) {
+        btn.innerText = 'COPIED';
+        setTimeout(() => btn.innerText = 'COPY', 2000);
+    }
+}
+
+/**
+ * UI: System Status Logic (Based on 5M increments)
+ */
+function updateSystemStatus(totalStacked) {
+    if (!statusEl) return;
+    
+    let statusText = "OPERATIONAL";
+    if (totalStacked >= 20000000) statusText = "LETHAL";
+    else if (totalStacked >= 15000000) statusText = "CRITICAL";
+    else if (totalStacked >= 10000000) statusText = "VOLATILE";
+    else if (totalStacked >= 5000000)  statusText = "ACTIVE";
+    else if (totalStacked > 0)        statusText = "STABLE";
+
+    // Add the pulse dot only for LETHAL state
+    const dot = (totalStacked >= 20000000) ? '<span class="lethal-dot"></span>' : '';
+    statusEl.innerHTML = `${dot}SYSTEM STATUS: ${statusText}`;
+}
 
 /**
  * VISUALIZATION: Toggle layer visibility
@@ -45,14 +92,12 @@ function initBattlefield() {
     if (!battleField) return;
     battleField.innerHTML = ''; 
     
-    // Create 6 depth layers for the 3D stack
     for (let l = 0; l < 6; l++) {
         const layer = document.createElement('div');
         layer.className = 'layer';
         layer.dataset.layerIndex = l;
         layer.style.transform = `translateZ(${l * 45}px)`;
         
-        // Populate each layer with a 6x6 grid (36 nodes)
         for (let i = 0; i < 36; i++) {
             const stackId = (l * 36) + i;
             const node = document.createElement('div');
@@ -72,7 +117,7 @@ function initBattlefield() {
 }
 
 /**
- * VISUALIZATION: Manage particle density based on node data
+ * VISUALIZATION: Manage particle density
  */
 function updateNodeParticles(id, units, reaperCount) {
     const node = document.getElementById(`node-${id}`);
@@ -85,9 +130,6 @@ function updateNodeParticles(id, units, reaperCount) {
     syncParticleGroup(node, 'reaper', targetReaperDots);
 }
 
-/**
- * VISUALIZATION: Synchronize particle counts for a specific type
- */
 function syncParticleGroup(node, type, targetCount) {
     const existing = node.querySelectorAll(`.particle.${type}`);
     
@@ -104,9 +146,6 @@ function syncParticleGroup(node, type, targetCount) {
     }
 }
 
-/**
- * VISUALIZATION: Create an individual DOM particle
- */
 function createParticle(type) {
     const p = document.createElement('div');
     p.className = `particle ${type}`;
@@ -123,9 +162,6 @@ function createParticle(type) {
     return p;
 }
 
-/**
- * VISUALIZATION: Trigger a pulse animation on a node
- */
 function triggerPulse(id, type) {
     const node = document.getElementById(`node-${id}`);
     if (!node) return;
@@ -139,7 +175,6 @@ function triggerPulse(id, type) {
 
 /**
  * UI: Show contextual information for a stack node
- * UPDATED: Aligned with contract logic (Base Power + Age Bounty)
  */
 function showTooltip(e, id) {
     if (!tooltip) return;
@@ -149,11 +184,8 @@ function showTooltip(e, id) {
     const r = parseInt(data.reaper);
     const bBlock = parseInt(data.birthBlock);
     
-    // Formula: 1 + (Age / 1000)
     const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
     const bountyMultiplier = (1 + (age / 1000));
-    
-    // Base Power: Standard Units + (Reapers * 666)
     const basePower = u + (r * 666);
     const totalKillValue = basePower * bountyMultiplier;
 
@@ -180,7 +212,7 @@ function showTooltip(e, id) {
 }
 
 /**
- * UI: Add entry to the system log feed
+ * UI: Log feed
  */
 function addLog(blockNum, msg, className, subMsg = null) {
     if (!logFeed) return;
@@ -199,24 +231,6 @@ function addLog(blockNum, msg, className, subMsg = null) {
         logFeed.removeChild(logFeed.firstChild);
     }
     logFeed.scrollTop = logFeed.scrollHeight;
-}
-
-/**
- * UI: Modal Management
- */
-function toggleModal(show) { 
-    if (agentModal) agentModal.style.display = show ? 'flex' : 'none'; 
-}
-
-function copyCommand() {
-    const cmd = document.getElementById('curl-cmd');
-    if (!cmd) return;
-    navigator.clipboard.writeText(cmd.innerText);
-    const btn = document.querySelector('.btn-copy');
-    if (btn) {
-        btn.innerText = 'COPIED';
-        setTimeout(() => btn.innerText = 'COPY', 2000);
-    }
 }
 
 function clearLog() { 

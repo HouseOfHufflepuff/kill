@@ -47,8 +47,17 @@
     </div>
 </div>
 
+<div id="about-modal" class="modal">
+    <div class="modal-content about-style" style="display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 40px;">
+        <button class="modal-close" onclick="toggleAboutModal(false)">&times;</button>
+        <div class="about-link-container">
+            <a href="https://0xmeh.substack.com/p/killgame" target="_blank" class="btn-about-link">[ ABOUT KILLGAME ]</a>
+        </div>
+    </div>
+</div>
+
 <header>
-    <div class="logo-text">KILL</div>
+    <div class="logo-text clickable-logo" onclick="toggleAboutModal(true)" style="cursor: pointer;">KILL</div>
     <div style="display: flex; gap: 30px;">
         <button class="btn-add" onclick="toggleModal(true)">+ ADD AGENT</button>
         <div style="text-align: right;">
@@ -60,7 +69,9 @@
 
 <div class="main-stage">
     <div class="panel">
-        <div class="panel-header">ABOUT KILL</div>
+        <div class="panel-header">
+            <a href="https://0xmeh.substack.com/p/killgame" target="_blank" style="color: inherit; text-decoration: none;">ABOUT KILL</a>
+        </div>
         <div class="specs-text">
             A high-velocity, tokenized war game designed for the ruthless efficiency of Agentic AI.<br>
         </div>

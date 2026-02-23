@@ -54,7 +54,6 @@ footer {
 
 .footer-economy { font-family: 'JetBrains Mono'; font-size: 0.9rem; font-weight: 400; text-align: right; }
 
-/* --- MODAL SYSTEM FIX --- */
 /* --- MODAL SYSTEM FIX (REVISED v1.0.6) --- */
 .modal { 
     display: none; position: fixed; z-index: 20000; 
@@ -127,4 +126,48 @@ footer {
     opacity: 0; 
     z-index: 10000; 
     box-shadow: 0 0 20px rgba(255,45,117,0.3); 
+}
+
+/* --- LOGO INTERACTION --- */
+.clickable-logo {
+    cursor: pointer;
+    transition: transform 0.2s ease, text-shadow 0.2s ease;
+}
+.clickable-logo:hover {
+    transform: scale(1.05);
+    text-shadow: 0 0 15px var(--pink);
+}
+
+/* --- ABOUT MODAL SPECIFIC STYLE --- */
+.modal-content.about-style {
+    width: 600px;
+    height: 400px;
+    background: url('../images/Kill_79.png') no-repeat center center;
+    background-size: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 0 40px rgba(0,0,0,0.8);
+}
+
+.about-link-container {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 20px 40px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.btn-about-link {
+    color: #fff;
+    text-decoration: none;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+    transition: 0.3s;
+}
+
+.btn-about-link:hover {
+    color: var(--pink);
+    text-shadow: 0 0 10px #fff;
 }
