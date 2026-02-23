@@ -2,8 +2,9 @@
   "role": "seed",
   "network": {
     "network_name" : "basesepolia",
-    "rpc_url": "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs",
-    "kill_game_addr": "0x23e55f52C4215d7162861761C6063399E021BA3f"
+    "rpc_url": "https://sepolia.base.org",
+    "kill_game_addr": "0x23e55f52C4215d7162861761C6063399E021BA3f",
+    "kill_faucet_addr": "0xff4c26811cAC45D0b248f7A6C56B907e71367349"
   },
   "settings": {
     "SEED_AMOUNT": 666,

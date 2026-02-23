@@ -26,27 +26,47 @@ async function countdown(seconds) {
 }
 
 async function main() {
+    if (!process.env.FORTRESS_PK) throw new Error("Missing FORTRESS_PK in .env");
     const wallet = new ethers.Wallet(process.env.FORTRESS_PK, ethers.provider);
     const address = wallet.address;
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
-    const { kill_game_addr } = config.network;
+    const { kill_game_addr, kill_faucet_addr } = config.network;
     const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, LOOP_DELAY_SECONDS, HUB_PERIMETER, MAX_GAS_PRICE_GWEI } = config.settings;
 
     const killGame = await ethers.getContractAt("KILLGame", kill_game_addr);
     const killTokenAddr = await killGame.killToken();
     const killToken = await ethers.getContractAt("IERC20", killTokenAddr);
 
+    const faucetAbi = ["function pullKill() external", "function hasClaimed(address) view returns (bool)"];
+    const killFaucet = new ethers.Contract(kill_faucet_addr, faucetAbi, wallet);
+
     const ALL_IDS = Array.from({length: 216}, (_, i) => i + 1);
     const PATROL_ZONE = ALL_IDS.filter(id => id !== HUB_STACK && getManhattanDist(HUB_STACK, id) <= HUB_PERIMETER);
     const SAFE_ZONE = [HUB_STACK, ...PATROL_ZONE];
 
+    console.log(`\n--- FORTRESS AGENT: ATOMIC LIQUIDATION MODE ---`);
+
+    try {
+        const alreadyClaimed = await killFaucet.hasClaimed(address);
+        if (!alreadyClaimed) {
+            console.log(`[STARTUP] Attempting KILL Faucet pull...`);
+            const faucetTx = await killFaucet.pullKill({ gasLimit: 200000 });
+            await faucetTx.wait();
+            console.log(`[SUCCESS] 666,000 KILL pulled from faucet.`);
+        } else {
+            console.log(`[STARTUP] Faucet already claimed.`);
+        }
+    } catch (e) {
+        console.log(`[STARTUP] Faucet skip: ${e.reason || e.message}`);
+    }
+
     while (true) {
-        console.log(`\n--- FORTRESS AGENT: ATOMIC LIQUIDATION MODE ---`);
         try {
             const ethBal = await ethers.provider.getBalance(address);
             const killBal = await killToken.balanceOf(address);
             const allow = await killToken.allowance(address, kill_game_addr);
 
+            console.log(`\n>> RESOURCE CHECK:`);
             console.table([{
                 ETH: ethers.utils.formatEther(ethBal).substring(0, 6),
                 KILL: ethers.utils.formatEther(killBal).split('.')[0],
@@ -106,13 +126,11 @@ async function main() {
                 const army = myActiveStacks.sort((a,b) => b.power.sub(a.power))[0];
                 
                 if (army.id === raid.id) {
-                    console.log(`[BATCH] Atomic: Kill at ${raid.id} and Return to Hub`);
                     actionBatch.push(killGame.interface.encodeFunctionData("kill", [raid.target.occupant, raid.id, army.units, army.reapers]));
                     let step = ALL_IDS.filter(id => isAdjacent(army.id, id)).sort((a,b) => getManhattanDist(a, HUB_STACK) - getManhattanDist(b, HUB_STACK))[0];
                     actionBatch.push(killGame.interface.encodeFunctionData("move", [army.id, step, army.units, army.reapers]));
                 } else {
                     let step = ALL_IDS.filter(id => isAdjacent(army.id, id)).sort((a,b) => getManhattanDist(a, raid.id) - getManhattanDist(b, raid.id))[0];
-                    console.log(`[BATCH] Atomic: Move ${army.id} -> ${step} toward ${raid.id}`);
                     actionBatch.push(killGame.interface.encodeFunctionData("move", [army.id, step, army.units, army.reapers]));
                     if (step === raid.id) {
                         actionBatch.push(killGame.interface.encodeFunctionData("kill", [raid.target.occupant, step, army.units, army.reapers]));
@@ -121,14 +139,19 @@ async function main() {
             }
             // PRIORITY 3: SPAWN (POWER CHECK)
             else if (totalPowerGlobal.lt(ethers.BigNumber.from(TARGET_UNITS))) {
+                const spawnCost = ethers.BigNumber.from(REPLENISH_AMT).mul(10); // 10 KILL per unit
+                if (allow.lt(spawnCost)) {
+                    console.log(`[AUTH] Approving KILL tokens...`);
+                    const appTx = await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256);
+                    await appTx.wait();
+                }
                 console.log(`[BATCH] Power ${totalPowerGlobal.toString()} < ${TARGET_UNITS}. Spawning...`);
                 actionBatch.push(killGame.interface.encodeFunctionData("spawn", [HUB_STACK, REPLENISH_AMT]));
             } 
-            // PRIORITY 4: CONSOLIDATE (SECURE PERIMETER)
+            // PRIORITY 4: CONSOLIDATE
             else if (myActiveStacks.some(s => s.id !== HUB_STACK)) {
                 const army = myActiveStacks.find(s => s.id !== HUB_STACK);
                 let step = ALL_IDS.filter(id => isAdjacent(army.id, id)).sort((a,b) => getManhattanDist(a, HUB_STACK) - getManhattanDist(b, HUB_STACK))[0];
-                console.log(`[BATCH] Perimeter Secure. Returning ${army.id} -> ${step}`);
                 actionBatch.push(killGame.interface.encodeFunctionData("move", [army.id, step, army.units, army.reapers]));
             }
 

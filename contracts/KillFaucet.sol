@@ -2,11 +2,11 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract KILLFaucet {
+contract KILLFaucet is ReentrancyGuard {
     IERC20 public immutable killToken;
     
-    uint256 public constant PULL_AMOUNT = 666000 * 10**18;
     uint256 public constant MIN_AGENT_BALANCE = 1 * 10**18;
     
     mapping(address => bool) public hasClaimed;
@@ -18,17 +18,24 @@ contract KILLFaucet {
     }
 
     /**
-     * @dev Simple pull: One time use per address. 
-     * Requires the caller to hold at least 1 KILL to qualify as an agent.
+     * @dev Pulls 10% of the current contract balance.
+     * One time use per address. Requires 1 KILL balance to qualify.
      */
-    function pullKill() external {
+    function pullKill() external nonReentrant {
         require(!hasClaimed[msg.sender], "Already pulled");
         require(killToken.balanceOf(msg.sender) >= MIN_AGENT_BALANCE, "Not an agent");
-        require(killToken.balanceOf(address(this)) >= PULL_AMOUNT, "Faucet empty");
+        
+        uint256 contractBalance = killToken.balanceOf(address(this));
+        require(contractBalance > 0, "Faucet empty");
+
+        // Calculate 10% of current balance
+        uint256 pullAmount = contractBalance / 10;
+        require(pullAmount > 0, "Amount too small");
 
         hasClaimed[msg.sender] = true;
-        require(killToken.transfer(msg.sender, PULL_AMOUNT), "Transfer fail");
+        
+        require(killToken.transfer(msg.sender, pullAmount), "Transfer fail");
 
-        emit TokensPulled(msg.sender, PULL_AMOUNT);
+        emit TokensPulled(msg.sender, pullAmount);
     }
 }

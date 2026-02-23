@@ -3,7 +3,6 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
-
 //hardhat run agents/seed/agent.js --network basesepolia
 async function countdown(seconds) {
     for (let i = seconds; i > 0; i--) {
@@ -17,14 +16,38 @@ async function main() {
     if (!process.env.SEED_PK) throw new Error("Missing SEED_PK in .env");
     const wallet = new ethers.Wallet(process.env.SEED_PK, ethers.provider);
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
-    const { kill_game_addr } = config.network;
+    const { kill_game_addr, kill_faucet_addr } = config.network;
     const { SEED_AMOUNT, LOOP_DELAY_SECONDS, BATCH_SEED } = config.settings;
     
     const killGame = await ethers.getContractAt("KILLGame", kill_game_addr);
     const killTokenAddr = await killGame.killToken();
     const killToken = await ethers.getContractAt("IERC20", killTokenAddr);
+    
+    // Minimal Faucet ABI for the pull
+    const faucetAbi = [
+        "function pullKill() external",
+        "function hasClaimed(address) view returns (bool)"
+    ];
+    const killFaucet = new ethers.Contract(kill_faucet_addr, faucetAbi, wallet);
 
     console.log(`\n--- STABILIZED SEED AGENT ONLINE ---`);
+
+    // --- ONE-TIME FAUCET PULL AT STARTUP ---
+    try {
+        const alreadyClaimed = await killFaucet.hasClaimed(wallet.address);
+        if (!alreadyClaimed) {
+            console.log(`[STARTUP] Attempting KILL Faucet pull...`);
+            const faucetTx = await killFaucet.pullKill({ gasLimit: 200000 });
+            console.log(`[PENDING] Faucet Tx: ${faucetTx.hash}`);
+            await faucetTx.wait();
+            console.log(`[SUCCESS] 666,000 KILL pulled from faucet.`);
+        } else {
+            console.log(`[STARTUP] Faucet already claimed by this address.`);
+        }
+    } catch (e) {
+        console.log(`[STARTUP] Faucet pull failed/skipped: ${e.reason || e.message}`);
+        // Proceeding to main loop regardless of faucet success
+    }
 
     while (true) {
         const ethBalance = await wallet.getBalance();
@@ -41,7 +64,6 @@ async function main() {
             Ready: ethBalance.gt(ethers.utils.parseEther("0.01")) ? "YES" : "LOW ETH"
         }]);
 
-        // Fix: Automatic Approval if allowance is low
         const required = ethers.utils.parseUnits("0.01", 18).mul(SEED_AMOUNT).mul(BATCH_SEED);
         if (allowance.lt(required)) {
             console.log(`[ACTION] Approving KILL tokens...`);
@@ -81,10 +103,13 @@ async function main() {
             console.log(`[SUCCESS] Batch confirmed.`);
             await countdown(LOOP_DELAY_SECONDS);
         } catch (e) {
-            // Detailed Debugging
             if (e.data) {
-                const decodedError = killGame.interface.parseError(e.data);
-                console.error(`[FAIL] Custom Error: ${decodedError?.name}`);
+                try {
+                    const decodedError = killGame.interface.parseError(e.data);
+                    console.error(`[FAIL] Custom Error: ${decodedError?.name}`);
+                } catch (parseErr) {
+                    console.error(`[FAIL] Revert: ${e.data}`);
+                }
             } else {
                 console.error(`[FAIL] ${e.reason || e.message}`);
             }

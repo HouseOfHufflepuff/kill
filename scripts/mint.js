@@ -3,6 +3,7 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const PUBLIC_KEY = process.env.PUBLIC_KEY;
 const KILL_TOKEN = process.env.KILL_TOKEN;
 const KILL_GAME = process.env.KILL_GAME;
+const KILL_FAUCET = process.env.KILL_FAUCET;
 
 const AGENT1_PUBLIC_KEY=process.env.AGENT1_PUBLIC_KEY;
 const AGENT2_PUBLIC_KEY=process.env.AGENT2_PUBLIC_KEY;
@@ -22,7 +23,10 @@ async function main() {
     //await killToken.mint(KILL_GAME, "666000000000000000000000000");
 
     //10M agent0
-    await killToken.mint(PUBLIC_KEY, "10000000000000000000000000");
+    //await killToken.mint(PUBLIC_KEY, "10000000000000000000000000");
+
+    // faucet 16,500,000
+    await killToken.mint(KILL_FAUCET, "16500000000000000000000000");
 
     // // //100M agent1
     // await killToken.mint(AGENT1_PUBLIC_KEY, "10000000000000000000000000");
@@ -31,13 +35,13 @@ async function main() {
     // await killToken.mint(AGENT2_PUBLIC_KEY, "10000000000000000000000000");
 
     // //10M agent3
-    await killToken.mint(AGENT3_PUBLIC_KEY, "10000000000000000000000000");
+    //await killToken.mint(AGENT3_PUBLIC_KEY, "10000000000000000000000000");
 
     // // //100k agent4
     // // await killToken.mint(AGENT4_PUBLIC_KEY, "100000000000000000000000");
 
     // //10M max
-    await killToken.mint(MAX_PUB, "10000000000000000000000000");
+    //await killToken.mint(MAX_PUB, "10000000000000000000000000");
     
     
     console.log("done funding contracts and agents");

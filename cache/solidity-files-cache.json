@@ -1055,8 +1055,8 @@
       ]
     },
     "/Users/houseofhufflepuff/Development/kill/contracts/KillFaucet.sol": {
-      "lastModificationDate": 1771807806947,
-      "contentHash": "dedf42f4a89886961b0b3f3cf7c5960f",
+      "lastModificationDate": 1771813754415,
+      "contentHash": "36e8a8514bb143df49664c5e0415a802",
       "sourceName": "contracts/KillFaucet.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -1084,7 +1084,8 @@
         }
       },
       "imports": [
-        "@openzeppelin/contracts/token/ERC20/IERC20.sol"
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
       ],
       "versionPragmas": [
         "^0.8.24"
