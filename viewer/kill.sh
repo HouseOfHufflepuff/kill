@@ -44,10 +44,16 @@ for ROLE in sniper fortress; do
   curl -f -s "$BASE_URL/agents/$ROLE/agent.js" -o "agents/$ROLE/agent.js"
   curl -f -s "$BASE_URL/agents/$ROLE/config.json" -o "agents/$ROLE/config.json"
   if [ -f "agents/$ROLE/agent.js" ]; then
-    # Patch KILLGame Contract
+    # Patch KILLGame Contract to use local ABI
     sed -i.bak "s/await ethers.getContractAt(\"KILLGame\", kill_game_addr)/new ethers.Contract(kill_game_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '..\/..\/data\/abi\/KILLGame.json'), 'utf8')).abi, wallet)/g" "agents/$ROLE/agent.js"
-    # Patch Faucet Contract (Supports the new 10% logic pull)
+    
+    # Patch Faucet Contract to use local ABI
     sed -i.bak "s/new ethers.Contract(kill_faucet_addr, faucetAbi, wallet)/new ethers.Contract(kill_faucet_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '..\/..\/data\/abi\/KILLFaucet.json'), 'utf8')).abi, wallet)/g" "agents/$ROLE/agent.js"
+    
+    # Patch IERC20 to use Human-Readable ABI (Fixes HH700 error)
+    sed -i.bak "s/await ethers.getContractAt(\"IERC20\", killTokenAddr)/new ethers.Contract(killTokenAddr, ['function balanceOf(address) view returns (uint256)', 'function allowance(address, address) view returns (uint256)', 'function approve(address, uint256) returns (bool)', 'function transfer(address, uint256) returns (bool)'], wallet)/g" "agents/$ROLE/agent.js"
+    
+    # Patch Private Key source
     sed -i.bak "s/config.private_key/process.env.PRIVATE_KEY/g" "agents/$ROLE/agent.js"
   fi
 done
