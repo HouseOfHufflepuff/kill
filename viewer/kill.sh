@@ -4,7 +4,7 @@
 # 1. Scaffolding
 mkdir -p agents/sniper agents/fortress data/abi
 
-# 2. Write KILLGame ABI
+# 2. Write ABIs
 cat <<EOT > data/abi/KILLGame.json
 {
   "contractName": "KILLGame",
@@ -15,11 +15,21 @@ ABI_EOF
 }
 EOT
 
+cat <<EOT > data/abi/KILLFaucet.json
+{
+  "contractName": "KILLFaucet",
+  "abi": [
+    "function pullKill() external",
+    "function hasClaimed(address) view returns (bool)"
+  ]
+}
+EOT
+
 # 3. Write package.json
 cat <<EOT > package.json
 {
   "name": "killgame",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "bin": { "killgame": "./cli.js" },
   "dependencies": {
     "commander": "^11.0.0", "inquirer": "^8.2.4", "dotenv": "^16.4.5", "ethers": "^5.7.2",
@@ -34,7 +44,10 @@ for ROLE in sniper fortress; do
   curl -f -s "$BASE_URL/agents/$ROLE/agent.js" -o "agents/$ROLE/agent.js"
   curl -f -s "$BASE_URL/agents/$ROLE/config.json" -o "agents/$ROLE/config.json"
   if [ -f "agents/$ROLE/agent.js" ]; then
-    sed -i.bak "s/await ethers.getContractAt(\"KILLGame\", config.network.kill_game_addr)/new ethers.Contract(config.network.kill_game_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '..\/..\/data\/abi\/KILLGame.json'), 'utf8')).abi, wallet)/g" "agents/$ROLE/agent.js"
+    # Patch KILLGame Contract
+    sed -i.bak "s/await ethers.getContractAt(\"KILLGame\", kill_game_addr)/new ethers.Contract(kill_game_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '..\/..\/data\/abi\/KILLGame.json'), 'utf8')).abi, wallet)/g" "agents/$ROLE/agent.js"
+    # Patch Faucet Contract (Supports the new 10% logic pull)
+    sed -i.bak "s/new ethers.Contract(kill_faucet_addr, faucetAbi, wallet)/new ethers.Contract(kill_faucet_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '..\/..\/data\/abi\/KILLFaucet.json'), 'utf8')).abi, wallet)/g" "agents/$ROLE/agent.js"
     sed -i.bak "s/config.private_key/process.env.PRIVATE_KEY/g" "agents/$ROLE/agent.js"
   fi
 done
@@ -47,14 +60,14 @@ module.exports = {
   solidity: "0.8.24", 
   networks: { 
     basesepolia: { 
-      url: "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs", 
+      url: "https://sepolia.base.org", 
       accounts: [process.env.SNIPER_PK, process.env.FORTRESS_PK].filter(Boolean) 
     } 
   } 
 };
 EOT
 
-# 6. CLI Router
+# 6. CLI Router (Unchanged)
 cat <<EOT > cli.js
 #!/usr/bin/env node
 const { program } = require('commander');
@@ -103,12 +116,10 @@ npm link --force --quiet
 
 echo ""
 echo "------------------------------------------------"
-echo "🎉 SUCCESS: KILLGame Agents Installed."
+echo "🎉 SUCCESS: KILLGame Agents Installed (v1.1)."
 echo "------------------------------------------------"
 echo "Next steps:"
 echo "1. killgame setup"
-echo "2. configure agent settings in agents/sniper/config.json and agents/fortress/config.json as desired"
-
+echo "2. Check config.json in agents/ for the new faucet address"
 echo "3. killgame start sniper"
-echo "3. killgame start fortress"
 echo "------------------------------------------------"

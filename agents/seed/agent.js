@@ -21,7 +21,13 @@ async function main() {
     
     const killGame = await ethers.getContractAt("KILLGame", kill_game_addr);
     const killTokenAddr = await killGame.killToken();
-    const killToken = await ethers.getContractAt("IERC20", killTokenAddr);
+        const erc20Abi = [
+        "function balanceOf(address) view returns (uint256)",
+        "function allowance(address, address) view returns (uint256)",
+        "function approve(address, uint256) returns (bool)",
+        "function transfer(address, uint256) returns (bool)"
+    ];
+    const killToken = new ethers.Contract(killTokenAddr, erc20Abi, wallet);
     
     // Minimal Faucet ABI for the pull
     const faucetAbi = [
