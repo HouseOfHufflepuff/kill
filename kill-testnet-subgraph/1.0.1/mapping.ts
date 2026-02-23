@@ -23,11 +23,10 @@ const UNIT_PRICE_WEI = BigInt.fromI32(10).times(KILL_DECIMALS);
 const MOVE_COST_WEI = BigInt.fromI32(10).times(KILL_DECIMALS);
 
 // Contract Constants for Formula
-const TREASURY_BPS = BigInt.fromI32(5000);
-const DIVISOR = BigInt.fromI32(10).pow(10);
-const MAX_CAP_BPS = BigInt.fromI32(5);
 const REAPER_POWER = BigInt.fromI32(666);
-const MULTIPLIER_CAP_VAL = BigInt.fromI32(50);
+const BLOCKS_PER_MULTIPLIER = BigInt.fromI32(1080);
+const MAX_MULTIPLIER = BigInt.fromI32(20);
+const GLOBAL_CAP_BPS = BigInt.fromI32(2500);
 
 function getOrCreateAgent(address: Bytes, blockNumber: BigInt): Agent {
   let id = address.toHex()
@@ -73,22 +72,20 @@ function calculateStackBounty(stack: Stack, currentBlock: BigInt): void {
     return;
   }
 
-  let treasury = stats.currentTreasury
-  let age = currentBlock.minus(stack.birthBlock)
-  
-  // 1. Potential Accrual
-  let ageScaledBounty = treasury.times(age).times(TREASURY_BPS).div(DIVISOR)
-  
-  // 2. Global Cap (5% of Treasury)
-  let globalCap = treasury.times(MAX_CAP_BPS).div(BigInt.fromI32(100))
-  
-  // 3. Multiplier Cap (50x Stack Face Value)
-  let stackPower = stack.totalStandardUnits.plus(stack.totalBoostedUnits.times(REAPER_POWER))
-  let multiplierCap = stackPower.times(UNIT_PRICE_WEI).times(MULTIPLIER_CAP_VAL)
+  // Contract Logic: Multiplier = 1 + (age / 1080) capped at 20
+  let age = currentBlock.minus(stack.birthBlock);
+  let multiplier = BigInt.fromI32(1).plus(age.div(BLOCKS_PER_MULTIPLIER));
+  if (multiplier.gt(MAX_MULTIPLIER)) multiplier = MAX_MULTIPLIER;
 
-  // 4. Determine Current Bounty (Lowest of Potential, Global Cap, or Multiplier Cap)
-  let currentCap = globalCap.lt(multiplierCap) ? globalCap : multiplierCap
-  stack.currentBounty = ageScaledBounty.lt(currentCap) ? ageScaledBounty : currentCap
+  // Contract Logic: Raw Bounty = Power * 10e18 * Multiplier
+  let stackPower = stack.totalStandardUnits.plus(stack.totalBoostedUnits.times(REAPER_POWER));
+  let rawBounty = stackPower.times(UNIT_PRICE_WEI).times(multiplier);
+
+  // Contract Logic: Global Cap = 25% of current treasury
+  let treasury = stats.currentTreasury;
+  let globalCap = treasury.times(GLOBAL_CAP_BPS).div(BigInt.fromI32(10000));
+
+  stack.currentBounty = rawBounty.gt(globalCap) ? globalCap : rawBounty;
 }
 
 function getOrCreateAgentStack(agent: Bytes, stackId: BigInt): AgentStack {
@@ -249,10 +246,6 @@ export function handleGlobalStats(event: GlobalStatsEvent): void {
   let outflows = stats.killExtracted.plus(stats.killBurned)
   stats.currentTreasury = stats.killAdded.minus(outflows)
   stats.totalPnL = stats.currentTreasury
-  stats.maxBounty = stats.currentTreasury.times(MAX_CAP_BPS).div(BigInt.fromI32(100))
+  stats.maxBounty = stats.currentTreasury.times(GLOBAL_CAP_BPS).div(BigInt.fromI32(10000))
   stats.save()
-
-  // NEW: Update all stacks to reflect the new Treasury/Block
-  // This ensures the "0" bounties update even if no one moves that stack
-  // Note: Only do this if your stack count is relatively low (<1000)
 }
