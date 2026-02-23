@@ -4,6 +4,7 @@ const PUBLIC_KEY = process.env.PUBLIC_KEY;
 const USDC_TOKEN = process.env.USDC_TOKEN;
 const KILL_TOKEN = process.env.KILL_TOKEN;
 const KILL_GAME = process.env.KILL_GAME;
+const KILL_FAUCET = process.env.KILL_FAUCET;
 
 
 //hardhat run scripts/deploy.js --network basesepolia
@@ -17,14 +18,18 @@ async function main() {
     console.log(`current gas price: ${gasPrice}`);
 
 
-    const KillToken = await ethers.getContractFactory("KILLToken");
-    const killToken = await KillToken.deploy();
-    console.log(killToken.address + " deployed to KILLToken");
+    // const KillToken = await ethers.getContractFactory("KILLToken");
+    // const killToken = await KillToken.deploy();
+    // console.log(killToken.address + " deployed to KILLToken");
 
 
-    const KillGame = await ethers.getContractFactory("KILLGame");
-    const killGame = await KillGame.deploy(killToken.address);
-    console.log(killGame.address + " deployed to KillGame");
+    // const KillGame = await ethers.getContractFactory("KILLGame");
+    // const killGame = await KillGame.deploy(killToken.address);
+    // console.log(killGame.address + " deployed to KillGame");
+
+    const KillFaucet = await ethers.getContractFactory("KILLFaucet");
+    const killFaucet = await KillFaucet.deploy(KILL_TOKEN);
+    console.log(killFaucet.address + " deployed to KillFaucet");
 
 
 

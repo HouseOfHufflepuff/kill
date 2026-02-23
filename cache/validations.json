@@ -2,6 +2,88 @@
   "version": "3.4",
   "log": [
     {
+      "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20": {
+        "src": "@openzeppelin/contracts/token/ERC20/IERC20.sol:9",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "totalSupply()",
+          "balanceOf(address)",
+          "transfer(address,uint256)",
+          "allowance(address,address)",
+          "approve(address,uint256)",
+          "transferFrom(address,address,uint256)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.24"
+      },
+      "contracts/KillFaucet.sol:KILLFaucet": {
+        "src": "contracts/KillFaucet.sol:6",
+        "version": {
+          "withMetadata": "2ccaf1798729f91ce1a04a7ee62f48bc5e349b545c05c17258cb3ba5054c736a",
+          "withoutMetadata": "0d392585ef98541fee769bb1b457a307035fe6db0936970f30f1887a38358d7c",
+          "linkedWithoutMetadata": "0d392585ef98541fee769bb1b457a307035fe6db0936970f30f1887a38358d7c"
+        },
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "(address)",
+          "pullKill()"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "KILLFaucet",
+            "src": "contracts/KillFaucet.sol:16"
+          },
+          {
+            "kind": "state-variable-immutable",
+            "name": "killToken",
+            "src": "contracts/KillFaucet.sol:7"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "hasClaimed",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_mapping(t_address,t_bool)",
+              "contract": "KILLFaucet",
+              "src": "contracts/KillFaucet.sol:12"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.24"
+      }
+    },
+    {
       "@openzeppelin/contracts/access/Ownable.sol:Ownable": {
         "src": "@openzeppelin/contracts/access/Ownable.sol:20",
         "inherit": [
