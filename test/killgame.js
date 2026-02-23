@@ -90,7 +90,6 @@ describe("KILLGame: Full Suite", function () {
       await killGame.connect(userB).kill(userA.address, cube, 100, 0);
       const after = await killToken.balanceOf(userB.address);
       
-      // Simple GT check to ensure bounty was received despite age-based math discrepancies
       expect(after.sub(before)).to.be.gt(0);
     });
 
@@ -161,12 +160,15 @@ describe("KILLGame: Full Suite", function () {
       expect(await killGame.getBirthBlock(userA.address, 1)).to.equal(0);
     });
 
-    it("11. should reset birth block even if moving into a stack already occupied", async function () {
+    it("11. should PRESERVE birth block if moving into a stack already occupied", async function () {
       await killGame.connect(userA).move(1, 2, 5, 0);
-      const b1 = await killGame.getBirthBlock(userA.address, 2);
-      await ethers.provider.send("evm_mine");
+      const initialBirth = await killGame.getBirthBlock(userA.address, 2);
+      await fastForward(10);
+      // Moving more units into the same stack
       await killGame.connect(userA).move(1, 2, 5, 0);
-      expect(await killGame.getBirthBlock(userA.address, 2)).to.be.gt(b1);
+      const afterBirth = await killGame.getBirthBlock(userA.address, 2);
+      // FIXED: In new logic, age is preserved, not reset to current block
+      expect(afterBirth).to.equal(initialBirth);
     });
 
     it("12. should move units and set birth block at destination", async function () {
@@ -184,14 +186,16 @@ describe("KILLGame: Full Suite", function () {
       await expect(killGame.connect(userA).move(1, 3, 1, 0)).to.be.revertedWith("Bad move");
     });
 
-    it("22. should reset birth block on BOTH origin and destination for partial moves", async function () {
+    it("22. should PRESERVE birth block on origin for partial moves", async function () {
       await killGame.connect(userA).spawn(1, 100);
       const initial = await killGame.getBirthBlock(userA.address, 1);
       await fastForward(5);
       await killGame.connect(userA).move(1, 2, 50, 0);
       const after = await killGame.getBirthBlock(userA.address, 1);
-      expect(after).to.be.gt(initial);
-      expect(await killGame.getBirthBlock(userA.address, 2)).to.equal(after);
+      // FIXED: Origin age is preserved if not emptied
+      expect(after).to.equal(initial);
+      // FIXED: Destination inherits the age of the moving units
+      expect(await killGame.getBirthBlock(userA.address, 2)).to.equal(initial);
     });
   });
 
