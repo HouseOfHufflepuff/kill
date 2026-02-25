@@ -86,7 +86,7 @@ require('dotenv').config({ path: path.join(ROOT, '.env') });
 
 program.command('setup').action(async () => {
   const ans = await inquirer.prompt([
-    { type: 'input', name: 'pk', message: 'Enter Private Key (will be used for Sniper & Fortress):' }
+    { type: 'input', name: 'pk', message: 'Enter Private Key (will be used for Sniper & Fortress):', mask: '*' }
   ]);
   const envPath = path.join(ROOT, '.env');
   const lines = [\`SNIPER_PK=\${ans.pk}\`, \`FORTRESS_PK=\${ans.pk}\`].join('\n') + '\n';

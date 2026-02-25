@@ -268,37 +268,48 @@ async function syncData() {
         ].sort((a, b) => Number(a.block_number) - Number(b.block_number));
 
         events.forEach(evt => {
-            if (!knownIds.has(evt.id)) {
-                if (evt.type === 'spawn') {
-                    const logMsg = `[SPAWN] ${evt.agent.substring(0, 8)} to STACK_${evt.stackId}`;
-                    const subMsg = `UNITS: ${parseInt(evt.units).toLocaleString()}\nREAPER: ${evt.reapers}`;
-                    addLog(evt.block_number, logMsg, 'log-spawn', subMsg);
-                    triggerPulse(evt.stackId, 'spawn');
-                } else if (evt.type === 'kill') {
-                    const atkUnitsSent = parseInt(evt.attackerUnitsSent || 0);
-                    const atkReaperSent = parseInt(evt.attackerReaperSent || 0);
-                    const defUnitsInit = parseInt(evt.initialDefenderUnits || 0);
-                    const defReaperInit = parseInt(evt.initialDefenderReaper || 0);
-                    const atkUnitsLost = parseInt(evt.attackerUnitsLost || 0);
-                    const atkReaperLost = parseInt(evt.attackerReaperLost || 0);
-                    const defUnitsLost = parseInt(evt.targetUnitsLost || 0);
-                    const defReaperLost = parseInt(evt.targetReaperLost || 0);
-                    const atkBounty = parseFloat(ethers.formatEther(evt.attackerBounty || "0"));
-                    const defBounty = parseFloat(ethers.formatEther(evt.defenderBounty || "0"));
+            if (knownIds.has(evt.id)) return;
 
-                    const logMsg = `[KILL] ${evt.attacker.substring(0,6)} raided STACK_${evt.stackId}`;
-                    const line1 = `BATTLE OFFENSE: ${atkUnitsSent} units, ${atkReaperSent} reaper | DEFENSE: ${defUnitsInit} units, ${defReaperInit} reaper`;
-                    const line2 = `KILL OFFENSE: ${atkUnitsLost} units, ${atkReaperLost} reaper | DEFENSE: ${defUnitsLost} units, ${defReaperLost} reaper`;
-                    const line3 = `ECONOMY OFFENSE: +${formatValue(atkBounty)} KILL | DEFENSE: +${formatValue(defBounty)} KILL`;
+            const block = evt.block_number;
+            
+            if (evt.type === 'spawn') {
+                const logMsg = `<span style="color:var(--cyan)">[SPAWN]</span> ${evt.agent.substring(0, 8)} <span style="opacity:0.5">-></span> STACK_${evt.stackId}`;
+                const subMsg = `UNITS: ${parseInt(evt.units).toLocaleString()} | REAPER: ${evt.reapers}`;
+                addLog(block, logMsg, 'log-spawn', subMsg);
+                triggerPulse(evt.stackId, 'spawn');
 
-                    addLog(evt.block_number, logMsg, 'log-kill', `${line1}\n${line2}\n${line3}`);
-                    triggerPulse(evt.stackId, 'kill');
-                } else if (evt.type === 'move') {
-                    addLog(evt.block_number, `[MOVE] ${evt.agent.substring(0,6)} shifted ${evt.units} to STACK_${evt.toStack}`, 'log-move');
-                    triggerPulse(evt.toStack, 'spawn'); 
-                }
-                knownIds.add(evt.id);
+            } else if (evt.type === 'kill') {
+                const atkUnitsSent = parseInt(evt.attackerUnitsSent || 0);
+                const atkReaperSent = parseInt(evt.attackerReaperSent || 0);
+                const defUnitsInit = parseInt(evt.initialDefenderUnits || 0);
+                const defReaperInit = parseInt(evt.initialDefenderReaper || 0);
+                const atkUnitsLost = parseInt(evt.attackerUnitsLost || 0);
+                const atkReaperLost = parseInt(evt.attackerReaperLost || 0);
+                const defUnitsLost = parseInt(evt.targetUnitsLost || 0);
+                const defReaperLost = parseInt(evt.targetReaperLost || 0);
+                const atkBounty = parseFloat(ethers.formatEther(evt.attackerBounty || "0"));
+                const defBounty = parseFloat(ethers.formatEther(evt.defenderBounty || "0"));
+
+                const logMsg = `<span style="color:var(--pink)">[KILL]</span> ${evt.attacker.substring(0, 6)} <span style="opacity:0.5">X</span> STACK_${evt.stackId}`;
+                
+                // Formatted Tabular Sub-log
+                const subMsg = 
+                    `         ${'OFFENSE'.padEnd(15)} | ${'DEFENSE'.padEnd(15)}\n` +
+                    `BATTLE:  ${(atkUnitsSent + 'u/' + atkReaperSent + 'r').padEnd(15)} | ${(defUnitsInit + 'u/' + defReaperInit + 'r').padEnd(15)}\n` +
+                    `LOSSES:  ${(atkUnitsLost + 'u/' + atkReaperLost + 'r').padEnd(15)} | ${(defUnitsLost + 'u/' + defReaperLost + 'r').padEnd(15)}\n` +
+                    `BOUNTY:  ${('+' + formatValue(atkBounty)).padEnd(15)} | ${('+' + formatValue(defBounty)).padEnd(15)}`;
+
+                addLog(block, logMsg, 'log-kill', subMsg);
+                triggerPulse(evt.stackId, 'kill');
+
+            } else if (evt.type === 'move') {
+                const logMsg = `<span style="color:#888">[MOVE]</span> ${evt.agent.substring(0, 6)} <span style="opacity:0.5">>></span> STACK_${evt.toStack}`;
+                const subMsg = `TRANSFERRED: ${parseInt(evt.units).toLocaleString()} UNITS | ${evt.reaper} REAPER`;
+                addLog(block, logMsg, 'log-move', subMsg);
+                triggerPulse(evt.toStack, 'spawn'); 
             }
+
+            knownIds.add(evt.id);
         });
 
         renderPnL(agents.slice(0, 10));
