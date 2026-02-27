@@ -2,8 +2,7 @@ import {
   Spawned as SpawnedEvent,
   Moved as MovedEvent,
   Killed as KilledEvent,
-  GlobalStats as GlobalStatsEvent,
-  DefenderRewarded as DefenderRewardedEvent
+  GlobalStats as GlobalStatsEvent
 } from "./generated/killgame/killgame"
 
 import { 
@@ -13,20 +12,31 @@ import {
   Stack, 
   AgentStack, 
   GlobalStat, 
-  Agent, 
-  DefenderReward 
+  Agent 
 } from "./generated/schema"
-import { BigInt, Bytes, log } from "@graphprotocol/graph-ts"
+import { BigInt, Bytes } from "@graphprotocol/graph-ts"
 
+// --- CONSTANTS ---
 const KILL_DECIMALS = BigInt.fromI32(10).pow(18);
 const UNIT_PRICE_WEI = BigInt.fromI32(10).times(KILL_DECIMALS);
 const MOVE_COST_WEI = BigInt.fromI32(10).times(KILL_DECIMALS);
-
-// Contract Constants for Formula
 const REAPER_POWER = BigInt.fromI32(666);
+const BURN_BPS = BigInt.fromI32(666); 
 const BLOCKS_PER_MULTIPLIER = BigInt.fromI32(1080);
 const MAX_MULTIPLIER = BigInt.fromI32(20);
 const GLOBAL_CAP_BPS = BigInt.fromI32(2500);
+
+// --- HELPERS ---
+
+/**
+ * Calculates net payout after contract-level burns/fees.
+ * Matches the logic in the contract's _transferBounty function.
+ */
+function calculateNetBounty(grossAmount: BigInt): BigInt {
+  if (grossAmount.equals(BigInt.fromI32(0))) return BigInt.fromI32(0);
+  let burnAmt = grossAmount.times(BURN_BPS).div(BigInt.fromI32(10000));
+  return grossAmount.minus(burnAmt);
+}
 
 function getOrCreateAgent(address: Bytes, blockNumber: BigInt): Agent {
   let id = address.toHex()
@@ -72,16 +82,13 @@ function calculateStackBounty(stack: Stack, currentBlock: BigInt): void {
     return;
   }
 
-  // Contract Logic: Multiplier = 1 + (age / 1080) capped at 20
   let age = currentBlock.minus(stack.birthBlock);
   let multiplier = BigInt.fromI32(1).plus(age.div(BLOCKS_PER_MULTIPLIER));
   if (multiplier.gt(MAX_MULTIPLIER)) multiplier = MAX_MULTIPLIER;
 
-  // Contract Logic: Raw Bounty = Power * 10e18 * Multiplier
   let stackPower = stack.totalStandardUnits.plus(stack.totalBoostedUnits.times(REAPER_POWER));
   let rawBounty = stackPower.times(UNIT_PRICE_WEI).times(multiplier);
 
-  // Contract Logic: Global Cap = 25% of current treasury
   let treasury = stats.currentTreasury;
   let globalCap = treasury.times(GLOBAL_CAP_BPS).div(BigInt.fromI32(10000));
 
@@ -107,6 +114,8 @@ function safeSubtract(current: BigInt, amount: BigInt): BigInt {
   return current.minus(amount)
 }
 
+// --- HANDLERS ---
+
 export function handleSpawned(event: SpawnedEvent): void {
   let entity = new Spawned(event.transaction.hash.toHex() + "-" + event.logIndex.toString())
   entity.agent = event.params.agent
@@ -117,7 +126,10 @@ export function handleSpawned(event: SpawnedEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  updateAgentFinance(event.params.agent, event.params.units.times(UNIT_PRICE_WEI), BigInt.fromI32(0), event.block.number)
+  // FIX: Match contract cost logic: totalCost = amount * 10
+  let actualCost = event.params.units.times(UNIT_PRICE_WEI);
+  
+  updateAgentFinance(event.params.agent, actualCost, BigInt.fromI32(0), event.block.number)
 
   let stack = getOrCreateStack(event.params.stackId.toString())
   stack.totalStandardUnits = stack.totalStandardUnits.plus(event.params.units)
@@ -203,8 +215,12 @@ export function handleKilled(event: KilledEvent): void {
   entity.block_number = event.block.number
   entity.save()
 
-  updateAgentFinance(event.params.attacker, BigInt.fromI32(0), summary.attackerBounty, event.block.number)
-  updateAgentFinance(event.params.target, BigInt.fromI32(0), summary.defenderBounty, event.block.number)
+  // NET bounty (Gross - Burn)
+  let netAttackerBounty = calculateNetBounty(summary.attackerBounty);
+  let netDefenderBounty = calculateNetBounty(summary.defenderBounty);
+
+  updateAgentFinance(event.params.attacker, BigInt.fromI32(0), netAttackerBounty, event.block.number)
+  updateAgentFinance(event.params.target, BigInt.fromI32(0), netDefenderBounty, event.block.number)
 
   let stack = getOrCreateStack(stackId.toString())
   stack.totalStandardUnits = safeSubtract(stack.totalStandardUnits, summary.targetUnitsLost)
@@ -221,16 +237,6 @@ export function handleKilled(event: KilledEvent): void {
   aStackTarget.units = safeSubtract(aStackTarget.units, summary.targetUnitsLost)
   aStackTarget.reaper = safeSubtract(aStackTarget.reaper, summary.targetReaperLost)
   aStackTarget.save()
-}
-
-export function handleDefenderRewarded(event: DefenderRewardedEvent): void {
-  let reward = new DefenderReward(event.transaction.hash.toHex() + "-" + event.logIndex.toString())
-  reward.defender = event.params.defender
-  reward.amount = event.params.amount
-  reward.block_number = event.block.number
-  reward.save()
-
-  updateAgentFinance(event.params.defender, BigInt.fromI32(0), event.params.amount, event.block.number)
 }
 
 export function handleGlobalStats(event: GlobalStatsEvent): void {

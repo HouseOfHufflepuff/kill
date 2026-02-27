@@ -34,6 +34,4 @@ dataSources:
           handler: handleKilled
         - event: GlobalStats(uint256,uint256,uint256,uint256,uint256)
           handler: handleGlobalStats
-        - event: DefenderRewarded(indexed address,uint256)
-          handler: handleDefenderRewarded
       file: killgame/killgame.wasm
