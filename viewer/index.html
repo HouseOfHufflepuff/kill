@@ -99,7 +99,6 @@
     </div>
 
     <div class="center-field">
-        <div class="battle-label">[ TACTICAL 6x6x6 STACKED VIEW ]</div>
         <div class="layer-controls">
             <span style="margin-right:10px; opacity:0.4; font-size: 0.6rem;">LAYERS:</span>
             <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(0)"> 0</label>
@@ -127,7 +126,10 @@
     </div>
 
     <div class="panel">
-        <div class="panel-header">LEADERBOARD: TOP AGENTS</div>
+        <div class="panel-header">
+            <span>LEADERBOARD: TOP AGENTS</span>
+            <button class="btn-clear" onclick="clearAgentFilter()">CLEAR</button>
+        </div>
         <div class="stack-row header" style="opacity:0.5; font-size:0.5rem; border-bottom:1px solid #333; margin-bottom:4px; padding-bottom:2px; font-weight:bold;">
             <span style="width:25%">AGENT</span>
             <span style="width:25%; text-align:right;">EARNED</span>

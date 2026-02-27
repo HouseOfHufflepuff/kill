@@ -38,7 +38,7 @@ async function main() {
     //await killToken.mint(AGENT3_PUBLIC_KEY, "10000000000000000000000000");
 
     // // //100k agent4
-    await killToken.mint("0x10b41b4a5b28291d8d24ac662fa2bb085c08b5ae", "10000000000000000000000000");
+    await killToken.mint("0xC3806CDFEC33f294aA30060a7cd456a125246B1c", "10000000000000000000000000");
 
     // //10M max
     //await killToken.mint(MAX_PUB, "10000000000000000000000000");

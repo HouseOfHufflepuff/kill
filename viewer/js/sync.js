@@ -43,7 +43,6 @@ async function updateHeartbeat() {
 function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
     if (!tooltip) return;
     
-    // Calculate Base Power for the tooltip display
     const basePower = units + (reapers * 666);
 
     tooltip.style.opacity = 1;
@@ -86,7 +85,6 @@ function updateTopStacks(stacks, activeReaperMap) {
         const r = activeReaperMap[s.id] || parseInt(s.totalBoostedUnits) || 0;
         const bBlock = parseInt(s.birthBlock || 0);
         
-        // Calculate Bounty and Value using contract logic
         const age = (lastBlock > 0 && bBlock > 0) ? (lastBlock - bBlock) : 0;
         const displayBounty = (1 + (age / 1000));
         const basePower = u + (r * 666);
@@ -135,11 +133,34 @@ function updateTopStacks(stacks, activeReaperMap) {
 }
 
 /**
+ * UI: Filter Action Trigger
+ */
+function selectAgent(addr) {
+    if (activeFilterAgent === addr) {
+        activeFilterAgent = null;
+        addLog(lastBlock, "SYSTEM FILTER: RESET TO GLOBAL", "log-network");
+    } else {
+        activeFilterAgent = addr;
+        addLog(lastBlock, `SYSTEM FILTER: AGENT ${addr.substring(0,8)}`, "log-network");
+    }
+    syncData(); 
+}
+
+/**
  * CORE: Main Data Synchronization Loop
  */
 async function syncData() {
     await updateHeartbeat();
     
+    // Dynamically inject agentStack filter if active
+    const agentStackQuery = activeFilterAgent ? `
+        agentStacks(where: { agent: "${activeFilterAgent.toLowerCase()}" }) {
+            stackId
+            units
+            reaper
+        }
+    ` : '';
+
     try {
         const query = `{
             globalStat(id: "current") { 
@@ -147,13 +168,14 @@ async function syncData() {
                 totalReaperKilled 
                 killBurned 
             }
-            stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 100) { 
+            stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 216) { 
                 id 
                 totalStandardUnits 
                 totalBoostedUnits 
                 birthBlock
                 currentBounty
             }
+            ${agentStackQuery}
             killeds(first: 50, orderBy: block_number, orderDirection: desc) { 
                 id 
                 attacker 
@@ -188,7 +210,7 @@ async function syncData() {
                 reaper
                 block_number 
             }
-            agents(first: 100, orderBy: netPnL, orderDirection: desc) {
+            agents(first: 1000, orderBy: netPnL, orderDirection: desc, where: { id_not: "0x0000000000000000000000000000000000000000" }) {
                 id
                 totalSpent
                 totalEarned
@@ -205,16 +227,28 @@ async function syncData() {
         const result = await resp.json();
         if (!result || !result.data) return;
 
-        const { globalStat, killeds = [], spawneds = [], moveds = [], stacks = [], agents = [] } = result.data;
+        const { globalStat, killeds = [], spawneds = [], moveds = [], stacks = [], agents = [], agentStacks = [] } = result.data;
         
+        // Logic: If filtering, replace global stack counts with agent-specific totals
+        if (activeFilterAgent) {
+            const agentLookup = {};
+            agentStacks.forEach(as => {
+                agentLookup[as.stackId] = { units: as.units, reaper: as.reaper };
+            });
+
+            stacks.forEach(s => {
+                const userOwnership = agentLookup[s.id] || { units: "0", reaper: "0" };
+                s.totalStandardUnits = userOwnership.units;
+                s.totalBoostedUnits = userOwnership.reaper;
+            });
+        }
+
         const activeReaperMap = {};
         stacks.forEach(s => activeReaperMap[s.id] = parseInt(s.totalBoostedUnits || "0"));
 
-        // --- Updated System Status Logic ---
         if (statusEl) {
             let statusText = "OPERATIONAL";
             const totalStacked = currentGlobalKillStacked;
-
             if (totalStacked >= 20000000) statusText = "LETHAL";
             else if (totalStacked >= 15000000) statusText = "CRITICAL";
             else if (totalStacked >= 10000000) statusText = "VOLATILE";
@@ -228,7 +262,6 @@ async function syncData() {
 
         updateTopStacks(stacks, activeReaperMap);
         
-        // RESTORED: Global Metrics Math
         let totalEarned = 0;
         let totalSpent = 0;
         agents.forEach(a => {
@@ -244,23 +277,16 @@ async function syncData() {
             gamePnlEl.style.color = totalNet >= 0 ? "var(--cyan)" : "var(--pink)";
         }
 
-        // --- Updated Burned & Supply Logic ---
         if (globalStat) {
             if (unitsKilledEl) unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
             if (reaperKilledEl) reaperKilledEl.innerText = parseInt(globalStat.totalReaperKilled).toLocaleString();
-            
             const burned = parseFloat(ethers.formatEther(globalStat.killBurned || "0"));
-            const initialSupply = 6666666666;
-            const circulating = initialSupply - burned;
-
+            const circulating = 6666666666 - burned;
             if (killBurnedEl) killBurnedEl.innerText = `${burned.toLocaleString(undefined, {minimumFractionDigits: 3})} KILL`;
-            
-            // Target the new circulating ID
             const circulatingEl = document.getElementById('stat-kill-circulating');
             if (circulatingEl) circulatingEl.innerText = Math.floor(circulating).toLocaleString();
         }
 
-        // RESTORED: Event Logging Logic
         const events = [
             ...spawneds.map(s => ({...s, type: 'spawn'})), 
             ...killeds.map(k => ({...k, type: 'kill'})), 
@@ -269,50 +295,28 @@ async function syncData() {
 
         events.forEach(evt => {
             if (knownIds.has(evt.id)) return;
-
             const block = evt.block_number;
-            
             if (evt.type === 'spawn') {
                 const logMsg = `<span style="color:var(--cyan)">[SPAWN]</span> ${evt.agent.substring(0, 8)} <span style="opacity:0.5">-></span> STACK_${evt.stackId}`;
                 const subMsg = `UNITS: ${parseInt(evt.units).toLocaleString()} | REAPER: ${evt.reapers}`;
                 addLog(block, logMsg, 'log-spawn', subMsg);
                 triggerPulse(evt.stackId, 'spawn');
-
             } else if (evt.type === 'kill') {
-                const atkUnitsSent = parseInt(evt.attackerUnitsSent || 0);
-                const atkReaperSent = parseInt(evt.attackerReaperSent || 0);
-                const defUnitsInit = parseInt(evt.initialDefenderUnits || 0);
-                const defReaperInit = parseInt(evt.initialDefenderReaper || 0);
-                const atkUnitsLost = parseInt(evt.attackerUnitsLost || 0);
-                const atkReaperLost = parseInt(evt.attackerReaperLost || 0);
-                const defUnitsLost = parseInt(evt.targetUnitsLost || 0);
-                const defReaperLost = parseInt(evt.targetReaperLost || 0);
                 const atkBounty = parseFloat(ethers.formatEther(evt.attackerBounty || "0"));
-                const defBounty = parseFloat(ethers.formatEther(evt.defenderBounty || "0"));
-
                 const logMsg = `<span style="color:var(--pink)">[KILL]</span> ${evt.attacker.substring(0, 6)} <span style="opacity:0.5">X</span> STACK_${evt.stackId}`;
-                
-                // Formatted Tabular Sub-log
-                const subMsg = 
-                    `         ${'OFFENSE'.padEnd(15)} | ${'DEFENSE'.padEnd(15)}\n` +
-                    `BATTLE:  ${(atkUnitsSent + 'u/' + atkReaperSent + 'r').padEnd(15)} | ${(defUnitsInit + 'u/' + defReaperInit + 'r').padEnd(15)}\n` +
-                    `LOSSES:  ${(atkUnitsLost + 'u/' + atkReaperLost + 'r').padEnd(15)} | ${(defUnitsLost + 'u/' + defReaperLost + 'r').padEnd(15)}\n` +
-                    `BOUNTY:  ${('+' + formatValue(atkBounty)).padEnd(15)} | ${('+' + formatValue(defBounty)).padEnd(15)}`;
-
+                const subMsg = `BATTLE AT STACK ${evt.stackId}\nBOUNTY CLAIMED: ${formatValue(atkBounty)} KILL`;
                 addLog(block, logMsg, 'log-kill', subMsg);
                 triggerPulse(evt.stackId, 'kill');
-
             } else if (evt.type === 'move') {
                 const logMsg = `<span style="color:#888">[MOVE]</span> ${evt.agent.substring(0, 6)} <span style="opacity:0.5">>></span> STACK_${evt.toStack}`;
                 const subMsg = `TRANSFERRED: ${parseInt(evt.units).toLocaleString()} UNITS | ${evt.reaper} REAPER`;
                 addLog(block, logMsg, 'log-move', subMsg);
                 triggerPulse(evt.toStack, 'spawn'); 
             }
-
             knownIds.add(evt.id);
         });
 
-        renderPnL(agents.slice(0, 10));
+        renderPnL(agents);
 
     } catch (e) { console.error("Sync fail", e); }
 }
@@ -327,10 +331,16 @@ function renderPnL(agents) {
         const spent = parseFloat(ethers.formatEther(a.totalSpent || "0"));
         const earned = parseFloat(ethers.formatEther(a.totalEarned || "0"));
         const net = earned - spent;
+        const isFiltered = activeFilterAgent === a.id;
+        
         return `
-            <div class="stack-row" onmouseover="showLeaderboardTooltip(event, '${a.id}', ${earned}, ${spent}, ${net})" onmouseout="if(tooltip) tooltip.style.opacity=0" style="display: flex; justify-content: space-between; padding: 2px 0;">
-                <span style="width:25%; font-family:monospace;">
-                    <a href="${BLOCK_EXPLORER}/address/${a.id}" target="_blank" style="color:#888; text-decoration:none;">${a.id.substring(0, 8)}</a>
+            <div class="stack-row" 
+                 onclick="selectAgent('${a.id}')"
+                 onmouseover="showLeaderboardTooltip(event, '${a.id}', ${earned}, ${spent}, ${net})" 
+                 onmouseout="if(tooltip) tooltip.style.opacity=0" 
+                 style="display: flex; justify-content: space-between; padding: 2px 0; cursor: pointer; background: ${isFiltered ? 'rgba(0,255,255,0.1)' : 'transparent'};">
+                <span style="width:25%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">
+                    ${a.id.substring(0, 8)}
                 </span>
                 <span style="width:25%; text-align:right; color:${earned > 0 ? 'var(--cyan)' : '#eee'}; font-weight:bold;">${formatValue(earned)}</span>
                 <span style="width:20%; text-align:right; opacity:0.6;">${formatValue(spent)}</span>
@@ -359,6 +369,7 @@ function showLeaderboardTooltip(e, addr, earned, spent, net) {
             <div style="display:flex; justify-content:space-between; margin-top:4px; font-weight:bold; color:${pnlColor}; font-size:0.75rem;">
                 <span>NET P/L:</span> <span>${net > 0 ? '+' : ''}${formatValue(net)}</span>
             </div>
+            <div style="font-size: 0.6rem; opacity: 0.5; margin-top: 4px; text-align:center;">CLICK TO FILTER STACKS</div>
         </div>
     `;
 }

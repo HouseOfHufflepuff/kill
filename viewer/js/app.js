@@ -11,6 +11,9 @@ var stackRegistry = {};
 var currentGlobalKillStacked = 0;
 var isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 
+// NEW: Filtering State
+var activeFilterAgent = null; 
+
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     // Initialization: Setup UI Labels
