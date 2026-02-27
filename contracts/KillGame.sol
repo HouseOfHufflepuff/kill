@@ -57,8 +57,8 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
 
     // --- ECONOMIC CONSTANTS ---
     uint256 public constant BURN_BPS = 666; 
-    uint256 public constant SPAWN_COST_PER_POWER = 10 * 10**18;
-    uint256 public constant MOVE_COST = 10 * 10**18;
+    uint256 public constant SPAWN_COST = 20 * 10**18;
+    uint256 public constant MOVE_COST = 100 * 10**18;
     uint256 public constant THERMAL_PARITY = 666;
     uint256 public constant MAX_MULTIPLIER = 20;
     uint256 public constant BLOCKS_PER_MULTIPLIER = 1080; 
@@ -66,7 +66,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     
     // --- STORAGE ---
     IERC20 public immutable killToken;
-    uint256 public treasuryBps = 0; 
+    uint256 public treasuryBps = 30; 
     
     // Global Trackers
     uint256 public totalUnitsKilled;
@@ -118,7 +118,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         uint256 balR = balanceOf(agent, rId);
         
         uint256 power = balU + (balR * 666);
-        uint256 rawBounty = power * SPAWN_COST_PER_POWER * multiplier;
+        uint256 rawBounty = power * SPAWN_COST * multiplier;
 
         uint256 globalCap = (actualTreasury * GLOBAL_CAP_BPS) / 10000;
 
@@ -176,14 +176,13 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
 
         uint256 pending = getPendingBounty(target, uId);
         uint256 battlePool = totalPLost >= THERMAL_PARITY ? pending : (pending * totalPLost) / THERMAL_PARITY;
-        uint256 participantPool = (battlePool * 7500) / 10000; 
 
-        if (participantPool > 0) {
-            aB = (participantPool * tPLost) / totalPLost;
+        if (battlePool > 0) {
+            aB = (battlePool * tPLost) / totalPLost;
             _transferBounty(msg.sender, aB);
             agentTotalProfit[msg.sender] += aB;
 
-            uint256 dB = (participantPool * aPLost) / totalPLost;
+            uint256 dB = (battlePool * aPLost) / totalPLost;
             _transferBounty(target, dB);
             agentTotalProfit[target] += dB;
             
@@ -196,8 +195,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     function spawn(uint16 stackId, uint256 amount) external nonReentrant {
         require(stackId > 0 && stackId <= 216, "Invalid Stack");
         uint256 reaperCount = amount / 666;
-        uint256 totalPower = amount + (reaperCount * 666);
-        uint256 totalCost = totalPower * SPAWN_COST_PER_POWER;
+        uint256 totalCost = amount * SPAWN_COST;
         
         require(killToken.transferFrom(msg.sender, address(this), totalCost), "Pay fail");
         

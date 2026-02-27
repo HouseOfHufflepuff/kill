@@ -119,8 +119,8 @@
       ]
     },
     "/Users/houseofhufflepuff/Development/kill/contracts/KillGame.sol": {
-      "lastModificationDate": 1772227737834,
-      "contentHash": "a73f81ab3a58a9537aa579b1cbd491c2",
+      "lastModificationDate": 1772228405374,
+      "contentHash": "c4e6a28c2f184f22461aa405029e6305",
       "sourceName": "contracts/KillGame.sol",
       "solcConfig": {
         "version": "0.8.24",
