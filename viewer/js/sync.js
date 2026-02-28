@@ -6,14 +6,20 @@
 const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
 
 /**
- * UTILITY: Format numbers for UI display
+ * UTILITY: Format numbers for UI display (K, M, B)
  */
 const formatValue = (val) => {
-    const absVal = Math.abs(val);
-    if (absVal >= 1000000000) return (val / 1000000000).toFixed(1) + 'B';
-    if (absVal >= 1000000) return (val / 1000000).toFixed(1) + 'M';
-    if (absVal >= 1000) return (val / 1000).toFixed(1) + 'K';
-    return Math.floor(val).toLocaleString();
+    if (val === null || val === undefined) return '0';
+    const num = parseFloat(val);
+    if (isNaN(num)) return '0';
+    
+    const absVal = Math.abs(num);
+    if (absVal >= 1000000000) return (num / 1000000000).toFixed(1) + 'B';
+    if (absVal >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (absVal >= 1000) return (num / 1000).toFixed(1) + 'K';
+    
+    // For smaller numbers, use commas without decimal places for units
+    return Math.floor(num).toLocaleString();
 };
 
 /**
@@ -25,7 +31,8 @@ async function updateHeartbeat() {
         const currentBlock = parseInt(hexBlock, 16);
         
         if (currentBlock !== lastBlock && lastBlock !== 0) {
-            const displayKill = Math.floor(currentGlobalKillStacked).toLocaleString();
+            // Updated to use formatValue
+            const displayKill = formatValue(currentGlobalKillStacked);
             addLog(currentBlock, `BLOCK SYNC: ${displayKill} KILL`, "log-network");
         }
         
@@ -49,25 +56,26 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
     
+    // Updated to use formatValue for relevant fields
     tooltip.innerHTML = `
         <div style="padding: 5px; min-width: 180px; font-family: 'Courier New', monospace;">
             <strong style="color:var(--pink); font-size: 0.7rem;">STACK_IDENTITY: ${id}</strong>
             <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem;">
-                <span>UNITS:</span> <span>${units.toLocaleString()}</span>
+                <span>UNITS:</span> <span>${formatValue(units)}</span>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
                 <span>REAPER:</span> <span>${reapers}</span>
             </div>
              <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.8;">
-                <span>BASE_POWER:</span> <span>${basePower.toLocaleString()}</span>
+                <span>BASE_POWER:</span> <span>${formatValue(basePower)}</span>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
-                <span>BOUNTY:</span> <span>${bounty.toFixed(3)}x</span>
+                <span>BOUNTY:</span> <span>${bounty.toFixed(2)}x</span>
             </div>
             <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
             <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--pink); font-size:0.75rem;">
-                <span>VALUE:</span> <span>${Math.floor(totalKill).toLocaleString()} KILL</span>
+                <span>VALUE:</span> <span>${formatValue(totalKill)} KILL</span>
             </div>
         </div>
     `;
@@ -108,9 +116,11 @@ function updateTopStacks(stacks, activeReaperMap) {
     });
 
     currentGlobalKillStacked = globalBountyKill;
-    if(totalUnitsActiveEl) totalUnitsActiveEl.innerText = globalUnits.toLocaleString();
-    if(totalReapersActiveEl) totalReapersActiveEl.innerText = globalReapers.toLocaleString();
-    if(totalKillBountyEl) totalKillBountyEl.innerText = `${Math.floor(globalBountyKill).toLocaleString()}`;
+    
+    // Updated to use formatValue
+    if(totalUnitsActiveEl) totalUnitsActiveEl.innerText = formatValue(globalUnits);
+    if(totalReapersActiveEl) totalReapersActiveEl.innerText = formatValue(globalReapers);
+    if(totalKillBountyEl) totalKillBountyEl.innerText = formatValue(Math.floor(globalBountyKill));
 
     const sorted = processed.filter(s => s.units > 0 || s.reapers > 0).sort((a, b) => b.kill - a.kill);
     if (sorted.length === 0) {
@@ -118,16 +128,17 @@ function updateTopStacks(stacks, activeReaperMap) {
         return;
     }
 
+    // Updated to use formatValue for units and kill value
     topStacksEl.innerHTML = sorted.map(item => `
         <div class="stack-row" 
              onmouseover="showStackTooltip(event, '${item.id}', ${item.units}, ${item.reapers}, ${item.bounty}, ${item.kill})" 
              onmouseout="if(tooltip) tooltip.style.opacity=0" 
              style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; cursor: crosshair;">
             <span style="width:10%; color:#555;">${item.id}</span>
-            <span style="width:20%">${item.units >= 1000 ? (item.units / 1000).toFixed(1) + 'K' : item.units}</span>
+            <span style="width:20%">${formatValue(item.units)}</span>
             <span style="width:10%; color:var(--cyan)">${item.reapers}</span>
             <span style="width:25%; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
-            <span style="width:35%; text-align:right; color:var(--pink); font-weight:bold;">${Math.floor(item.kill).toLocaleString()}</span>
+            <span style="width:35%; text-align:right; color:var(--pink); font-weight:bold;">${formatValue(Math.floor(item.kill))}</span>
         </div>
     `).join('');
 }
@@ -270,6 +281,7 @@ async function syncData() {
         });
         const totalNet = totalEarned - totalSpent;
 
+        // Updated to use formatValue
         if (gameProfitEl) gameProfitEl.innerText = formatValue(totalEarned);
         if (gameCostEl) gameCostEl.innerText = formatValue(totalSpent);
         if (gamePnlEl) {
@@ -278,13 +290,15 @@ async function syncData() {
         }
 
         if (globalStat) {
-            if (unitsKilledEl) unitsKilledEl.innerText = parseInt(globalStat.totalUnitsKilled).toLocaleString();
-            if (reaperKilledEl) reaperKilledEl.innerText = parseInt(globalStat.totalReaperKilled).toLocaleString();
+            // Updated to use formatValue
+            if (unitsKilledEl) unitsKilledEl.innerText = formatValue(parseInt(globalStat.totalUnitsKilled));
+            if (reaperKilledEl) reaperKilledEl.innerText = formatValue(parseInt(globalStat.totalReaperKilled));
             const burned = parseFloat(ethers.formatEther(globalStat.killBurned || "0"));
             const circulating = 6666666666 - burned;
-            if (killBurnedEl) killBurnedEl.innerText = `${burned.toLocaleString(undefined, {minimumFractionDigits: 3})} KILL`;
+            // Updated to use formatValue
+            if (killBurnedEl) killBurnedEl.innerText = `${formatValue(burned)} KILL`;
             const circulatingEl = document.getElementById('stat-kill-circulating');
-            if (circulatingEl) circulatingEl.innerText = Math.floor(circulating).toLocaleString();
+            if (circulatingEl) circulatingEl.innerText = formatValue(circulating);
         }
 
         const events = [
@@ -298,18 +312,21 @@ async function syncData() {
             const block = evt.block_number;
             if (evt.type === 'spawn') {
                 const logMsg = `<span style="color:var(--cyan)">[SPAWN]</span> ${evt.agent.substring(0, 8)} <span style="opacity:0.5">-></span> STACK_${evt.stackId}`;
-                const subMsg = `UNITS: ${parseInt(evt.units).toLocaleString()} | REAPER: ${evt.reapers}`;
+                // Updated to use formatValue
+                const subMsg = `UNITS: ${formatValue(parseInt(evt.units))} | REAPER: ${evt.reapers}`;
                 addLog(block, logMsg, 'log-spawn', subMsg);
                 triggerPulse(evt.stackId, 'spawn');
             } else if (evt.type === 'kill') {
                 const atkBounty = parseFloat(ethers.formatEther(evt.attackerBounty || "0"));
                 const logMsg = `<span style="color:var(--pink)">[KILL]</span> ${evt.attacker.substring(0, 6)} <span style="opacity:0.5">X</span> STACK_${evt.stackId}`;
+                // Updated to use formatValue
                 const subMsg = `BATTLE AT STACK ${evt.stackId}\nBOUNTY CLAIMED: ${formatValue(atkBounty)} KILL`;
                 addLog(block, logMsg, 'log-kill', subMsg);
                 triggerPulse(evt.stackId, 'kill');
             } else if (evt.type === 'move') {
                 const logMsg = `<span style="color:#888">[MOVE]</span> ${evt.agent.substring(0, 6)} <span style="opacity:0.5">>></span> STACK_${evt.toStack}`;
-                const subMsg = `TRANSFERRED: ${parseInt(evt.units).toLocaleString()} UNITS | ${evt.reaper} REAPER`;
+                // Updated to use formatValue
+                const subMsg = `TRANSFERRED: ${formatValue(parseInt(evt.units))} UNITS | ${evt.reaper} REAPER`;
                 addLog(block, logMsg, 'log-move', subMsg);
                 triggerPulse(evt.toStack, 'spawn'); 
             }
@@ -327,6 +344,7 @@ async function syncData() {
 function renderPnL(agents) {
     if (!pnlEl) return;
     
+    // Updated to use formatValue
     pnlEl.innerHTML = agents.map(a => {
         const spent = parseFloat(ethers.formatEther(a.totalSpent || "0"));
         const earned = parseFloat(ethers.formatEther(a.totalEarned || "0"));
@@ -359,6 +377,7 @@ function showLeaderboardTooltip(e, addr, earned, spent, net) {
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
+    // Updated to use formatValue
     tooltip.innerHTML = `
         <div style="padding: 2px; min-width: 200px; font-family: 'Courier New', monospace;">
             <strong style="color:var(--pink); font-size: 0.65rem;">AGENT_IDENTITY</strong><br>
