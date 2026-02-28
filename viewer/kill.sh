@@ -1,5 +1,5 @@
 #!/bin/bash
-# 🦞 KILLGame Agentic Installer
+# 🦞 KILLGame Agentic Installer v1.1.2 - Auto-Relocating
 
 # 1. Scaffolding
 mkdir -p agents/sniper agents/fortress data/abi
@@ -29,9 +29,10 @@ EOT
 cat <<EOT > package.json
 {
   "name": "killgame",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "bin": { "killgame": "./cli.js" },
   "dependencies": {
+    "node-fetch": "^2.6.7",
     "commander": "^11.0.0", "inquirer": "^8.2.4", "dotenv": "^16.4.5", "ethers": "^5.7.2",
     "hardhat": "^2.19.1", "@nomiclabs/hardhat-ethers": "^2.2.3", "@nomicfoundation/hardhat-toolbox": "^2.0.2"
   }
@@ -44,16 +45,9 @@ for ROLE in sniper fortress; do
   curl -f -s "$BASE_URL/agents/$ROLE/agent.js" -o "agents/$ROLE/agent.js"
   curl -f -s "$BASE_URL/agents/$ROLE/config.json" -o "agents/$ROLE/config.json"
   if [ -f "agents/$ROLE/agent.js" ]; then
-    # Patch KILLGame Contract to use local ABI
     sed -i.bak "s/await ethers.getContractAt(\"KILLGame\", kill_game_addr)/new ethers.Contract(kill_game_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '..\/..\/data\/abi\/KILLGame.json'), 'utf8')).abi, wallet)/g" "agents/$ROLE/agent.js"
-    
-    # Patch Faucet Contract to use local ABI
     sed -i.bak "s/new ethers.Contract(kill_faucet_addr, faucetAbi, wallet)/new ethers.Contract(kill_faucet_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '..\/..\/data\/abi\/KILLFaucet.json'), 'utf8')).abi, wallet)/g" "agents/$ROLE/agent.js"
-    
-    # Patch IERC20 to use Human-Readable ABI (Fixes HH700 error)
     sed -i.bak "s/await ethers.getContractAt(\"IERC20\", killTokenAddr)/new ethers.Contract(killTokenAddr, ['function balanceOf(address) view returns (uint256)', 'function allowance(address, address) view returns (uint256)', 'function approve(address, uint256) returns (bool)', 'function transfer(address, uint256) returns (bool)'], wallet)/g" "agents/$ROLE/agent.js"
-    
-    # Patch Private Key source
     sed -i.bak "s/config.private_key/process.env.PRIVATE_KEY/g" "agents/$ROLE/agent.js"
   fi
 done
@@ -73,7 +67,7 @@ module.exports = {
 };
 EOT
 
-# 6. CLI Router (Unchanged)
+# 6. CLI Router
 cat <<EOT > cli.js
 #!/usr/bin/env node
 const { program } = require('commander');
@@ -84,29 +78,57 @@ const { spawn } = require('child_process');
 const ROOT = __dirname;
 require('dotenv').config({ path: path.join(ROOT, '.env') });
 
+const stackValidator = (val) => {
+    const n = parseInt(val);
+    if (n >= 1 && n <= 216) return true;
+    return "Stack ID must be between 1 and 216";
+};
+
 program.command('setup').action(async () => {
   const ans = await inquirer.prompt([
-    { type: 'input', name: 'pk', message: 'Enter Private Key (will be used for Sniper & Fortress):', mask: '*' }
+    { type: 'input', name: 'pk', message: 'Enter Private Key (used for Sniper & Fortress):', mask: '*' },
+    { type: 'input', name: 'f_hub', message: 'Fortress: HUB_STACK:', default: '1', validate: stackValidator },
+    { type: 'input', name: 'f_units', message: 'Fortress: TARGET_UNITS:', default: '6666' },
+    { type: 'input', name: 'f_replenish', message: 'Fortress: REPLENISH_AMT:', default: '666' },
+    { type: 'input', name: 'f_perimeter', message: 'Fortress: HUB_PERIMETER:', default: '1' },
+    { type: 'input', name: 's_hub', message: 'Sniper: HUB_STACK:', default: '125', validate: stackValidator },
+    { type: 'input', name: 's_mult', message: 'Sniper: KILL_MULTIPLIER:', default: '3' },
+    { type: 'input', name: 's_thresh', message: 'Sniper: PROFIT_THRESHOLD:', default: '0.25' },
+    { type: 'input', name: 's_subgraph', message: 'Sniper: SUBGRAPH_URL:', default: 'https://api.studio.thegraph.com/query/666/killgame/version/latest' }
   ]);
-  const envPath = path.join(ROOT, '.env');
-  const lines = [\`SNIPER_PK=\${ans.pk}\`, \`FORTRESS_PK=\${ans.pk}\`].join('\n') + '\n';
-  fs.writeFileSync(envPath, lines);
-  console.log('✅ Registered Private Key for all roles.');
+
+  fs.writeFileSync(path.join(ROOT, '.env'), \`SNIPER_PK=\${ans.pk}\nFORTRESS_PK=\${ans.pk}\n\`);
+
+  const fPath = path.join(ROOT, 'agents/fortress/config.json');
+  if(fs.existsSync(fPath)) {
+    let fConf = JSON.parse(fs.readFileSync(fPath, 'utf8'));
+    fConf.settings.HUB_STACK = parseInt(ans.f_hub);
+    fConf.settings.TARGET_UNITS = parseInt(ans.f_units);
+    fConf.settings.REPLENISH_AMT = parseInt(ans.f_replenish);
+    fConf.settings.HUB_PERIMETER = parseInt(ans.f_perimeter);
+    fs.writeFileSync(fPath, JSON.stringify(fConf, null, 2));
+  }
+
+  const sPath = path.join(ROOT, 'agents/sniper/config.json');
+  if(fs.existsSync(sPath)) {
+    let sConf = JSON.parse(fs.readFileSync(sPath, 'utf8'));
+    sConf.settings.HUB_STACK = parseInt(ans.s_hub);
+    sConf.settings.KILL_MULTIPLIER = parseInt(ans.s_mult);
+    sConf.settings.SPAWN_PROFITABILITY_THRESHOLD = parseFloat(ans.s_thresh);
+    sConf.settings.SUBGRAPH_URL = ans.s_subgraph;
+    fs.writeFileSync(sPath, JSON.stringify(sConf, null, 2));
+  }
+  console.log('✅ Setup Complete.');
 });
 
 program.command('start <role>').action((role) => {
   const agentDir = path.join(ROOT, 'agents', role);
   if (!fs.existsSync(agentDir)) { console.error(\`❌ Role \${role} not found.\`); return; }
-  
   const agentPath = path.join(agentDir, 'agent.js');
   const config = JSON.parse(fs.readFileSync(path.join(agentDir, 'config.json'), 'utf8'));
   const networkName = config.network.network_name || "basesepolia";
   const pk = process.env[\`\${role.toUpperCase()}_PK\`];
-
-  if(!pk) {
-    console.error(\`❌ Error: No private key found. Run 'killgame setup'.\`);
-    process.exit(1);
-  }
+  if(!pk) { console.error(\`❌ Run 'killgame setup'.\`); process.exit(1); }
 
   spawn('npx', ['hardhat', 'run', agentPath, '--network', networkName], { 
     cwd: ROOT, stdio: 'inherit', shell: true, env: { ...process.env, PRIVATE_KEY: pk, FORCE_COLOR: "1" } 
@@ -118,14 +140,15 @@ EOT
 # 7. Finalize
 chmod +x cli.js
 npm install --quiet
+
+# RELOCATE LOGIC: Force global re-link to THIS directory
+echo "[SYSTEM] Updating global command path..."
 npm link --force --quiet
 
 echo ""
 echo "------------------------------------------------"
-echo "🎉 SUCCESS: KILLGame Agents Installed (v1.1)."
+echo "🎉 SUCCESS: KILLGame Relocated to $(pwd)"
 echo "------------------------------------------------"
-echo "Next steps:"
 echo "1. killgame setup"
-echo "2. Check config.json in agents/ for the new faucet address"
-echo "3. killgame start sniper"
+echo "2. killgame start sniper"
 echo "------------------------------------------------"

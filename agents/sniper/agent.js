@@ -1,6 +1,7 @@
 const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
+const fetch = require("node-fetch");
 require("dotenv").config();
 
 const YEL = "\x1b[33m"; const CYA = "\x1b[36m"; const PNK = "\x1b[35m"; const RES = "\x1b[0m"; const BRIGHT = "\x1b[1m";
@@ -26,29 +27,43 @@ function getPath3D(startId, endId) {
     return path;
 }
 
+async function getTopStacksFromSubgraph(url) {
+    const query = `{
+        stacks(orderBy: totalStandardUnits, orderDirection: desc, first: 20) { 
+            id 
+            totalStandardUnits 
+            totalBoostedUnits 
+        }
+    }`;
+    const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+    });
+    const result = await resp.json();
+    return result.data.stacks;
+}
+
 async function main() {
     if (!process.env.SNIPER_PK) throw new Error("Missing SNIPER_PK in .env");
     const wallet = new ethers.Wallet(process.env.SNIPER_PK, ethers.provider);
-    console.log(`[AGENT] Running as: ${wallet.address}`); // Added Address Logging
+    console.log(`[AGENT] Running as: ${wallet.address}`);
     
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
-    const { HUB_STACK, LOOP_DELAY_SECONDS, KILL_MULTIPLIER, SPAWN_PROFITABILITY_THRESHOLD, MIN_SPAWN } = config.settings;
+    const { HUB_STACK, LOOP_DELAY_SECONDS, KILL_MULTIPLIER, SPAWN_PROFITABILITY_THRESHOLD, MIN_SPAWN, SUBGRAPH_URL } = config.settings;
     const { kill_game_addr, kill_faucet_addr } = config.network;
     
     const killGame = new ethers.Contract(kill_game_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '../../data/abi/KILLGame.json'), 'utf8')).abi, wallet);
     const killTokenAddr = await killGame.killToken();
-        const erc20Abi = [
+    const erc20Abi = [
         "function balanceOf(address) view returns (uint256)",
         "function allowance(address, address) view returns (uint256)",
         "function approve(address, uint256) returns (bool)",
         "function transfer(address, uint256) returns (bool)"
     ];
     const killToken = new ethers.Contract(killTokenAddr, erc20Abi, wallet);
-
-    const faucetAbi = ["function pullKill() external", "function hasClaimed(address) view returns (bool)"];
     const killFaucet = new ethers.Contract(kill_faucet_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '../../data/abi/KILLFaucet.json'), 'utf8')).abi, wallet);
     
-    // UPDATED: Spawn cost is now 20
     const SPAWN_COST_PER_UNIT = 20; 
     const REAPER_BOUNTY = 3330; 
 
@@ -60,9 +75,6 @@ async function main() {
             console.log(`${YEL}[STARTUP] Claiming faucet...${RES}`);
             const faucetTx = await killFaucet.pullKill({ gasLimit: 200000 });
             await faucetTx.wait();
-            console.log(`${CYA}[SUCCESS] 666,000 KILL claimed.${RES}`);
-        } else {
-            console.log(`[STARTUP] Faucet already claimed.`);
         }
     } catch (e) {
         console.log(`${PNK}[STARTUP] Faucet skipped: ${e.reason || e.message}${RES}`);
@@ -74,15 +86,16 @@ async function main() {
             const killBal = await killToken.balanceOf(wallet.address);
             const killAllow = await killToken.allowance(wallet.address, kill_game_addr);
 
-            const scanIds = Array.from({ length: 216 }, (_, i) => i + 1);
-            const stackCalls = scanIds.map(id => killGame.interface.encodeFunctionData("getFullStack", [id]));
+            const topStacks = await getTopStacksFromSubgraph(SUBGRAPH_URL);
+            
+            const stackCalls = topStacks.map(s => killGame.interface.encodeFunctionData("getFullStack", [parseInt(s.id)]));
             const results = await killGame.callStatic.multicall(stackCalls);
             
             let myStrandedStacks = [];
             let targets = [];
 
-            for (let i = 0; i < 216; i++) {
-                const stackId = i + 1;
+            for (let i = 0; i < topStacks.length; i++) {
+                const stackId = parseInt(topStacks[i].id);
                 const items = killGame.interface.decodeFunctionResult("getFullStack", results[i])[0];
                 const self = items.find(it => it.occupant.toLowerCase() === wallet.address.toLowerCase());
                 const enemies = items.filter(it => it.occupant.toLowerCase() !== wallet.address.toLowerCase() && it.units.gt(0));
@@ -92,7 +105,6 @@ async function main() {
                 }
 
                 for (const e of enemies) {
-                    // Update bounty value calculation based on new prices
                     const bountyVal = e.units.mul(SPAWN_COST_PER_UNIT).add(e.reapers.mul(REAPER_BOUNTY));
                     let spawnAmt = e.units.mul(KILL_MULTIPLIER);
                     if (spawnAmt.lt(MIN_SPAWN)) spawnAmt = ethers.BigNumber.from(MIN_SPAWN);
@@ -114,51 +126,52 @@ async function main() {
                 APPROVED: killAllow.gt(ethers.constants.MaxUint256.div(2)) ? "MAX" : (parseFloat(ethers.utils.formatEther(killAllow))).toFixed(1) + "K"
             }]);
 
-            if (myStrandedStacks.length > 0) {
-                console.log(`\n${BRIGHT}${PNK}STRANDED UNITS${RES}`);
-                myStrandedStacks.forEach(s => {
-                    const hops = getPath3D(s.id, HUB_STACK).length;
-                    console.log(`ID: ${s.id.toString().padEnd(4)} | Units: ${s.units.toString().padEnd(6)} | Hops: ${hops}`);
-                });
-            }
-
-            console.log(`\n${BRIGHT}ID   | ENEMY      | UNITS | BOUNTY   | RATIO | STATUS${RES}`);
-            console.log(`-----|------------|-------|----------|-------|-------`);
+            console.log(`\n${BRIGHT}ID   | ENEMY      | UNITS | BOUNTY   | RATIO | STATUS | MY UNITS | MY REAPERS${RES}`);
+            console.log(`-----|------------|-------|----------|-------|--------|----------|-----------`);
             targets.sort((a,b) => b.ratio - a.ratio).slice(0, 10).forEach(t => {
                 const isPass = t.ratio >= SPAWN_PROFITABILITY_THRESHOLD;
                 const bountyStr = (parseFloat(t.bountyVal.toString()) / 1000).toFixed(1) + "K";
                 let status = !isPass ? "LOW_ROI" : (killBal.lt(t.attackCost) ? "NO_KILL" : CYA + "READY" + RES);
-                console.log(`${t.id.toString().padEnd(4)} | ${t.enemy.occupant.slice(0,10)} | ${t.enemy.units.toString().padEnd(5)} | ${bountyStr.padEnd(8)} | ${t.ratio.toFixed(2)}x | ${status}`);
+                
+                // Find my units on this specific target stack for the table
+                const myUnitsOnTarget = myStrandedStacks.find(s => s.id === t.id);
+                const myU = myUnitsOnTarget ? myUnitsOnTarget.units.toString() : "0";
+                const myR = myUnitsOnTarget ? myUnitsOnTarget.reapers.toString() : "0";
+                
+                console.log(`${t.id.toString().padEnd(4)} | ${t.enemy.occupant.slice(0,10)} | ${t.enemy.units.toString().padEnd(5)} | ${bountyStr.padEnd(8)} | ${t.ratio.toFixed(2)}x | ${status.padEnd(15)} | ${myU.padEnd(8)} | ${myR.padEnd(10)}`);
             });
 
             const calls = [];
-            if (myStrandedStacks.length > 0) {
-                const s = myStrandedStacks[0];
-                const moveStep = getPath3D(s.id, HUB_STACK)[0];
-                console.log(`\n${YEL}[RETREAT] Moving ${s.id} -> ${moveStep.to}${RES}`);
-                // Move cost is flat 100
-                calls.push(killGame.interface.encodeFunctionData("move", [moveStep.from, moveStep.to, s.units, s.reapers]));
-            } else {
-                const best = targets.sort((a, b) => b.ratio - a.ratio)[0];
-                if (best && best.ratio >= SPAWN_PROFITABILITY_THRESHOLD) {
-                    if (killBal.gte(best.attackCost)) {
-                        if (killAllow.lt(best.attackCost)) {
-                            console.log(`${YEL}[AUTH] Approving...${RES}`);
-                            await (await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256)).wait();
-                        }
-                        if (ethBal.gt(ethers.utils.parseEther("0.002"))) {
-                            console.log(`\n${PNK}[ATTACK] Snipe ${best.id} | Ratio: ${best.ratio}x | Reaper: ${best.spawnReaper}${RES}`);
-                            calls.push(killGame.interface.encodeFunctionData("spawn", [best.id, best.spawnAmt]));
-                            calls.push(killGame.interface.encodeFunctionData("kill", [best.enemy.occupant, best.id, best.spawnAmt, best.spawnReaper]));
-                        }
+            
+            // Priority 1: Attack if profitable
+            const best = targets.sort((a, b) => b.ratio - a.ratio)[0];
+            if (best && best.ratio >= SPAWN_PROFITABILITY_THRESHOLD) {
+                if (killBal.gte(best.attackCost)) {
+                    if (killAllow.lt(best.attackCost)) {
+                        console.log(`${YEL}[AUTH] Approving...${RES}`);
+                        await (await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256)).wait();
+                    }
+                    if (ethBal.gt(ethers.utils.parseEther("0.002"))) {
+                        console.log(`\n${PNK}[ATTACK] Snipe ${best.id} | Ratio: ${best.ratio}x | Spawn: ${best.spawnAmt} | Reapers: ${best.spawnReaper}${RES}`);
+                        calls.push(killGame.interface.encodeFunctionData("spawn", [best.id, best.spawnAmt]));
+                        calls.push(killGame.interface.encodeFunctionData("kill", [best.enemy.occupant, best.id, best.spawnAmt, best.spawnReaper]));
                     }
                 }
+            } 
+            // Priority 2: Move if no attacks
+            else if (myStrandedStacks.length > 0) {
+                const s = myStrandedStacks[0];
+                const moveStep = getPath3D(s.id, HUB_STACK)[0];
+                console.log(`\n${YEL}[RETREAT] Moving ${s.id} -> ${moveStep.to} | Units: ${s.units} | Reapers: ${s.reapers}${RES}`);
+                calls.push(killGame.interface.encodeFunctionData("move", [moveStep.from, moveStep.to, s.units, s.reapers]));
             }
 
             if (calls.length > 0) {
+                console.log(`${CYA}[TX] Executing multicall...${RES}`);
                 const tx = await killGame.connect(wallet).multicall(calls, { gasLimit: 2500000 });
-                console.log(`${CYA}>> [TX]: ${tx.hash}${RES}`);
+                console.log(`${CYA}>> [TX HASH]: ${tx.hash}${RES}`);
                 await tx.wait();
+                console.log(`${BRIGHT}>> [TX] Success!${RES}`);
             }
         } catch (err) { console.error("\n[ERROR]", err.message); }
         await new Promise(r => setTimeout(r, LOOP_DELAY_SECONDS * 1000));

@@ -29,7 +29,7 @@ async function main() {
     if (!process.env.FORTRESS_PK) throw new Error("Missing FORTRESS_PK in .env");
     const wallet = new ethers.Wallet(process.env.FORTRESS_PK, ethers.provider);
     const address = wallet.address;
-    console.log(`[AGENT] Running as: ${address}`); // Added Address Logging
+    console.log(`[AGENT] Running as: ${address}`);
 
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
     const { kill_game_addr, kill_faucet_addr } = config.network;
@@ -37,41 +37,18 @@ async function main() {
 
     const killGame = new ethers.Contract(kill_game_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '../../data/abi/KILLGame.json'), 'utf8')).abi, wallet);
     const killTokenAddr = await killGame.killToken();
-    const killToken = new ethers.Contract(killTokenAddr, ['function balanceOf(address) view returns (uint256)', 'function allowance(address, address) view returns (uint256)', 'function approve(address, uint256) returns (bool)', 'function transfer(address, uint256) returns (bool)'], wallet);
-
-    const killFaucet = new ethers.Contract(kill_faucet_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '../../data/abi/KILLFaucet.json'), 'utf8')).abi, wallet);
+    const killToken = new ethers.Contract(killTokenAddr, ['function balanceOf(address) view returns (uint256)', 'function allowance(address, address) view returns (uint256)', 'function approve(address, uint256) returns (bool)'], wallet);
 
     const ALL_IDS = Array.from({length: 216}, (_, i) => i + 1);
-    const PATROL_ZONE = ALL_IDS.filter(id => id !== HUB_STACK && getManhattanDist(HUB_STACK, id) <= HUB_PERIMETER);
-    const SAFE_ZONE = [HUB_STACK, ...PATROL_ZONE];
+    const SAFE_ZONE = ALL_IDS.filter(id => getManhattanDist(HUB_STACK, id) <= HUB_PERIMETER);
 
     console.log(`\n--- FORTRESS AGENT: ATOMIC LIQUIDATION MODE ---`);
-
-    try {
-        const alreadyClaimed = await killFaucet.hasClaimed(address);
-        if (!alreadyClaimed) {
-            console.log(`[STARTUP] Attempting KILL Faucet pull...`);
-            const faucetTx = await killFaucet.pullKill({ gasLimit: 200000 });
-            await faucetTx.wait();
-            console.log(`[SUCCESS] 666,000 KILL pulled from faucet.`);
-        }
-    } catch (e) {
-        console.log(`[STARTUP] Faucet skip: ${e.reason || e.message}`);
-    }
 
     while (true) {
         try {
             const ethBal = await ethers.provider.getBalance(address);
             const killBal = await killToken.balanceOf(address);
             const allow = await killToken.allowance(address, kill_game_addr);
-
-            // RESOURCE TABLE
-            console.log(`\n>> RESOURCE CHECK:`);
-            console.table([{
-                ETH: ethers.utils.formatEther(ethBal).substring(0, 6),
-                KILL: ethers.utils.formatEther(killBal).split('.')[0],
-                APPROVED: ethers.utils.formatEther(allow).split('.')[0]
-            }]);
 
             const readCalls = ALL_IDS.map(id => killGame.interface.encodeFunctionData("getFullStack", [id]));
             const returnData = await killGame.callStatic.multicall(readCalls);
@@ -89,7 +66,7 @@ async function main() {
                 const enemies = items.filter(it => it.occupant.toLowerCase() !== address.toLowerCase() && (it.units.gt(0) || it.reapers.gt(0)));
                 const dist = getManhattanDist(HUB_STACK, stackId);
 
-                if (self) {
+                if (self && (self.units.gt(0) || self.reapers.gt(0))) {
                     const stackPower = calcPower(self.units, self.reapers);
                     totalPowerGlobal = totalPowerGlobal.add(stackPower);
                     myActiveStacks.push({ id: stackId, units: self.units, reapers: self.reapers, power: stackPower, dist });
@@ -107,39 +84,38 @@ async function main() {
                         MyPower: mp.toString(), 
                         Status: enemies.length > 0 ? "HOSTILE" : "SECURE" 
                     });
-
+                    
                     if (enemies.length > 0) validTargets.push({ id: stackId, target: enemies[0], dist });
                 }
                 if (stackId === HUB_STACK) hubState.enemies = enemies;
             }
 
-            // TACTICAL TABLE
-            console.log(`>> TACTICAL VIEW:`);
-            console.table(tacticalData.sort((a,b) => a.Dist - b.Dist));
+            console.log(`\n>> RESOURCE CHECK:`);
+            console.table([{ 
+                ETH: ethers.utils.formatEther(ethBal).substring(0, 6), 
+                KILL: killBal.toString().substring(0, 10) + "...", 
+                APPROVED: allow.gt(ethers.constants.MaxUint256.div(2)) ? "MAX" : "LOW" 
+            }]);
+
+            console.log(`>> TACTICAL VIEW (Perimeter Dist <= ${HUB_PERIMETER}):`);
+            console.table(tacticalData.sort((a,b) => a.Dist - b.Dist || a.ID - b.ID));
             console.log(`GLOBAL POWER: ${totalPowerGlobal.toString()} / ${TARGET_UNITS}`);
 
             const txOpt = { gasLimit: 2000000, gasPrice: ethers.utils.parseUnits(MAX_GAS_PRICE_GWEI.toString(), "gwei") };
             let actionBatch = [];
+            let logs = [];
 
-            // SPAWN LOGIC (Independent)
+            // 1. SPAWN
             if (totalPowerGlobal.lt(ethers.BigNumber.from(TARGET_UNITS))) {
-                // FIXED: Spawn cost is amount * 20
-                const spawnCost = ethers.BigNumber.from(REPLENISH_AMT).mul(20); 
-                
-                // Using MaxUint256 for efficiency as requested
-                if (allow.lt(spawnCost)) {
-                    console.log(`[AUTH] Approving KILL tokens...`);
-                    const appTx = await killToken.approve(kill_game_addr, ethers.constants.MaxUint256);
-                    await appTx.wait();
-                }
-                console.log(`[BATCH] Underpowered. Spawning ${REPLENISH_AMT} units at HUB...`);
-                actionBatch.push(killGame.interface.encodeFunctionData("spawn", [HUB_STACK, REPLENISH_AMT]));
+                const spawnAmt = ethers.BigNumber.from(REPLENISH_AMT);
+                actionBatch.push(killGame.interface.encodeFunctionData("spawn", [HUB_STACK, spawnAmt]));
+                logs.push(`[SPAWN] ${REPLENISH_AMT} units -> Stack ${HUB_STACK}`);
             }
 
-            // ACTION LOGIC
+            // 2. COMBAT / MOVEMENT
             if (hubState.enemies.length > 0 && hubState.self) {
-                console.log(`[BATCH] Counter-Attack at Hub...`);
                 actionBatch.push(killGame.interface.encodeFunctionData("kill", [hubState.enemies[0].occupant, HUB_STACK, hubState.self.units, hubState.self.reapers]));
+                logs.push(`[KILL] Target ${hubState.enemies[0].occupant} on HUB`);
             } 
             else if (validTargets.length > 0 && myActiveStacks.length > 0) {
                 const raid = validTargets.sort((a,b) => a.dist - b.dist)[0];
@@ -147,18 +123,22 @@ async function main() {
                 
                 if (army.id === raid.id) {
                     actionBatch.push(killGame.interface.encodeFunctionData("kill", [raid.target.occupant, raid.id, army.units, army.reapers]));
+                    logs.push(`[KILL] Target ${raid.target.occupant} on Stack ${raid.id}`);
                 } else {
                     let step = ALL_IDS.filter(id => isAdjacent(army.id, id)).sort((a,b) => getManhattanDist(a, raid.id) - getManhattanDist(b, raid.id))[0];
                     actionBatch.push(killGame.interface.encodeFunctionData("move", [army.id, step, army.units, army.reapers]));
+                    logs.push(`[MOVE] ${army.power} Power: Stack ${army.id} -> ${step} (Heading to ${raid.id})`);
                 }
             }
             else if (myActiveStacks.some(s => s.id !== HUB_STACK)) {
                 const army = myActiveStacks.find(s => s.id !== HUB_STACK);
                 let step = ALL_IDS.filter(id => isAdjacent(army.id, id)).sort((a,b) => getManhattanDist(a, HUB_STACK) - getManhattanDist(b, HUB_STACK))[0];
                 actionBatch.push(killGame.interface.encodeFunctionData("move", [army.id, step, army.units, army.reapers]));
+                logs.push(`[RETREAT] Stack ${army.id} -> ${step} (Returning to HUB)`);
             }
 
             if (actionBatch.length > 0) {
+                logs.forEach(msg => console.log(msg));
                 const tx = await killGame.multicall(actionBatch, txOpt);
                 console.log(`>> [TX SENT]: ${tx.hash}`);
                 await tx.wait();

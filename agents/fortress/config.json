@@ -1,17 +1,17 @@
 {
   "role": "fortress",
   "network": {
-    "network_name" : "basesepolia",
+    "network_name": "basesepolia",
     "rpc_url": "https://sepolia.base.org",
     "kill_game_addr": "0xfd21c1c28d58e420837e8057A227C3D432D289Ec",
     "kill_faucet_addr": "0x258042B01c4B1Bc749f296B477F703FC6e8462Cd"
   },
   "settings": {
-    "HUB_STACK": 122,
-    "TARGET_UNITS": 66666,
+    "HUB_STACK": 22,
+    "TARGET_UNITS": 6666,
     "REPLENISH_AMT": 6666,
     "LOOP_DELAY_SECONDS": 12,
     "MAX_GAS_PRICE_GWEI": 5,
-    "HUB_PERIMETER": 2
+    "HUB_PERIMETER": 1
   }
 }
