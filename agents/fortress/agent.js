@@ -29,6 +29,8 @@ async function main() {
     if (!process.env.FORTRESS_PK) throw new Error("Missing FORTRESS_PK in .env");
     const wallet = new ethers.Wallet(process.env.FORTRESS_PK, ethers.provider);
     const address = wallet.address;
+    console.log(`[AGENT] Running as: ${address}`); // Added Address Logging
+
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
     const { kill_game_addr, kill_faucet_addr } = config.network;
     const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, LOOP_DELAY_SECONDS, HUB_PERIMETER, MAX_GAS_PRICE_GWEI } = config.settings;
@@ -121,7 +123,10 @@ async function main() {
 
             // SPAWN LOGIC (Independent)
             if (totalPowerGlobal.lt(ethers.BigNumber.from(TARGET_UNITS))) {
-                const spawnCost = ethers.BigNumber.from(REPLENISH_AMT).mul(10); 
+                // FIXED: Spawn cost is amount * 20
+                const spawnCost = ethers.BigNumber.from(REPLENISH_AMT).mul(20); 
+                
+                // Using MaxUint256 for efficiency as requested
                 if (allow.lt(spawnCost)) {
                     console.log(`[AUTH] Approving KILL tokens...`);
                     const appTx = await killToken.approve(kill_game_addr, ethers.constants.MaxUint256);
