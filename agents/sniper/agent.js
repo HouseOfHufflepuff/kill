@@ -169,7 +169,8 @@ async function main() {
             if (calls.length > 0) {
                 console.log(`${CYA}[TX] Executing multicall...${RES}`);
                 const tx = await killGame.connect(wallet).multicall(calls, { gasLimit: 2500000 });
-                console.log(`${CYA}>> [TX HASH]: ${tx.hash}${RES}`);
+                console.log(`${CYA}>> [TX SENT]: ${tx.hash}${RES}`);
+                console.log(`${CYA}>> https://sepolia.basescan.org/tx/${tx.hash}${RES}`);
                 await tx.wait();
                 console.log(`${BRIGHT}>> [TX] Success!${RES}`);
             }

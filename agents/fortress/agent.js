@@ -141,6 +141,7 @@ async function main() {
                 logs.forEach(msg => console.log(msg));
                 const tx = await killGame.multicall(actionBatch, txOpt);
                 console.log(`>> [TX SENT]: ${tx.hash}`);
+                console.log(`>> https://sepolia.basescan.org/tx/${tx.hash}`);
                 await tx.wait();
             }
 
