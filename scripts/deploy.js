@@ -18,18 +18,19 @@ async function main() {
     console.log(`current gas price: ${gasPrice}`);
 
 
-    // const KillToken = await ethers.getContractFactory("KILLToken");
-    // const killToken = await KillToken.deploy();
-    // console.log(killToken.address + " deployed to KILLToken");
+    const KillToken = await ethers.getContractFactory("KILLToken");
+    const killToken = await KillToken.deploy();
+    console.log(killToken.address + " deployed to KILLToken");
 
-
-    // const KillGame = await ethers.getContractFactory("KILLGame");
-    // const killGame = await KillGame.deploy(killToken.address);
-    // console.log(killGame.address + " deployed to KillGame");
 
     const KillFaucet = await ethers.getContractFactory("KILLFaucet");
-    const killFaucet = await KillFaucet.deploy(KILL_TOKEN);
+    const killFaucet = await KillFaucet.deploy(killToken.address);
     console.log(killFaucet.address + " deployed to KillFaucet");
+
+    const KillGame = await ethers.getContractFactory("KILLGame");
+    const killGame = await KillGame.deploy(killToken.address);
+    console.log(killGame.address + " deployed to KillGame");
+
 
 
 
