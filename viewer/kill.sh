@@ -93,8 +93,7 @@ program.command('setup').action(async () => {
     { type: 'input', name: 'f_perimeter', message: 'Fortress: HUB_PERIMETER:', default: '1' },
     { type: 'input', name: 's_hub', message: 'Sniper: HUB_STACK:', default: '125', validate: stackValidator },
     { type: 'input', name: 's_mult', message: 'Sniper: KILL_MULTIPLIER:', default: '3' },
-    { type: 'input', name: 's_thresh', message: 'Sniper: PROFIT_THRESHOLD:', default: '0.25' },
-    { type: 'input', name: 's_subgraph', message: 'Sniper: SUBGRAPH_URL:', default: 'https://api.studio.thegraph.com/query/666/killgame/version/latest' }
+    { type: 'input', name: 's_thresh', message: 'Sniper: PROFIT_THRESHOLD:', default: '0.25' }
   ]);
 
   fs.writeFileSync(path.join(ROOT, '.env'), \`SNIPER_PK=\${ans.pk}\nFORTRESS_PK=\${ans.pk}\n\`);
@@ -115,7 +114,8 @@ program.command('setup').action(async () => {
     sConf.settings.HUB_STACK = parseInt(ans.s_hub);
     sConf.settings.KILL_MULTIPLIER = parseInt(ans.s_mult);
     sConf.settings.SPAWN_PROFITABILITY_THRESHOLD = parseFloat(ans.s_thresh);
-    sConf.settings.SUBGRAPH_URL = ans.s_subgraph;
+    // Hardcoded Correct Goldsky Subgraph URL
+    sConf.settings.SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.2/gn";
     fs.writeFileSync(sPath, JSON.stringify(sConf, null, 2));
   }
   console.log('✅ Setup Complete.');
