@@ -294,7 +294,7 @@ async function syncData() {
             if (unitsKilledEl) unitsKilledEl.innerText = formatValue(parseInt(globalStat.totalUnitsKilled));
             if (reaperKilledEl) reaperKilledEl.innerText = formatValue(parseInt(globalStat.totalReaperKilled));
             const burned = parseFloat(ethers.formatEther(globalStat.killBurned || "0"));
-            const circulating = 6666666666 - burned;
+            const circulating = 66666666666 - burned;
             // Updated to use formatValue
             if (killBurnedEl) killBurnedEl.innerText = `${formatValue(burned)} KILL`;
             const circulatingEl = document.getElementById('stat-kill-circulating');
