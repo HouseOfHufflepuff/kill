@@ -1,6 +1,8 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("@openzeppelin/hardhat-upgrades");
+require("hardhat-contract-sizer");
 require("dotenv").config();
+require("hardhat-gas-reporter");
 
 const { 
   API_URL, 
@@ -12,25 +14,24 @@ const {
   AGENT5_PRIVATE_KEY
 } = process.env;
 
-// Collect all accounts for the simulation signers array
 const accounts = [
-  PRIVATE_KEY, // Index 0: Owner/Deployer
+  PRIVATE_KEY, 
   AGENT1_PRIVATE_KEY,
   AGENT2_PRIVATE_KEY,
   AGENT3_PRIVATE_KEY,
   AGENT4_PRIVATE_KEY,
   AGENT5_PRIVATE_KEY
-].filter(key => !!key); // Remove undefined values
+].filter(key => !!key);
 
-/** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
     version: "0.8.24",
     settings: {
       optimizer: {
-        enabled: true,
-        runs: 200,
+        enabled: true, // MUST BE HERE
+        runs: 1000, 
       },
+      viaIR: true, // MUST BE HERE
     },
   },
   defaultNetwork: "localhost",
@@ -45,7 +46,7 @@ module.exports = {
     basesepolia: {
       url: API_URL || "https://sepolia.base.org",
       accounts: accounts,
-      gasPrice: 2000000000, // 2 Gwei base
+      gasPrice: 2000000000, 
       pollingInterval: 1000,
       timeout: 360000
     }
@@ -55,5 +56,13 @@ module.exports = {
       base: process.env.BASESCAN_API_KEY || "",
       baseSepolia: process.env.BASESCAN_API_KEY || ""
     }
-  }
+  },
+  // MERGED GAS REPORTER CONFIGURATION
+  gasReporter: {
+    enabled: true,
+    currency: "USD",
+    token: "ETH",
+    outputFile: "gas-report0.txt",
+    noColors: true,
+  },
 };

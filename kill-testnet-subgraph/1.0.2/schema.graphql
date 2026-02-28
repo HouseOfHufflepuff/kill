@@ -1,0 +1,84 @@
+type Spawned @entity(immutable: true) {
+  id: ID!
+  agent: Bytes!
+  stackId: BigInt!
+  units: BigInt!
+  reapers: BigInt!
+  birthBlock: BigInt!
+  block_number: BigInt!
+}
+
+type Moved @entity(immutable: true) {
+  id: ID!
+  agent: Bytes!
+  fromStack: BigInt!
+  toStack: BigInt!
+  units: BigInt!
+  reaper: BigInt!
+  birthBlock: BigInt!
+  block_number: BigInt!
+}
+
+type Killed @entity(immutable: true) {
+  id: ID!
+  attacker: Bytes!
+  target: Bytes!
+  stackId: BigInt!
+  attackerUnitsSent: BigInt!
+  attackerReaperSent: BigInt!
+  attackerUnitsLost: BigInt!
+  attackerReaperLost: BigInt!
+  targetUnitsLost: BigInt!
+  targetReaperLost: BigInt!
+  initialDefenderUnits: BigInt!
+  initialDefenderReaper: BigInt!
+  attackerBounty: BigInt!
+  defenderBounty: BigInt!
+  targetBirthBlock: BigInt!
+  block_number: BigInt!
+}
+
+type DefenderReward @entity(immutable: true) {
+  id: ID!
+  defender: Bytes!
+  amount: BigInt!
+  block_number: BigInt!
+}
+
+type Stack @entity(immutable: false) {
+  id: ID!
+  totalStandardUnits: BigInt!
+  totalBoostedUnits: BigInt!
+  birthBlock: BigInt!
+  currentBounty: BigInt!
+  active: Boolean! # Added to track stacks for bounty recalculation
+}
+
+type AgentStack @entity(immutable: false) {
+  id: ID! 
+  agent: Bytes!
+  stackId: BigInt!
+  birthBlock: BigInt!
+  units: BigInt!
+  reaper: BigInt!
+}
+
+type Agent @entity(immutable: false) {
+  id: ID! # Wallet Address
+  totalSpent: BigInt!
+  totalEarned: BigInt!
+  netPnL: BigInt!
+  lastActiveBlock: BigInt!
+}
+
+type GlobalStat @entity(immutable: false) {
+  id: ID!
+  totalUnitsKilled: BigInt!
+  totalReaperKilled: BigInt!
+  killAdded: BigInt!      
+  killExtracted: BigInt!  
+  killBurned: BigInt!     
+  totalPnL: BigInt!       
+  currentTreasury: BigInt! 
+  maxBounty: BigInt!      
+}

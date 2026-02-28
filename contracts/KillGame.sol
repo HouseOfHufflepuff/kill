@@ -7,14 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 
-/**
- * @title KILLGame
- * @dev High-Velocity Economic Model:
- * 1. Base Stack Power: units + (reaper * 666).
- * 2. Multiplier: 1x (Base) to 20x over 3 days (21,600 blocks).
- * 3. Treasury Cap: Max payout is 25% of current treasury balance.
- * 4. Thermal Parity: 666 total power loss required for 100% bounty extraction.
- */
 contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     // --- STRUCTS ---
     struct ReaperStack { 
@@ -49,37 +41,43 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         uint256 pendingBounty;
     }
 
+    // --- DOUBLY LINKED LIST NODES ---
+    struct Node {
+        address prev;
+        address next;
+        bool exists;
+    }
+
     // --- EVENTS ---
     event Spawned(address indexed agent, uint256 indexed stackId, uint256 units, uint256 reapers, uint256 birthBlock);
     event Moved(address indexed agent, uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper, uint256 birthBlock);
     event Killed(address indexed attacker, address indexed target, uint16 indexed stackId, BattleSummary summary, uint256 targetBirthBlock);
     event GlobalStats(uint256 totalUnitsKilled, uint256 totalReaperKilled, uint256 killAdded, uint256 killExtracted, uint256 killBurned);
-    event DefenderRewarded(address indexed defender, uint256 amount);
     event TreasuryBpsUpdated(uint256 oldBps, uint256 newBps);
 
     // --- ECONOMIC CONSTANTS ---
     uint256 public constant BURN_BPS = 666; 
-    uint256 public constant SPAWN_COST_PER_POWER = 10 * 10**18;
-    uint256 public constant MOVE_COST = 10 * 10**18;
+    uint256 public constant SPAWN_COST = 20 * 10**18;
+    uint256 public constant MOVE_COST = 100 * 10**18;
     uint256 public constant THERMAL_PARITY = 666;
     uint256 public constant MAX_MULTIPLIER = 20;
     uint256 public constant BLOCKS_PER_MULTIPLIER = 1080; 
-    uint256 public constant GLOBAL_CAP_BPS = 2500; // 25%
+    uint256 public constant GLOBAL_CAP_BPS = 2500; 
     
-    uint256 public treasuryBps = 0; 
+    // --- STORAGE ---
     IERC20 public immutable killToken;
+    uint256 public treasuryBps = 30; 
     
-    // --- GLOBAL TRACKERS ---
+    // Global Trackers
     uint256 public totalUnitsKilled;
     uint256 public totalReaperKilled;
     uint256 public totalKillAdded;      
     uint256 public totalKillExtracted;  
     uint256 public totalKillBurned;     
 
-    // --- STORAGE ---
     mapping(address => mapping(uint256 => ReaperStack)) public agentStacks;
-    mapping(uint256 => address[]) private stackOccupants;
-    mapping(uint256 => mapping(address => bool)) private isOccupying;
+    mapping(uint256 => mapping(address => Node)) public stackNodes;
+    mapping(uint256 => address) public stackHeads;
     mapping(address => uint256) public agentTotalProfit;
 
     constructor(address _tokenAddress) ERC1155("https://api.killgame.ai/metadata/{id}.json") Ownable(msg.sender) {
@@ -103,10 +101,6 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         return agentStacks[agent][id].birthBlock;
     }
 
-    /**
-     * @dev Calculates bounty using: min(SpawnCost * Multiplier, 25% Treasury)
-     * FIX: Base multiplier is now 1x instead of 0x.
-     */
     function getPendingBounty(address agent, uint256 id) public view returns (uint256) {
         uint256 birth = agentStacks[agent][id].birthBlock;
         if(birth == 0) return 0;
@@ -116,17 +110,16 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         
         uint256 actualTreasury = killToken.balanceOf(address(this));
         
-        // 1. Calculate Multiplier (1 + Age/1080) capped at 20
         uint256 ageBlocks = (block.number > birth) ? block.number - birth : 0;
         uint256 multiplier = 1 + (ageBlocks / BLOCKS_PER_MULTIPLIER);
         if (multiplier > MAX_MULTIPLIER) multiplier = MAX_MULTIPLIER;
 
-        // 2. Calculate Raw Bounty
-        uint256 power = balanceOf(agent, uId) + (balanceOf(agent, rId) * 666);
-        uint256 spawnValue = power * SPAWN_COST_PER_POWER;
-        uint256 rawBounty = spawnValue * multiplier;
+        uint256 balU = balanceOf(agent, uId);
+        uint256 balR = balanceOf(agent, rId);
+        
+        uint256 power = balU + (balR * 666);
+        uint256 rawBounty = power * SPAWN_COST * multiplier;
 
-        // 3. Apply 25% Global Cap
         uint256 globalCap = (actualTreasury * GLOBAL_CAP_BPS) / 10000;
 
         return rawBounty > globalCap ? globalCap : rawBounty;
@@ -140,17 +133,24 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     {
         uint256 uId = uint256(stackId);
         uint256 rId = uId + 216;
-        require(balanceOf(msg.sender, uId) >= sentUnits && balanceOf(msg.sender, rId) >= sentReaper, "Lack units");
+        
+        uint256 senderU = balanceOf(msg.sender, uId);
+        uint256 senderR = balanceOf(msg.sender, rId);
+        require(senderU >= sentUnits && senderR >= sentReaper, "Lack units");
         require(msg.sender != target, "Cannot kill self");
 
         BattleSummary memory sum;
         sum.attackerUnitsSent = sentUnits;
         sum.attackerReaperSent = sentReaper;
-        sum.initialDefenderUnits = balanceOf(target, uId);
-        sum.initialDefenderReaper = balanceOf(target, rId);
+        
+        uint256 defU = balanceOf(target, uId);
+        uint256 defR = balanceOf(target, rId);
+        sum.initialDefenderUnits = defU;
+        sum.initialDefenderReaper = defR;
+        
         uint256 targetBirth = agentStacks[target][uId].birthBlock; 
 
-        LossReport memory loss = _resolveCombat(target, uId, rId, sentUnits, sentReaper);
+        LossReport memory loss = _resolveCombat(target, uId, rId, sentUnits, sentReaper, defU, defR);
         
         sum.attackerUnitsLost = loss.aUnits;
         sum.attackerReaperLost = loss.aReaper;
@@ -176,28 +176,26 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
 
         uint256 pending = getPendingBounty(target, uId);
         uint256 battlePool = totalPLost >= THERMAL_PARITY ? pending : (pending * totalPLost) / THERMAL_PARITY;
-        uint256 participantPool = (battlePool * 7500) / 10000; 
 
-        if (participantPool > 0) {
-            aB = (participantPool * tPLost) / totalPLost;
+        if (battlePool > 0) {
+            aB = (battlePool * tPLost) / totalPLost;
             _transferBounty(msg.sender, aB);
             agentTotalProfit[msg.sender] += aB;
 
-            uint256 dB = (participantPool * aPLost) / totalPLost;
+            uint256 dB = (battlePool * aPLost) / totalPLost;
             _transferBounty(target, dB);
             agentTotalProfit[target] += dB;
             
+            // Note: sum is a local copy in kill(), this updates it
             sum.attackerBounty = aB;
             sum.defenderBounty = dB;
-            emit DefenderRewarded(target, dB);
         }
     }
 
     function spawn(uint16 stackId, uint256 amount) external nonReentrant {
         require(stackId > 0 && stackId <= 216, "Invalid Stack");
         uint256 reaperCount = amount / 666;
-        uint256 totalPower = amount + (reaperCount * 666);
-        uint256 totalCost = totalPower * SPAWN_COST_PER_POWER;
+        uint256 totalCost = amount * SPAWN_COST;
         
         require(killToken.transferFrom(msg.sender, address(this), totalCost), "Pay fail");
         
@@ -210,12 +208,17 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         _emitGlobalStats(); 
     }
 
+/**
+     * @notice Moves units between adjacent stacks.
+     * @dev If units move to an empty block, the birth block is reset to block.number (1x multiplier).
+     */
     function move(uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper) external nonReentrant {
         require(fromStack > 0 && fromStack <= 216 && toStack > 0 && toStack <= 216 && _isAdjacent(fromStack, toStack), "Bad move");
         require(killToken.transferFrom(msg.sender, address(this), MOVE_COST), "Pay fail");
         
         unchecked { totalKillAdded += MOVE_COST; }
         
+        // Internal move logic updated to handle birth block resets
         if (units > 0) _moveLogic(uint256(fromStack), uint256(toStack), units);
         if (reaper > 0) _moveLogic(uint256(fromStack) + 216, uint256(toStack) + 216, reaper);
         
@@ -223,10 +226,38 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         _emitGlobalStats(); 
     }
 
-    function _resolveCombat(address target, uint256 uId, uint256 rId, uint256 sU, uint256 sR) internal view returns (LossReport memory loss) {
+    /**
+     * @dev Internal logic for moving units and managing the stack life-cycle.
+     */
+    function _moveLogic(uint256 fId, uint256 tId, uint256 amt) internal {
+        uint256 baseF = (fId > 216) ? fId - 216 : fId;
+        uint256 baseT = (tId > 216) ? tId - 216 : tId;
+
+        // Perform the move using existing mint/burn logic
+        _burn(msg.sender, fId, amt);
+        _mint(msg.sender, tId, amt, "");
+
+        // Cleanup: Remove from list if the source stack is now completely empty
+        if (balanceOf(msg.sender, baseF) == 0 && balanceOf(msg.sender, baseF + 216) == 0) {
+            _removeFromList(baseF, msg.sender);
+        }
+
+        /** * REQUIREMENT: A move to an empty block resets the birth block.
+         * If the destination stack was empty (birthBlock == 0), we set it to the current block.
+         * This forces the bounty multiplier back to 1x.
+         */
+        if (agentStacks[msg.sender][baseT].birthBlock == 0) {
+            agentStacks[msg.sender][baseT].birthBlock = block.number;
+            _addToList(baseT, msg.sender);
+        }
+    }
+
+    function _resolveCombat(address, uint256, uint256, uint256 sU, uint256 sR, uint256 defU, uint256 defR) 
+        internal 
+        pure 
+        returns (LossReport memory loss) 
+    {
         uint256 atkP = sU + (sR * 666);
-        uint256 defU = balanceOf(target, uId);
-        uint256 defR = balanceOf(target, rId);
         uint256 defP = (defU + (defR * 666)) * 110 / 100; 
         if (defP == 0) defP = 1;
         
@@ -245,18 +276,31 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     }
 
     function _executeCombatEffects(address atk, address tar, uint256 uId, uint256 rId, LossReport memory loss) internal {
-        if (loss.tUnits > 0) _burn(tar, uId, loss.tUnits);
-        if (loss.tReaper > 0) _burn(tar, rId, loss.tReaper);
-        if (loss.aUnits > 0) _burn(atk, uId, loss.aUnits);
-        if (loss.aReaper > 0) _burn(atk, rId, loss.aReaper);
+        if (loss.tUnits > 0 || loss.tReaper > 0) {
+            uint256[] memory tIds = new uint256[](2);
+            uint256[] memory tAmts = new uint256[](2);
+            uint256 tCount = 0;
+            if (loss.tUnits > 0) { tIds[tCount] = uId; tAmts[tCount] = loss.tUnits; tCount++; }
+            if (loss.tReaper > 0) { tIds[tCount] = rId; tAmts[tCount] = loss.tReaper; tCount++; }
+            assembly { mstore(tIds, tCount) mstore(tAmts, tCount) }
+            _burnBatch(tar, tIds, tAmts);
+        }
+
+        if (loss.aUnits > 0 || loss.aReaper > 0) {
+            uint256[] memory aIds = new uint256[](2);
+            uint256[] memory aAmts = new uint256[](2);
+            uint256 aCount = 0;
+            if (loss.aUnits > 0) { aIds[aCount] = uId; aAmts[aCount] = loss.aUnits; aCount++; }
+            if (loss.aReaper > 0) { aIds[aCount] = rId; aAmts[aCount] = loss.aReaper; aCount++; }
+            assembly { mstore(aIds, aCount) mstore(aAmts, aCount) }
+            _burnBatch(atk, aIds, aAmts);
+        }
 
         if (balanceOf(tar, uId) == 0 && balanceOf(tar, rId) == 0) {
-            isOccupying[uId][tar] = false;
-            delete agentStacks[tar][uId];
+            _removeFromList(uId, tar);
         }
         if (balanceOf(atk, uId) == 0 && balanceOf(atk, rId) == 0) {
-            isOccupying[uId][atk] = false;
-            delete agentStacks[atk][uId];
+            _removeFromList(uId, atk);
         }
     }
 
@@ -284,35 +328,42 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
 
     function _mintAndReg(address to, uint256 id, uint256 amt) internal {
         _mint(to, id, amt, "");
-        // FIX: Spawning does not reset age if already occupying.
-        if (agentStacks[to][id].birthBlock == 0) {
-            agentStacks[to][id].birthBlock = block.number;
-        }
-        if (!isOccupying[id][to]) { 
-            stackOccupants[id].push(to); 
-            isOccupying[id][to] = true; 
+        uint256 baseId = (id > 216) ? id - 216 : id;
+        
+        if (agentStacks[to][baseId].birthBlock == 0) {
+            agentStacks[to][baseId].birthBlock = block.number;
+            _addToList(baseId, to);
         }
     }
 
-    function _moveLogic(uint256 fId, uint256 tId, uint256 amt) internal {
-        uint256 baseF = (fId > 216) ? fId - 216 : fId;
-        uint256 baseT = (tId > 216) ? tId - 216 : tId;
-        uint256 movingAge = agentStacks[msg.sender][baseF].birthBlock;
-
-        _burn(msg.sender, fId, amt);
-        _mint(msg.sender, tId, amt, "");
-
-        // FIX: If target stack was empty, it inherits the age of the moving units.
-        if (!isOccupying[baseT][msg.sender]) {
-            stackOccupants[baseT].push(msg.sender);
-            isOccupying[baseT][msg.sender] = true;
-            agentStacks[msg.sender][baseT].birthBlock = movingAge;
+    function _addToList(uint256 stackId, address agent) internal {
+        if (stackNodes[stackId][agent].exists) return;
+        
+        address head = stackHeads[stackId];
+        stackNodes[stackId][agent] = Node(address(0), head, true);
+        
+        if (head != address(0)) {
+            stackNodes[stackId][head].prev = agent;
         }
-        // If from-stack is now empty, kill the age record.
-        if (balanceOf(msg.sender, baseF) == 0 && balanceOf(msg.sender, baseF + 216) == 0) {
-            isOccupying[baseF][msg.sender] = false;
-            delete agentStacks[msg.sender][baseF]; 
+        stackHeads[stackId] = agent;
+    }
+
+    function _removeFromList(uint256 stackId, address agent) internal {
+        Node storage node = stackNodes[stackId][agent];
+        if (!node.exists) return;
+
+        if (node.prev != address(0)) {
+            stackNodes[stackId][node.prev].next = node.next;
+        } else {
+            stackHeads[stackId] = node.next;
         }
+        
+        if (node.next != address(0)) {
+            stackNodes[stackId][node.next].prev = node.prev;
+        }
+        
+        delete stackNodes[stackId][agent];
+        delete agentStacks[agent][stackId];
     }
 
     function _isAdjacent(uint16 c1, uint16 c2) internal pure returns (bool) {
@@ -325,28 +376,27 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     function getFullStack(uint16 stackId) external view returns (StackInfo[] memory) {
         uint256 unitId = uint256(stackId);
         uint256 reaperId = unitId + 216;
-        address[] memory occ = stackOccupants[unitId];
         
-        uint256 count = 0;
-        for (uint256 i = 0; i < occ.length; i++) {
-            if (isOccupying[unitId][occ[i]]) count++;
+        uint256 activeCount = 0;
+        address current = stackHeads[unitId];
+        while (current != address(0)) {
+            activeCount++;
+            current = stackNodes[unitId][current].next;
         }
 
-        StackInfo[] memory info = new StackInfo[](count);
-        uint256 idx = 0;
-        for (uint256 i = 0; i < occ.length; i++) {
-            address target = occ[i];
-            if (isOccupying[unitId][target]) {
-                uint256 birth = agentStacks[target][unitId].birthBlock;
-                info[idx] = StackInfo({
-                    occupant: target,
-                    units: balanceOf(target, unitId),
-                    reapers: balanceOf(target, reaperId),
-                    age: (block.number > birth) ? block.number - birth : 0,
-                    pendingBounty: getPendingBounty(target, unitId)
-                });
-                idx++;
-            }
+        StackInfo[] memory info = new StackInfo[](activeCount);
+        
+        current = stackHeads[unitId];
+        for (uint256 idx = 0; idx < activeCount; idx++) {
+            uint256 birth = agentStacks[current][unitId].birthBlock;
+            info[idx] = StackInfo({
+                occupant: current,
+                units: balanceOf(current, unitId),
+                reapers: balanceOf(current, reaperId),
+                age: (block.number > birth) ? block.number - birth : 0,
+                pendingBounty: getPendingBounty(current, unitId)
+            });
+            current = stackNodes[unitId][current].next;
         }
         return info;
     }

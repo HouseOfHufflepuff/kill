@@ -15,13 +15,19 @@ async function countdown(seconds) {
 async function main() {
     if (!process.env.SEED_PK) throw new Error("Missing SEED_PK in .env");
     const wallet = new ethers.Wallet(process.env.SEED_PK, ethers.provider);
+    console.log(`[AGENT] Running as: ${wallet.address}`);
+
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
     const { kill_game_addr, kill_faucet_addr } = config.network;
     const { SEED_AMOUNT, LOOP_DELAY_SECONDS, BATCH_SEED } = config.settings;
     
     const killGame = await ethers.getContractAt("KILLGame", kill_game_addr);
+    
+    // Explicitly fetch and log token address
     const killTokenAddr = await killGame.killToken();
-        const erc20Abi = [
+    console.log(`[INFO] KILL Token Address: ${killTokenAddr}`);
+    
+    const erc20Abi = [
         "function balanceOf(address) view returns (uint256)",
         "function allowance(address, address) view returns (uint256)",
         "function approve(address, uint256) returns (bool)",
@@ -52,26 +58,35 @@ async function main() {
         }
     } catch (e) {
         console.log(`[STARTUP] Faucet pull failed/skipped: ${e.reason || e.message}`);
-        // Proceeding to main loop regardless of faucet success
     }
 
     while (true) {
         const ethBalance = await wallet.getBalance();
-        const killBalance = await killToken.balanceOf(wallet.address);
-        const allowance = await killToken.allowance(wallet.address, kill_game_addr);
+        
+        // --- DEBUG BALANCE FETCHING ---
+        const killBalanceRaw = await killToken.balanceOf(wallet.address);
+        const killBalanceFormatted = ethers.utils.formatUnits(killBalanceRaw, 18);
+        console.log(`[DEBUG] Raw KILL Balance: ${killBalanceRaw.toString()}`);
+        
+        const allowanceRaw = await killToken.allowance(wallet.address, kill_game_addr);
         const stack119 = await killGame.balanceOf(wallet.address, 119);
 
         console.log(`\n>> RESOURCE CHECK:`);
         console.table([{
             ETH: ethers.utils.formatEther(ethBalance).slice(0, 8),
-            KILL: ethers.utils.formatUnits(killBalance, 18),
-            Allowance: ethers.utils.formatUnits(allowance, 18),
+            KILL: killBalanceFormatted, // Use formatted string
+            Allowance: ethers.utils.formatUnits(allowanceRaw, 18),
             Stack119: stack119.toString(),
             Ready: ethBalance.gt(ethers.utils.parseEther("0.01")) ? "YES" : "LOW ETH"
         }]);
 
-        const required = ethers.utils.parseUnits("0.01", 18).mul(SEED_AMOUNT).mul(BATCH_SEED);
-        if (allowance.lt(required)) {
+        // Fix: Required calculation based on amount * price (20)
+        // Note: The script used to check allowance against a '0.01' figure.
+        // It should check against (BATCH_SEED * SEED_AMOUNT * 20).
+        const totalKillNeeded = ethers.BigNumber.from(BATCH_SEED).mul(ethers.BigNumber.from(SEED_AMOUNT)).mul(20);
+        const requiredAllowance = ethers.utils.parseUnits(totalKillNeeded.toString(), 18);
+
+        if (allowanceRaw.lt(requiredAllowance)) {
             console.log(`[ACTION] Approving KILL tokens...`);
             const appTx = await killToken.connect(wallet).approve(kill_game_addr, ethers.constants.MaxUint256);
             await appTx.wait();

@@ -1,0 +1,28 @@
+{
+  "name": "kill-game",
+  "version": "1.0.0",
+  "description": "Unified CLI management for KILLGame agents",
+  "main": "cli.js",
+  "bin": {
+    "killgame": "./cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "blockchain",
+    "game-agent",
+    "cli"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@graphprotocol/graph-ts": "^0.38.2",
+    "@nomicfoundation/hardhat-toolbox": "^2.0.0",
+    "commander": "^11.0.0",
+    "dotenv": "^16.0.0",
+    "ethers": "^5.7.0",
+    "hardhat": "^2.19.0",
+    "inquirer": "^8.2.4"
+  }
+}

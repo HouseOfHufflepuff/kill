@@ -5,7 +5,7 @@
 // --- GLOBAL CONFIGURATION ---
 const NETWORK = "Base Sepolia";
 const ALCHEMY_URL = "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs";
-const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.1/gn";
+const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.2/gn";
 const BLOCK_EXPLORER = "https://sepolia.basescan.org";
 
 // --- DOM ELEMENT REGISTRY ---
@@ -99,8 +99,8 @@ function updateNodeParticles(id, units, reaperCount) {
     const node = document.getElementById(`node-${id}`);
     if (!node) return;
     
-    const targetUnitDots = Math.min(Math.floor(units / 1000), 40);
-    const targetReaperDots = Math.min(Math.floor(reaperCount / 10), 40); 
+    const targetUnitDots = Math.min(Math.floor(units / 666), 40);
+    const targetReaperDots = Math.min(Math.floor(reaperCount / 1), 40); 
     
     if (activeFilterAgent && (units > 0 || reaperCount > 0)) {
         node.style.boxShadow = "0 0 10px var(--cyan)";
