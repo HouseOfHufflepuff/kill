@@ -60,12 +60,12 @@ async function main() {
     // await killToken.mint(ethers.utils.getAddress("0x9D45399C666A120462da696ea810a21d6a48A0DD"), "10000000000000000000000000");
     // await killToken.mint(ethers.utils.getAddress("0x2fb363fBc806EE9E86aB406B8053875A9026BE7D"), "10000000000000000000000000");
     // await killToken.mint(ethers.utils.getAddress("0xC25e78cE00E95d0A4Fe185F00afd7511627a3d42"), "10000000000000000000000000");
-
-    // //10M max
-    //await killToken.mint(MAX_PUB, "10000000000000000000000000");
     //await killToken.mint("0x624ACebb891354AA7890e027b0444418503bAef6", "10000000000000000000000000");
     //await killToken.mint("0x75891725392dd52b0a520267b2045631164bb4f1", "10000000000000000000000000");
-    await killToken.mint("0x4AEff951c726D0b42b611dcC0d59fa04798247f9", "1000000000000000000000000");
+    //await killToken.mint("0x4AEff951c726D0b42b611dcC0d59fa04798247f9", "1000000000000000000000000");
+
+        // //10M max
+    await killToken.mint(MAX_PUB, "50000000000000000000000000");
     
     console.log("done funding contracts and agents");
 

@@ -10,6 +10,7 @@
     "LOOP_DELAY_SECONDS": 12,
     "KILL_MULTIPLIER": 3,
     "MIN_SPAWN": 666,
+    "MAX_KILL": 1000000,
     "SUBGRAPH_URL": "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.2/gn"
   }
 }
