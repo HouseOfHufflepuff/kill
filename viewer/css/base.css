@@ -214,6 +214,39 @@ footer {
 }
 .ac-select-btn:hover { background: var(--pink); border-color: var(--pink); color: #000; }
 
+/* --- HELP MODE VISIBILITY --- */
+.help-only        { display: none !important; }
+.help-only-text   { display: none; }
+body.help-mode .help-only      { display: block !important; }
+body.help-mode .help-only-text { display: block; }
+body.help-mode .help-default-text { display: none; }
+
+/* --- HELP SECTION STYLE (gold label system) --- */
+.help-section {
+    margin-bottom: 4px;
+    border-left: 2px solid #ffd44a;
+    padding-left: 8px;
+}
+.help-section-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px; margin-top: 4px;
+}
+.help-badge {
+    font-size: .4rem; letter-spacing: 2px; padding: 1px 5px;
+    border: 1px solid #ffd44a; color: #ffd44a;
+    font-family: 'Oswald', sans-serif; flex-shrink: 0;
+}
+.help-section-title {
+    color: #ffd44a; font-family: 'Oswald', sans-serif;
+    font-size: .82rem; letter-spacing: 2px; font-weight: 700;
+}
+.help-section-body {
+    font-size: .58rem; color: #aaa; line-height: 1.75;
+}
+
+/* --- HELP GOLD NOTE --- */
+.help-gold-note { color: #ffd44a; }
+
 /* --- MISSION STEPS (HELP MODE) --- */
 .mission-panel { display: none; }
 body.help-mode .mission-panel { display: block; }

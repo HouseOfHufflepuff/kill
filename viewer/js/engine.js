@@ -128,8 +128,8 @@ function updateNodeParticles(id, units, reaperCount) {
     const node = document.getElementById(`node-${id}`);
     if (!node) return;
     
-    const targetUnitDots = Math.min(Math.floor(units / 666), 40);
-    const targetReaperDots = Math.min(Math.floor(reaperCount / 1), 40); 
+    const targetUnitDots = Math.min(Math.floor(units / 1332), 20);
+    const targetReaperDots = Math.min(Math.floor(reaperCount / 2), 20);
     
     if (selectedStacks.size > 0) {
         const isSelected = selectedStacks.has(String(id));

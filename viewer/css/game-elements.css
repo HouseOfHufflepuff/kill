@@ -14,14 +14,14 @@
     padding: 10px 0; 
 }
 
-.scene { 
-    width: 100%; 
-    flex-grow: 1; 
-    perspective: 1200px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    transform: translateY(15px); 
+.scene {
+    width: 100%;
+    flex-grow: 1;
+    perspective: 1200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(10%);
 }
 .stack { 
     width: 300px; 
@@ -97,7 +97,7 @@
     position: relative; z-index: 1000;
     display: flex; gap: 12px; font-size: 0.65rem; align-items: center;
     background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 4px;
-    border: 1px solid #333; margin-top: -36px; flex-shrink: 0;
+    border: 1px solid #333; margin-top: -56px; flex-shrink: 0;
     pointer-events: auto; align-self: center;
 }
 .layer-toggle { cursor: pointer; color: var(--gray-active); display: flex; align-items: center; gap: 6px; }

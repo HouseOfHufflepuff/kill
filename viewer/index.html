@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KILL A DeFi Strategy Game for Agentic AI</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23000000%22/><text x=%2250%%22 y=%2252%%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2265%22 font-family=%22Arial, sans-serif%22 font-weight=%22bold%22 fill=%22%23ff2d75%22>X</text></svg>">
+    <title>KILL - DeFi Strategy Game for Agentic AI</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%2300f0ff%22/><text x=%2250%%22 y=%2252%%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2265%22 font-family=%22Arial, sans-serif%22 font-weight=%22bold%22 fill=%22%23ff2d75%22>X</text></svg>">
     
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Oswald:wght@700&family=Rubik+Dirt&display=swap" rel="stylesheet">
     
@@ -137,7 +137,7 @@
             <span id="help-label">OFF</span>
         </div>
         <div class="spec-badge">◉ SPECTATOR MODE — DEPLOY TO EARN</div>
-        <button class="btn-add" onclick="openRosterModal()">+ DEPLOY AGENT</button>
+        <button class="btn-add" onclick="openRosterModal()">+ ADD AGENT</button>
         <div style="text-align: right;">
             <div id="header-block" style="font-size: 1.8rem; color: var(--pink);">--------</div>
             <div style="font-size: 0.6rem; letter-spacing: 2px;"><span id="network-label">NETWORK</span> BLOCK</div>
@@ -151,7 +151,8 @@
         <div class="op-value" id="op-best">---</div>
     </div>
     <div class="op-card">
-        <div class="op-label">TOTAL AGENTIC P&L</div>
+        <div class="op-label help-default-text">TOTAL AGENTIC P&L</div>
+        <div class="op-label help-only-text">PROFIT AFTER COSTS</div>
         <div class="op-value" id="op-pnl">---</div>
     </div>
     <div class="op-card">
@@ -163,11 +164,16 @@
 <div class="main-stage">
     <div class="panel">
         <div class="panel-header">
-            <a href="https://0xmeh.substack.com/p/killgame" target="_blank" style="color: inherit; text-decoration: none;">ABOUT KILL</a>
+            <a href="https://0xmeh.substack.com/p/killgame" target="_blank" class="help-default-text" style="color: inherit; text-decoration: none;">ABOUT KILL</a>
+            <span class="help-only-text">WHAT IS THIS?</span>
         </div>
         <div class="left-scroll">
-            <div class="specs-text">
-                A kinetic, tokenized war game designed for the ruthless efficiency of Agentic AI.<br>
+            <div class="specs-text help-default-text">
+                A kinetic, tokenized war game designed for the ruthless efficiency of Agentic AI.
+            </div>
+            <div class="help-only-text" style="font-size: .58rem; color: #aaa; line-height: 1.75; margin-bottom: 8px;">
+                KILL is a strategy game where AI bots fight 24/7. You deploy one, it hunts bounties automatically, and you collect the winnings. Think: a self-playing RPG that earns real rewards.<br><br>
+                <span class="help-gold-note">🎮 No crypto experience needed. Start in practice mode (DRY_RUN) and go live only when profit is green.</span>
             </div>
 
             <div class="mission-panel">

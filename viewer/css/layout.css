@@ -65,7 +65,7 @@
 /* --- MOBILE VERTICAL FLEX OVERRIDES --- */
 @media (max-width: 1024px) {
     body, html {
-        overflow-y: auto !important; 
+        overflow-y: auto !important;
         height: auto !important;
     }
 
@@ -75,6 +75,15 @@
         flex-direction: column;
         gap: 10px;
     }
+
+    /* Hide desktop-only header elements */
+    .spec-badge { display: none !important; }
+    .help-wrap { display: none !important; }
+
+    /* Tactical view first, op-strip after */
+    .main-stage { order: 1; }
+    .op-strip { order: 2; }
+    footer { order: 3; }
 
     .main-stage {
         display: flex !important;
@@ -86,8 +95,8 @@
         padding: 10px !important;
     }
 
-    .panel { 
-        width: 100% !important; 
+    .panel {
+        width: 100% !important;
         height: auto !important;
         min-height: 300px !important;
         overflow: visible !important;
@@ -97,10 +106,15 @@
     .panel:first-of-type { order: 2 !important; }
     .panel:last-of-type { order: 3 !important; }
 
+    /* Compact op-strip: keep 3 columns, shrink everything */
     .op-strip {
-        grid-template-columns: 1fr !important;
-        padding: 8px 10px !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        padding: 4px 8px !important;
+        gap: 4px !important;
     }
+    .op-card { padding: 4px 6px !important; }
+    .op-label { font-size: 0.48rem !important; margin-top: 1px !important; }
+    .op-value { font-size: 0.72rem !important; margin-top: 1px !important; }
 
     footer {
         height: auto;
@@ -108,7 +122,7 @@
         padding: 20px;
         text-align: center;
     }
-    
+
     .footer-economy {
         text-align: center;
         margin-top: 10px;
