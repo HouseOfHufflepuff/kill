@@ -26,11 +26,11 @@ header {
     padding: 0 40px; flex-shrink: 0; background: #000;
 }
 
-.logo-text { 
-    font-family: 'Oswald', sans-serif; 
-    font-size: 3.5rem; 
-    color: var(--pink); 
-    letter-spacing: -2px; 
+.logo-text {
+    font-family: 'Rubik Dirt', sans-serif;
+    font-size: 3.5rem;
+    color: var(--pink);
+    letter-spacing: -2px;
 }
 
 .btn-add {
@@ -53,6 +53,8 @@ footer {
 }
 
 .footer-economy { font-family: 'JetBrains Mono'; font-size: 0.9rem; font-weight: 400; text-align: right; }
+
+#system-status { font-family: 'Rubik Dirt', sans-serif; font-size: 1.6rem; display: inline-flex; align-items: center; }
 
 /* --- MODAL SYSTEM FIX (REVISED v1.0.6) --- */
 .modal { 

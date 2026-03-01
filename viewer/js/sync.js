@@ -129,18 +129,23 @@ function updateTopStacks(stacks, activeReaperMap) {
     }
 
     // Updated to use formatValue for units and kill value
-    topStacksEl.innerHTML = sorted.map(item => `
-        <div class="stack-row" 
-             onmouseover="showStackTooltip(event, '${item.id}', ${item.units}, ${item.reapers}, ${item.bounty}, ${item.kill})" 
-             onmouseout="if(tooltip) tooltip.style.opacity=0" 
-             style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; cursor: crosshair;">
-            <span style="width:10%; color:#555;">${item.id}</span>
+    topStacksEl.innerHTML = sorted.map(item => {
+        const isSelected = selectedStacks.has(String(item.id));
+        return `
+        <div class="stack-row${isSelected ? ' stack-row-selected' : ''}"
+             id="stack-filter-row-${item.id}"
+             onclick="toggleStackFilter('${item.id}')"
+             onmouseover="showStackTooltip(event, '${item.id}', ${item.units}, ${item.reapers}, ${item.bounty}, ${item.kill})"
+             onmouseout="if(tooltip) tooltip.style.opacity=0"
+             style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; cursor: pointer;">
+            <span style="width:10%; color:${isSelected ? 'var(--pink)' : '#555'};">${item.id}</span>
             <span style="width:20%">${formatValue(item.units)}</span>
             <span style="width:14%; color:var(--cyan)">${formatValue(item.reapers)}</span>
             <span style="width:25%; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
             <span style="width:31%; text-align:right; color:var(--pink); font-weight:bold;">${formatValue(Math.floor(item.kill))}</span>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 /**

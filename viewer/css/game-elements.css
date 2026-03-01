@@ -141,6 +141,9 @@
 .btn-clear { background: none; border: 1px solid #444; color: #666; font-size: 0.55rem; padding: 2px 6px; cursor: pointer; font-family: 'JetBrains Mono'; }
 .btn-clear:hover { border-color: var(--pink); color: var(--pink); }
 
+.stack-row-selected { background: rgba(255, 45, 117, 0.1) !important; }
+.stack-row-selected > span:first-child { color: var(--pink) !important; }
+
 .stack-id, .rank-addr { color: #888; }
 .stack-val, .lethal-val { color: var(--pink); font-weight: bold; }
 .stack-kill, .rank-profit, .profit-positive { color: var(--cyan); }

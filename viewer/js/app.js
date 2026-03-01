@@ -11,9 +11,10 @@ var stackRegistry = {};
 var currentGlobalKillStacked = 0;
 var isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 
-// NEW: Filtering State
+// Filtering State
 var activeFilterAgent = null;
 var isLogPaused = false;
+var selectedStacks = new Set();
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {

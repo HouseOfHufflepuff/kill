@@ -102,13 +102,21 @@ function updateNodeParticles(id, units, reaperCount) {
     const targetUnitDots = Math.min(Math.floor(units / 666), 40);
     const targetReaperDots = Math.min(Math.floor(reaperCount / 1), 40); 
     
-    if (activeFilterAgent && (units > 0 || reaperCount > 0)) {
+    if (selectedStacks.size > 0) {
+        const isSelected = selectedStacks.has(String(id));
+        node.style.opacity = isSelected ? '1' : '0.05';
+        node.style.borderColor = isSelected ? 'var(--pink)' : '#111';
+        node.style.boxShadow = isSelected ? '0 0 12px rgba(255,45,117,0.5)' : 'none';
+    } else if (activeFilterAgent && (units > 0 || reaperCount > 0)) {
+        node.style.opacity = '1';
         node.style.boxShadow = "0 0 10px var(--cyan)";
         node.style.borderColor = "var(--cyan)";
     } else if (activeFilterAgent) {
+        node.style.opacity = '1';
         node.style.boxShadow = "none";
         node.style.borderColor = "#111";
     } else {
+        node.style.opacity = '1';
         node.style.boxShadow = "none";
         node.style.borderColor = (units > 0 || reaperCount > 0) ? "#333" : "#111";
     }
@@ -241,4 +249,44 @@ function clearAgentFilter() {
         addLog(lastBlock, "AGENT FILTER CLEARED", "log-network");
         syncData();
     }
+}
+
+function toggleStackFilter(id) {
+    const sid = String(id);
+    if (selectedStacks.has(sid)) {
+        selectedStacks.delete(sid);
+    } else {
+        selectedStacks.add(sid);
+    }
+    const row = document.getElementById(`stack-filter-row-${id}`);
+    if (row) row.classList.toggle('stack-row-selected', selectedStacks.has(sid));
+    applyStackFilter();
+}
+
+function applyStackFilter() {
+    for (let i = 0; i < 216; i++) {
+        const node = document.getElementById(`node-${i}`);
+        if (!node) continue;
+        if (selectedStacks.size === 0) {
+            node.style.opacity = '1';
+            const data = stackRegistry[i] || {};
+            const hasContent = (parseInt(data.units) > 0 || parseInt(data.reaper) > 0);
+            node.style.borderColor = hasContent ? '#333' : '#111';
+            node.style.boxShadow = 'none';
+        } else if (selectedStacks.has(String(i))) {
+            node.style.opacity = '1';
+            node.style.borderColor = 'var(--pink)';
+            node.style.boxShadow = '0 0 12px rgba(255,45,117,0.5)';
+        } else {
+            node.style.opacity = '0.05';
+            node.style.borderColor = '#111';
+            node.style.boxShadow = 'none';
+        }
+    }
+}
+
+function clearStackFilter() {
+    selectedStacks.clear();
+    document.querySelectorAll('.stack-row-selected').forEach(row => row.classList.remove('stack-row-selected'));
+    applyStackFilter();
 }
