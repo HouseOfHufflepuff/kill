@@ -308,3 +308,36 @@ body.help-mode .mission-panel { display: block; }
     color: var(--pink);
     text-shadow: 0 0 10px #fff;
 }
+
+/* --- ROSTER MODAL MOBILE --- */
+@media (max-width: 1024px) {
+    #roster-modal .modal-content {
+        width: 95vw !important;
+        max-height: 92vh !important;
+        padding: 20px 14px !important;
+    }
+
+    .agent-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+        margin-top: 10px !important;
+    }
+
+    .agent-card {
+        padding: 12px !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        grid-template-rows: auto !important;
+        column-gap: 12px !important;
+        row-gap: 4px !important;
+    }
+
+    /* Tier + name span full width */
+    .ac-tier  { grid-column: 1 / -1; }
+    .ac-name  { grid-column: 1 / -1; font-size: 1.2rem !important; }
+    .ac-class { grid-column: 1 / -1; }
+    .ac-desc  { grid-column: 1 / -1; font-size: 0.52rem !important; margin-bottom: 6px !important; }
+    .ac-stats { grid-column: 1; margin-bottom: 0 !important; }
+    .ac-tags  { grid-column: 2; align-content: start; }
+    .ac-select-btn { grid-column: 1 / -1; margin-top: 6px !important; }
+}
