@@ -120,7 +120,8 @@
     overflow-y: auto; padding-right: 8px;
     scrollbar-width: thin; scrollbar-color: var(--pink) transparent;
 }
-#ripe-stacks, #log-feed { max-height: 280px; }
+#ripe-stacks { max-height: 280px; }
+#log-feed { max-height: 160px; }
 #leaderboard { flex-grow: 1; min-height: 120px; }
 
 #ripe-stacks::-webkit-scrollbar, #leaderboard::-webkit-scrollbar, #log-feed::-webkit-scrollbar { width: 4px; }
@@ -158,6 +159,45 @@
     display: inline-block; width: 8px; height: 8px;
     background: var(--pink); border-radius: 50%; margin-right: 10px;
     box-shadow: 0 0 10px var(--pink); animation: pulse-dot 1s infinite ease-in-out;
+}
+
+/* --- LOG EXPAND MODE --- */
+.log-panel-expanded {
+    position: fixed !important;
+    top: 90px;
+    left: 0;
+    right: 0;
+    bottom: 60px;
+    z-index: 5000;
+    width: 100% !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 20px 40px !important;
+    box-sizing: border-box;
+}
+.log-panel-expanded #leaderboard-section { display: none; }
+.log-panel-expanded .panel-header { margin-top: 0 !important; }
+.log-panel-expanded #log-feed { max-height: none !important; flex-grow: 1; }
+.log-addr-full { display: none; }
+.log-addr-full a { color: inherit; text-decoration: none; word-break: break-all; }
+.log-addr-full a:hover { text-decoration: underline; }
+.log-panel-expanded .log-addr-short { display: none; }
+.log-panel-expanded .log-addr-full { display: inline; }
+#log-filter {
+    display: none;
+    width: 100%; box-sizing: border-box;
+    background: #000; border: 1px solid #333; border-bottom-color: var(--pink);
+    color: var(--pink); font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; padding: 5px 8px; margin-bottom: 6px; outline: none;
+}
+#log-filter::placeholder { color: #444; }
+
+#leaderboard-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* --- KILL EVENT TABLE --- */

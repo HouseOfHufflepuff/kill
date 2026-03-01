@@ -311,8 +311,7 @@ async function syncData() {
             if (knownIds.has(evt.id)) return;
             const block = evt.block_number;
             if (evt.type === 'spawn') {
-                const logMsg = `<span style="color:var(--cyan)">[SPAWN]</span> ${evt.agent.substring(0, 8)} <span style="opacity:0.5">-></span> STACK_${evt.stackId}`;
-                // Updated to use formatValue
+                const logMsg = `<span style="color:var(--cyan)">[SPAWN]</span> <span class="log-addr-short">${evt.agent.substring(0, 8)}</span><span class="log-addr-full"><a href="${BLOCK_EXPLORER}/address/${evt.agent}" target="_blank">${evt.agent}</a></span> <span style="opacity:0.5">-></span> STACK_${evt.stackId}`;
                 const subMsg = `UNITS: ${formatValue(parseInt(evt.units))} | REAPER: ${formatValue(parseInt(evt.reapers))}`;
                 addLog(block, logMsg, 'log-spawn', subMsg);
                 triggerPulse(evt.stackId, 'spawn');
@@ -323,21 +322,20 @@ async function syncData() {
                 const defPow  = parseInt(evt.initialDefenderUnits || 0) + parseInt(evt.initialDefenderReaper || 0) * 666;
                 const offLost = parseInt(evt.attackerUnitsLost || 0) + parseInt(evt.attackerReaperLost || 0) * 666;
                 const defLost = parseInt(evt.targetUnitsLost || 0) + parseInt(evt.targetReaperLost || 0) * 666;
-                const logMsg = `<span style="color:var(--pink)">[KILL]</span> ${evt.attacker.substring(0, 6)} <span style="opacity:0.5">X</span> STACK_${evt.stackId}`;
+                const logMsg = `<span style="color:var(--pink)">[KILL]</span> <span class="log-addr-short">${evt.attacker.substring(0, 6)}</span><span class="log-addr-full"><a href="${BLOCK_EXPLORER}/address/${evt.attacker}" target="_blank">${evt.attacker}</a></span> <span style="opacity:0.5">X</span> STACK_${evt.stackId}`;
                 const subMsg = `<div class="kill-table">` +
                     `<div class="kill-row kill-header"><span></span><span>OFFENSE</span><span>DEFENSE</span></div>` +
                     `<div class="kill-row"><span>BATTLE</span><span>${formatValue(offPow)}</span><span>${formatValue(defPow)}</span></div>` +
                     `<div class="kill-row"><span>OUTCOME</span><span>${formatValue(offLost)}</span><span>${formatValue(defLost)}</span></div>` +
                     `<div class="kill-row"><span>KILL WON</span><span>${formatValue(atkBounty)}</span><span>${formatValue(defBounty)}</span></div>` +
                     `</div>`;
-                addLog(block, logMsg, 'log-kill', subMsg);
+                addLog(block, logMsg, 'log-kill', subMsg, evt.target);
                 triggerPulse(evt.stackId, 'kill');
             } else if (evt.type === 'move') {
-                const logMsg = `<span style="color:#888">[MOVE]</span> ${evt.agent.substring(0, 6)} <span style="opacity:0.5">>></span> STACK_${evt.toStack}`;
-                // Updated to use formatValue
+                const logMsg = `<span style="color:#888">[MOVE]</span> <span class="log-addr-short">${evt.agent.substring(0, 6)}</span><span class="log-addr-full"><a href="${BLOCK_EXPLORER}/address/${evt.agent}" target="_blank">${evt.agent}</a></span> <span style="opacity:0.5">>></span> STACK_${evt.toStack}`;
                 const subMsg = `TRANSFERRED: ${formatValue(parseInt(evt.units))} UNITS | ${formatValue(parseInt(evt.reaper))} REAPER`;
                 addLog(block, logMsg, 'log-move', subMsg);
-                triggerPulse(evt.toStack, 'spawn'); 
+                triggerPulse(evt.toStack, 'spawn');
             }
             knownIds.add(evt.id);
         });

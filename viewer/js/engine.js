@@ -188,13 +188,33 @@ function showTooltip(e, id) {
     `;
 }
 
+function toggleLogExpand() {
+    const panel = document.getElementById('right-panel');
+    const btn = document.getElementById('btn-log-expand');
+    const filterEl = document.getElementById('log-filter');
+    const isExpanded = panel.classList.toggle('log-panel-expanded');
+    if (btn) btn.innerHTML = isExpanded ? '⤡' : '⛶';
+    if (filterEl) {
+        filterEl.style.display = isExpanded ? 'block' : 'none';
+        if (!isExpanded) { filterEl.value = ''; filterLog(''); }
+        else { filterEl.focus(); }
+    }
+}
+
+function filterLog(val) {
+    const q = val.toLowerCase().trim();
+    document.querySelectorAll('#log-feed .log-entry').forEach(entry => {
+        entry.style.display = (!q || (entry.dataset.search || '').includes(q)) ? '' : 'none';
+    });
+}
+
 function toggleLogPause() {
     isLogPaused = !isLogPaused;
     const btn = document.getElementById('btn-log-pause');
     if (btn) btn.innerText = isLogPaused ? 'RESUME' : 'PAUSE';
 }
 
-function addLog(blockNum, msg, className, subMsg = null) {
+function addLog(blockNum, msg, className, subMsg = null, searchKey = '') {
     if (!logFeed || isLogPaused) return;
     const entry = document.createElement('div');
     entry.className = `log-entry ${className}`;
@@ -203,6 +223,7 @@ function addLog(blockNum, msg, className, subMsg = null) {
         innerHTML += `<div class="log-subtext" style="font-size:0.65rem; opacity:0.7; border-left: 1px solid currentColor; margin: 4px 0 2px 42px; padding-left: 8px; font-family:monospace; white-space:pre-wrap;">${subMsg}</div>`;
     }
     entry.innerHTML = innerHTML;
+    entry.dataset.search = (entry.textContent + ' ' + searchKey).toLowerCase();
     logFeed.appendChild(entry);
     if (logFeed.childNodes.length > 50) logFeed.removeChild(logFeed.firstChild);
     logFeed.scrollTop = logFeed.scrollHeight;

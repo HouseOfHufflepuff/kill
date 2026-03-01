@@ -125,26 +125,30 @@
         </div>
     </div>
 
-    <div class="panel">
-        <div class="panel-header">
-            <span>LEADERBOARD: TOP AGENTS</span>
-            <button class="btn-clear" onclick="clearAgentFilter()">CLEAR</button>
+    <div class="panel" id="right-panel">
+        <div id="leaderboard-section">
+            <div class="panel-header">
+                <span>LEADERBOARD: TOP AGENTS</span>
+                <button class="btn-clear" onclick="clearAgentFilter()">CLEAR</button>
+            </div>
+            <div class="stack-row header" style="opacity:0.5; font-size:0.5rem; border-bottom:1px solid #333; margin-bottom:4px; padding-bottom:2px; font-weight:bold;">
+                <span style="width:25%">AGENT</span>
+                <span style="width:25%; text-align:right;">EARNED</span>
+                <span style="width:20%; text-align:right;">SPENT</span>
+                <span style="width:30%; text-align:right;">NET P/L</span>
+            </div>
+            <div id="leaderboard"></div>
         </div>
-        <div class="stack-row header" style="opacity:0.5; font-size:0.5rem; border-bottom:1px solid #333; margin-bottom:4px; padding-bottom:2px; font-weight:bold;">
-            <span style="width:25%">AGENT</span>
-            <span style="width:25%; text-align:right;">EARNED</span>
-            <span style="width:20%; text-align:right;">SPENT</span>
-            <span style="width:30%; text-align:right;">NET P/L</span>
-        </div>
-        <div id="leaderboard"></div>
 
         <div class="panel-header" style="margin-top: 30px;">
             <span>KILL Log</span>
             <div style="display:flex; gap:6px;">
+                <button class="btn-clear" id="btn-log-expand" onclick="toggleLogExpand()" title="Expand">⛶</button>
                 <button class="btn-clear" id="btn-log-pause" onclick="toggleLogPause()">PAUSE</button>
                 <button class="btn-clear" onclick="clearLog()">CLEAR</button>
             </div>
         </div>
+        <input id="log-filter" type="text" placeholder="FILTER BY ADDRESS, STACK, EVENT..." oninput="filterLog(this.value)">
         <div id="log-feed"></div>
     </div>
 </div>
