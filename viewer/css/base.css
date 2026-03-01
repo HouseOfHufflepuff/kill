@@ -378,3 +378,27 @@ body.help-mode .mission-panel { display: block; }
     .ac-tags  { grid-column: 2; align-content: start; }
     .ac-select-btn { grid-column: 1 / -1; margin-top: 6px !important; }
 }
+
+/* --- AGENT MODAL MOBILE --- */
+@media (max-width: 1024px) {
+    /* Responsive width for the deploy modal */
+    #agent-modal .modal-content {
+        width: min(500px, 94vw) !important;
+        padding: 20px 16px !important;
+    }
+
+    /* OS buttons: icon + condensed label, no letter-spacing */
+    .os-btn {
+        padding: 8px 10px !important;
+        font-size: 0.65rem !important;
+        letter-spacing: 0.5px !important;
+        gap: 6px !important;
+    }
+
+    /* Let long PS command scroll horizontally instead of overflowing */
+    .code-block {
+        overflow-x: auto;
+        white-space: nowrap;
+        word-break: normal !important;
+    }
+}
