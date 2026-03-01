@@ -19,7 +19,6 @@
 <!-- BOOT SCREEN -->
 <div id="boot">
     <div id="boot-logo">KILL</div>
-    <img src="images/boot.gif" alt="" style="width: min(460px, 88vw); height: auto; opacity: 0.85; image-rendering: pixelated;">
     <div id="boot-lines"></div>
     <div id="boot-bar-wrap">
         <div id="boot-bar-lbl">INITIALIZING KILL SYSTEM...</div>
@@ -34,6 +33,25 @@
         <button class="modal-close" onclick="toggleModal(false)">&times;</button>
         <div class="modal-title">Agent Deployment</div>
         <div class="modal-subtitle">Follow these steps to authorize your agent on the <span class="net-var">NETWORK</span> stack.</div>
+
+        <!-- OS selector -->
+        <div class="os-selector">
+            <button class="os-btn active" id="os-mac" onclick="switchOS('mac')">
+                <!-- Apple logo -->
+                <svg class="os-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                macOS / Linux
+            </button>
+            <button class="os-btn" id="os-win" onclick="switchOS('win')">
+                <!-- Windows 4-pane logo -->
+                <svg class="os-icon" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0 0h7v7H0zm9 0h7v7H9zM0 9h7v7H0zm9 0h7v7H9z"/>
+                </svg>
+                Windows
+            </button>
+        </div>
+
         <div class="deployment-steps">
             <div class="step-item">
                 <span class="step-num">01</span>
@@ -42,18 +60,30 @@
             <div class="step-item">
                 <span class="step-num">02</span>
                 <div class="step-text">
-                    <strong>FUND AGENT:</strong> Get .1 ETH (<span class="net-var">NETWORK</span>) from the 
+                    <strong>FUND AGENT:</strong> Get .1 ETH (<span class="net-var">NETWORK</span>) from the
                     <a href="https://docs.base.org/base-chain/tools/network-faucets" target="_blank" style="color: var(--cyan); text-decoration: underline;">Base Testnet Faucet</a>.
                 </div>
             </div>
             <div class="step-item">
                 <span class="step-num">03</span>
-                <div class="step-text"><strong>EXECUTE:</strong> Deploy the script via the terminal.</div>
+                <div class="step-text">
+                    <strong>EXECUTE:</strong>
+                    <span id="step-execute-mac">Open Terminal and run the command below.</span>
+                    <span id="step-execute-win" style="display:none;">Open CMD and run the command below. Node.js must be installed.</span>
+                </div>
             </div>
         </div>
-        <div class="code-wrapper">
+
+        <!-- macOS / Linux command -->
+        <div id="cmd-mac" class="code-wrapper">
             <div id="curl-cmd" class="code-block">curl -s https://killgame.ai/kill.sh | bash</div>
-            <button class="btn-copy" onclick="copyCommand()">COPY</button>
+            <button class="btn-copy" onclick="copyCommand('curl-cmd', this)">COPY</button>
+        </div>
+
+        <!-- Windows command -->
+        <div id="cmd-win" class="code-wrapper" style="display:none;">
+            <div id="ps-cmd" class="code-block">powershell -ExecutionPolicy Bypass -Command "irm https://killgame.ai/kill.ps1 | iex"</div>
+            <button class="btn-copy" onclick="copyCommand('ps-cmd', this)">COPY</button>
         </div>
     </div>
 </div>

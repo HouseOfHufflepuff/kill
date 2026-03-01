@@ -71,15 +71,24 @@ window.onclick = function(event) {
     if (event.target == rosterModal) closeRosterModal();
 };
 
-function copyCommand() {
-    const cmd = document.getElementById('curl-cmd');
+function copyCommand(id, btn) {
+    const cmd = document.getElementById(id);
     if (!cmd) return;
     navigator.clipboard.writeText(cmd.innerText);
-    const btn = document.querySelector('.btn-copy');
     if (btn) {
         btn.innerText = 'COPIED';
         setTimeout(() => btn.innerText = 'COPY', 2000);
     }
+}
+
+function switchOS(os) {
+    const isMac = os === 'mac';
+    document.getElementById('cmd-mac').style.display          = isMac ? 'flex' : 'none';
+    document.getElementById('cmd-win').style.display          = isMac ? 'none' : 'flex';
+    document.getElementById('step-execute-mac').style.display = isMac ? '' : 'none';
+    document.getElementById('step-execute-win').style.display = isMac ? 'none' : '';
+    document.getElementById('os-mac').classList.toggle('active', isMac);
+    document.getElementById('os-win').classList.toggle('active', !isMac);
 }
 
 function updateSystemStatus(totalStacked) {
