@@ -12,7 +12,8 @@ var currentGlobalKillStacked = 0;
 var isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 
 // NEW: Filtering State
-var activeFilterAgent = null; 
+var activeFilterAgent = null;
+var isLogPaused = false;
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {

@@ -188,8 +188,14 @@ function showTooltip(e, id) {
     `;
 }
 
+function toggleLogPause() {
+    isLogPaused = !isLogPaused;
+    const btn = document.getElementById('btn-log-pause');
+    if (btn) btn.innerText = isLogPaused ? 'RESUME' : 'PAUSE';
+}
+
 function addLog(blockNum, msg, className, subMsg = null) {
-    if (!logFeed) return;
+    if (!logFeed || isLogPaused) return;
     const entry = document.createElement('div');
     entry.className = `log-entry ${className}`;
     let innerHTML = `<span class="log-block">${blockNum}</span> > ${msg}`;

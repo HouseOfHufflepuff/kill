@@ -91,9 +91,9 @@
         <div class="stack-row header" style="opacity:0.5; font-size:0.5rem; border-bottom:1px solid #333; margin-bottom:4px; padding-bottom:2px; font-weight:bold;">
             <span style="width:10%">ID</span>
             <span style="width:20%">UNIT</span>
-            <span style="width:10%">R</span>
+            <span style="width:14%">R</span>
             <span style="width:25%">BOUNTY</span>
-            <span style="width:35%; text-align:right;">KILL</span>
+            <span style="width:31%; text-align:right;">KILL</span>
         </div>
         <div id="ripe-stacks"></div>
     </div>
@@ -140,7 +140,10 @@
 
         <div class="panel-header" style="margin-top: 30px;">
             <span>KILL Log</span>
-            <button class="btn-clear" onclick="clearLog()">CLEAR</button>
+            <div style="display:flex; gap:6px;">
+                <button class="btn-clear" id="btn-log-pause" onclick="toggleLogPause()">PAUSE</button>
+                <button class="btn-clear" onclick="clearLog()">CLEAR</button>
+            </div>
         </div>
         <div id="log-feed"></div>
     </div>
