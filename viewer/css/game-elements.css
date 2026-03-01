@@ -160,6 +160,38 @@
     box-shadow: 0 0 10px var(--pink); animation: pulse-dot 1s infinite ease-in-out;
 }
 
+/* --- KILL EVENT TABLE --- */
+.kill-table {
+    white-space: normal;
+    margin-top: 4px;
+    font-size: 0.55rem;
+    font-family: monospace;
+    border: 1px solid #222;
+    width: 100%;
+    box-sizing: border-box;
+}
+.kill-row {
+    display: grid;
+    grid-template-columns: 26% 37% 37%;
+}
+.kill-row + .kill-row { border-top: 1px solid #1a1a1a; }
+.kill-row span { padding: 2px 5px; }
+.kill-row span:nth-child(2),
+.kill-row span:nth-child(3) {
+    border-left: 1px solid #2a2a2a;
+    text-align: right;
+}
+.kill-header { background: rgba(0,0,0,0.4); }
+.kill-header span { color: #888; font-size: 0.55rem; letter-spacing: 1px; }
+.kill-row:not(.kill-header) span:first-child { color: #888; }
+.kill-row:not(.kill-header) span:nth-child(2),
+.kill-row:not(.kill-header) span:nth-child(3) {
+    color: var(--pink);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    font-size: 0.65rem;
+}
+
 @keyframes log-slide { from { transform: translateX(10px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes pulse-dot { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }
 

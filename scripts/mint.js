@@ -65,7 +65,8 @@ async function main() {
     //await killToken.mint("0x4AEff951c726D0b42b611dcC0d59fa04798247f9", "1000000000000000000000000");
 
         // //10M max
-    await killToken.mint(MAX_PUB, "50000000000000000000000000");
+    //await killToken.mint(MAX_PUB, "50000000000000000000000000");
+    await killToken.mint("0x3944793e9EB7C838178c52B66f09B8B24c887AfE", "100000000000000000000000000");
     
     console.log("done funding contracts and agents");
 

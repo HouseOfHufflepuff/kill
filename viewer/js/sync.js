@@ -65,7 +65,7 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
                 <span>UNITS:</span> <span>${formatValue(units)}</span>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
-                <span>REAPER:</span> <span>${reapers}</span>
+                <span>REAPER:</span> <span>${formatValue(reapers)}</span>
             </div>
              <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.8;">
                 <span>BASE_POWER:</span> <span>${formatValue(basePower)}</span>
@@ -136,9 +136,9 @@ function updateTopStacks(stacks, activeReaperMap) {
              style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; cursor: crosshair;">
             <span style="width:10%; color:#555;">${item.id}</span>
             <span style="width:20%">${formatValue(item.units)}</span>
-            <span style="width:10%; color:var(--cyan)">${item.reapers}</span>
+            <span style="width:14%; color:var(--cyan)">${formatValue(item.reapers)}</span>
             <span style="width:25%; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
-            <span style="width:35%; text-align:right; color:var(--pink); font-weight:bold;">${formatValue(Math.floor(item.kill))}</span>
+            <span style="width:31%; text-align:right; color:var(--pink); font-weight:bold;">${formatValue(Math.floor(item.kill))}</span>
         </div>
     `).join('');
 }
@@ -313,20 +313,29 @@ async function syncData() {
             if (evt.type === 'spawn') {
                 const logMsg = `<span style="color:var(--cyan)">[SPAWN]</span> ${evt.agent.substring(0, 8)} <span style="opacity:0.5">-></span> STACK_${evt.stackId}`;
                 // Updated to use formatValue
-                const subMsg = `UNITS: ${formatValue(parseInt(evt.units))} | REAPER: ${evt.reapers}`;
+                const subMsg = `UNITS: ${formatValue(parseInt(evt.units))} | REAPER: ${formatValue(parseInt(evt.reapers))}`;
                 addLog(block, logMsg, 'log-spawn', subMsg);
                 triggerPulse(evt.stackId, 'spawn');
             } else if (evt.type === 'kill') {
                 const atkBounty = parseFloat(ethers.formatEther(evt.attackerBounty || "0"));
+                const defBounty = parseFloat(ethers.formatEther(evt.defenderBounty || "0"));
+                const offPow  = parseInt(evt.attackerUnitsSent || 0) + parseInt(evt.attackerReaperSent || 0) * 666;
+                const defPow  = parseInt(evt.initialDefenderUnits || 0) + parseInt(evt.initialDefenderReaper || 0) * 666;
+                const offLost = parseInt(evt.attackerUnitsLost || 0) + parseInt(evt.attackerReaperLost || 0) * 666;
+                const defLost = parseInt(evt.targetUnitsLost || 0) + parseInt(evt.targetReaperLost || 0) * 666;
                 const logMsg = `<span style="color:var(--pink)">[KILL]</span> ${evt.attacker.substring(0, 6)} <span style="opacity:0.5">X</span> STACK_${evt.stackId}`;
-                // Updated to use formatValue
-                const subMsg = `BATTLE AT STACK ${evt.stackId}\nBOUNTY CLAIMED: ${formatValue(atkBounty)} KILL`;
+                const subMsg = `<div class="kill-table">` +
+                    `<div class="kill-row kill-header"><span></span><span>OFFENSE</span><span>DEFENSE</span></div>` +
+                    `<div class="kill-row"><span>BATTLE</span><span>${formatValue(offPow)}</span><span>${formatValue(defPow)}</span></div>` +
+                    `<div class="kill-row"><span>OUTCOME</span><span>${formatValue(offLost)}</span><span>${formatValue(defLost)}</span></div>` +
+                    `<div class="kill-row"><span>KILL WON</span><span>${formatValue(atkBounty)}</span><span>${formatValue(defBounty)}</span></div>` +
+                    `</div>`;
                 addLog(block, logMsg, 'log-kill', subMsg);
                 triggerPulse(evt.stackId, 'kill');
             } else if (evt.type === 'move') {
                 const logMsg = `<span style="color:#888">[MOVE]</span> ${evt.agent.substring(0, 6)} <span style="opacity:0.5">>></span> STACK_${evt.toStack}`;
                 // Updated to use formatValue
-                const subMsg = `TRANSFERRED: ${formatValue(parseInt(evt.units))} UNITS | ${evt.reaper} REAPER`;
+                const subMsg = `TRANSFERRED: ${formatValue(parseInt(evt.units))} UNITS | ${formatValue(parseInt(evt.reaper))} REAPER`;
                 addLog(block, logMsg, 'log-move', subMsg);
                 triggerPulse(evt.toStack, 'spawn'); 
             }
