@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KILL — A DeFi Strategy Game for Agentic AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik+Dirt&family=JetBrains+Mono:wght@300;400;700&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════ */
+:root {
+  --pink:      #ff2d75;
+  --pink-dim:  rgba(255,45,117,0.15);
+  --cyan:      #00f0ff;
+  --cyan-dim:  rgba(0,240,255,0.1);
+  --gold:      #ffd44a;
+  --bg:        #040404;
+  --panel:     rgba(7,7,7,0.98);
+  --border:    rgba(255,45,117,0.2);
+  --mono:      'JetBrains Mono', monospace;
+  --display:   'Rubik Dirt', cursive;   /* LOGO ONLY */
+  --head:      'Oswald', sans-serif;    /* ALL HEADERS */
+  --text:      #ccc;
+  --muted:     #555;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body {
+  height:100vh; width:100vw; overflow:hidden;
+  background:var(--bg); color:var(--text);
+  font-family:var(--mono); display:flex; flex-direction:column;
+}
+/* scrollbars */
+* { scrollbar-width:thin; scrollbar-color:var(--pink) transparent; }
+::-webkit-scrollbar { width:3px; height:3px; }
+::-webkit-scrollbar-thumb { background:var(--pink); border-radius:2px; }
+
+/* ═══════════════════════════════════════
+   BOOT SCREEN
+═══════════════════════════════════════ */
+#boot {
+  position:fixed; inset:0; z-index:99999; background:#000;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:28px;
+}
+#boot-logo {
+  font-family:var(--display);
+  font-size:clamp(4rem,11vw,8rem);
+  color:var(--pink); letter-spacing:2px;
+  text-shadow:0 0 40px rgba(255,45,117,0.5),0 0 80px rgba(255,45,117,0.18);
+  animation:flicker .12s steps(1) infinite;
+}
+#boot-logo svg { display:block; margin:6px auto 0; width:clamp(46px,7vw,76px); }
+@keyframes flicker { 0%,100%{opacity:1} 50%{opacity:.82} }
+
+#boot-lines { width:min(460px,88vw); }
+.bline {
+  font-size:.58rem; color:#444; letter-spacing:2px; padding:3px 0;
+  overflow:hidden; white-space:nowrap; max-width:0;
+  animation:typein .35s forwards;
+}
+.bline.ok::after  { content:' [OK]';   color:var(--cyan); }
+.bline.warn::after{ content:' [WARN]'; color:var(--pink); }
+@keyframes typein { to { max-width:100%; } }
+
+#boot-bar-wrap { width:min(460px,88vw); }
+#boot-bar-lbl { font-size:.5rem; color:#444; letter-spacing:2px; margin-bottom:5px; }
+#boot-bar { height:2px; background:#111; }
+#boot-fill { height:100%; background:var(--pink); width:0; transition:width .06s linear; box-shadow:0 0 8px var(--pink); }
+
+/* ═══════════════════════════════════════
+   HEADER
+═══════════════════════════════════════ */
+header {
+  height:68px; min-height:68px;
+  border-bottom:2px solid var(--pink);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px; background:#000; flex-shrink:0; z-index:200; position:relative;
+}
+.logo {
+  font-family:var(--display);
+  font-size:2.7rem; color:var(--pink); letter-spacing:2px;
+  cursor:pointer; user-select:none;
+  display:flex; align-items:center; gap:10px;
+  transition:text-shadow .2s;
+  text-shadow:0 0 18px rgba(255,45,117,.3);
+}
+.logo:hover { text-shadow:0 0 30px var(--pink),0 0 60px rgba(255,45,117,.25); }
+.logo svg { width:24px; height:24px; }
+
+.hdr-right { display:flex; align-items:center; gap:14px; }
+
+/* help toggle */
+.help-wrap { display:flex; align-items:center; gap:7px; font-size:.5rem; color:#555; letter-spacing:1px; font-family:var(--head); }
+.tpill {
+  width:36px; height:18px; background:#111; border:1px solid #333;
+  border-radius:20px; cursor:pointer; position:relative; transition:all .3s;
+}
+.tpill.on { background:rgba(0,240,255,.12); border-color:var(--cyan); }
+.tknob {
+  position:absolute; width:12px; height:12px; background:#444;
+  border-radius:50%; top:2px; left:2px; transition:all .3s;
+}
+.tpill.on .tknob { left:20px; background:var(--cyan); box-shadow:0 0 6px var(--cyan); }
+
+.spec-badge {
+  background:rgba(0,240,255,.07); border:1px solid rgba(0,240,255,.35);
+  color:var(--cyan); font-size:.5rem; letter-spacing:2px; padding:5px 10px;
+  font-family:var(--head); animation:bpulse 2.5s infinite;
+}
+@keyframes bpulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,240,255,.3)} 50%{box-shadow:0 0 0 4px rgba(0,240,255,0)} }
+
+.btn-add {
+  background:#000; border:2px solid var(--pink); color:var(--pink);
+  padding:9px 18px; cursor:pointer; font-family:var(--head);
+  font-weight:700; font-size:.8rem; letter-spacing:2px; transition:all .2s;
+}
+.btn-add:hover { background:var(--pink); color:#000; box-shadow:0 0 20px var(--pink); }
+
+.hdr-block { text-align:right; }
+#hdr-blk { font-family:var(--head); font-size:1.6rem; color:var(--pink); line-height:1; font-weight:700; }
+#hdr-net { font-size:.5rem; letter-spacing:2px; color:#444; margin-top:2px; font-family:var(--mono); }
+
+/* ═══════════════════════════════════════
+   OP STRIP
+═══════════════════════════════════════ */
+.op-strip {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:8px; padding:8px 24px; flex-shrink:0;
+}
+.op-card { border:1px solid rgba(0,240,255,.2); background:rgba(0,0,0,.9); padding:8px 12px; }
+.op-kicker { color:#444; font-size:.5rem; letter-spacing:2px; font-family:var(--mono); }
+.op-label  { color:var(--pink); font-family:var(--head); font-size:.85rem; letter-spacing:1px; margin-top:2px; }
+.op-value  { font-family:var(--mono); font-size:1rem; color:var(--cyan); font-weight:700; margin-top:3px; }
+
+/* ═══════════════════════════════════════
+   MAIN STAGE
+═══════════════════════════════════════ */
+.stage {
+  flex:1; display:grid;
+  grid-template-columns:300px 1fr 376px;
+  gap:10px; padding:10px 24px;
+  overflow:hidden; min-height:0;
+}
+
+/* ── PANEL BASE ── */
+.panel {
+  background:var(--panel); border:1px solid var(--border);
+  padding:14px; display:flex; flex-direction:column;
+  min-height:0; overflow:hidden;
+}
+
+/* Oswald panel headers */
+.phdr {
+  font-family:var(--head);
+  color:var(--pink); font-size:.9rem; letter-spacing:2px; font-weight:700;
+  border-bottom:1px solid var(--border); padding-bottom:5px; margin-bottom:9px;
+  flex-shrink:0; display:flex; justify-content:space-between; align-items:center;
+}
+
+/* ═══════════════════════════════════════
+   LEFT PANEL — SCROLLABLE CONTENT
+═══════════════════════════════════════ */
+/* The scroll wrapper fills all remaining space after the panel header */
+#left-scroll {
+  flex:1; overflow-y:auto; overflow-x:hidden;
+  display:flex; flex-direction:column; gap:0;
+  min-height:0;
+  /* small gap from top edge */
+  padding-right:4px;
+}
+
+.specs { font-size:.58rem; line-height:1.8; color:#888; margin-bottom:4px; }
+
+/* Help note */
+.help-note {
+  display:none; font-size:.54rem; color:#ffb86b;
+  margin-top:3px; margin-bottom:4px; line-height:1.5;
+  border-left:2px solid #ffb86b; padding-left:6px;
+}
+body.help-mode .help-note { display:block; }
+
+/* section sub-header inside scroll */
+.shdr {
+  font-family:var(--head);
+  color:var(--pink); font-size:.82rem; letter-spacing:2px; font-weight:700;
+  border-bottom:1px solid var(--border); padding-bottom:4px;
+  margin-top:12px; margin-bottom:8px; flex-shrink:0;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.shdr:first-child { margin-top:0; }
+
+/* mission steps */
+.mission-steps { display:flex; flex-direction:column; gap:5px; margin-bottom:4px; }
+.mstep {
+  display:flex; gap:8px; align-items:flex-start;
+  padding:7px 8px; border:1px solid #161616;
+  background:rgba(255,255,255,.012); cursor:pointer; transition:border-color .2s;
+}
+.mstep:hover { border-color:#2a2a2a; }
+.mstep.done { border-color:rgba(0,240,255,.3); }
+.mstep.done .mnum { color:var(--cyan); border-color:var(--cyan); }
+.mnum {
+  color:var(--pink); border:1px solid var(--pink);
+  padding:1px 4px; font-size:.58rem; min-width:22px;
+  text-align:center; flex-shrink:0; font-family:var(--mono);
+}
+.mbody { font-size:.55rem; line-height:1.5; color:#aaa; flex:1; }
+.mbody strong { color:#eee; }
+.mcheck { font-size:.54rem; color:#222; flex-shrink:0; }
+.mstep.done .mcheck { color:var(--cyan); }
+
+/* readiness */
+.ready-list { margin-bottom:4px; }
+.ready-row {
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:.52rem; color:#777; margin-bottom:5px;
+}
+.pill {
+  font-size:.46rem; padding:2px 6px;
+  border:1px solid #333; letter-spacing:1px; font-family:var(--mono);
+}
+.pill.ok   { color:var(--cyan); border-color:var(--cyan); box-shadow:0 0 5px rgba(0,240,255,.15); }
+.pill.warn { color:#ffb86b; border-color:#ffb86b; }
+
+/* operator controls */
+.ctrl-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:4px; }
+.btn-ctrl {
+  background:none; border:1px solid #222; color:#555;
+  font-size:.53rem; padding:7px 4px; cursor:pointer;
+  font-family:var(--mono); letter-spacing:.5px;
+  transition:all .2s; text-align:center;
+}
+.btn-ctrl:hover { border-color:var(--pink); color:var(--pink); }
+.btn-ctrl.hi { border-color:rgba(255,45,117,.38); color:var(--pink); }
+.btn-ctrl.hi:hover { background:var(--pink); color:#000; }
+
+.wallet-strip {
+  padding:6px 0; border-top:1px solid #161616; border-bottom:1px solid #161616;
+  font-size:.52rem; color:#444; display:flex; flex-wrap:wrap; gap:8px;
+  margin-bottom:4px;
+}
+.wallet-strip b { color:#888; }
+
+/* kill metrics */
+.km-row {
+  display:flex; justify-content:space-between;
+  font-size:.57rem; color:#666; padding:3px 0;
+  border-bottom:1px solid #0f0f0f;
+}
+.km-val  { color:var(--pink); font-weight:700; }
+.km-cyan { color:var(--cyan); }
+
+/* top stacks */
+.srow {
+  display:grid; grid-template-columns:22px 34px 16px 1fr 1fr;
+  gap:4px; align-items:center; font-size:.55rem;
+  padding:4px 0; border-bottom:1px solid #0f0f0f; color:#666;
+}
+.srow .sk { color:var(--cyan); }
+.srow .sv { color:var(--pink); font-weight:700; }
+
+/* ═══════════════════════════════════════
+   CENTER FIELD
+═══════════════════════════════════════ */
+.center {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:space-between; padding:4px 0; position:relative;
+}
+.battle-label {
+  font-family:var(--head);
+  font-size:.95rem; color:var(--pink); letter-spacing:4px; font-weight:700;
+  margin-bottom:3px; flex-shrink:0;
+}
+.drag-hint { font-size:.48rem; color:#2e2e2e; letter-spacing:2px; margin-bottom:8px; flex-shrink:0; animation:hpulse 3.5s infinite; }
+@keyframes hpulse { 0%,100%{color:#2e2e2e} 50%{color:#484848} }
+
+.ltoggle {
+  display:flex; gap:8px; font-size:.56rem; align-items:center;
+  background:rgba(0,0,0,.85); padding:5px 14px;
+  border:1px solid #181818; margin-bottom:12px; flex-shrink:0;
+}
+.lt { cursor:pointer; color:#444; display:flex; align-items:center; gap:3px; transition:color .2s; }
+.lt:hover { color:#fff; }
+.lt input { accent-color:#666; cursor:pointer; }
+
+.scene {
+  width:100%; flex:1; perspective:1200px;
+  display:flex; align-items:center; justify-content:center;
+  transform:translateY(8px); min-height:0;
+}
+.stack3d {
+  width:252px; height:252px; position:relative;
+  transform-style:preserve-3d;
+  transform:rotateX(57deg) rotateZ(-42deg);
+  transition:transform .06s ease-out;
+  cursor:grab;
+}
+.stack3d:active { cursor:grabbing; }
+
+.layer3d {
+  position:absolute; width:252px; height:252px;
+  display:grid; grid-template-columns:repeat(6,1fr); grid-template-rows:repeat(6,1fr);
+  border:2px solid rgba(255,45,117,.45);
+  background:rgba(255,45,117,.018);
+  transform-style:preserve-3d; transition:opacity .3s;
+}
+.layer3d.hidden { opacity:0; pointer-events:none; }
+
+.node3d {
+  border:1px solid rgba(255,45,117,.2);
+  position:relative; cursor:crosshair;
+  transform-style:preserve-3d; transition:background .12s;
+}
+.node3d:hover { background:rgba(255,45,117,.14); box-shadow:inset 0 0 8px rgba(255,45,117,.3); }
+.node3d.pk { animation:animPK .4s ease-out; }
+.node3d.pc { animation:animPC .4s ease-out; }
+@keyframes animPK { 0%{background:rgba(255,45,117,.65)} 100%{background:transparent} }
+@keyframes animPC { 0%{background:rgba(0,240,255,.45)} 100%{background:transparent} }
+
+.dot { position:absolute; border-radius:50%; pointer-events:none; transform-style:preserve-3d; }
+.dot-u { width:3px; height:3px; background:var(--pink); box-shadow:0 0 4px var(--pink); }
+.dot-r { width:5px; height:5px; background:var(--cyan); box-shadow:0 0 7px var(--cyan); z-index:10; }
+
+.arena-legend {
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.88); border:1px solid #161616;
+  padding:9px 20px; font-size:.58rem;
+  margin-top:6px; flex-shrink:0; gap:18px; width:100%;
+}
+.al-g { display:flex; align-items:center; gap:6px; }
+.al-l { color:#333; font-family:var(--head); letter-spacing:1px; font-size:.6rem; }
+.al-v { color:var(--pink); font-weight:700; }
+.al-c { color:var(--cyan); font-weight:700; text-shadow:0 0 8px rgba(0,240,255,.3); }
+
+/* ═══════════════════════════════════════
+   RIGHT PANEL
+═══════════════════════════════════════ */
+/* search bar */
+.search-wrap {
+  display:flex; align-items:center; gap:6px;
+  background:#000; border:1px solid #222;
+  padding:5px 9px; margin-bottom:8px; flex-shrink:0;
+}
+.search-wrap input {
+  flex:1; background:none; border:none; outline:none;
+  color:var(--cyan); font-family:var(--mono); font-size:.58rem;
+  letter-spacing:1px;
+}
+.search-wrap input::placeholder { color:#2e2e2e; }
+.search-icon { color:#333; font-size:.7rem; flex-shrink:0; }
+.search-clear {
+  background:none; border:none; color:#333; cursor:pointer;
+  font-size:.65rem; padding:0 2px; line-height:1; transition:color .2s;
+}
+.search-clear:hover { color:var(--pink); }
+
+/* leaderboard */
+.rank-row {
+  display:grid; grid-template-columns:80px 1fr 1fr 1fr;
+  gap:3px; font-size:.6rem; padding:5px 0;
+  border-bottom:1px solid #0f0f0f; align-items:center;
+}
+.rank-addr { color:#555; font-family:var(--mono); }
+.rank-pos { color:var(--cyan); text-align:right; }
+.rank-neg { color:var(--pink); text-align:right; }
+.no-results { font-size:.55rem; color:#333; padding:8px 0; font-style:italic; }
+
+/* log */
+.log-feed { overflow-y:auto; flex:1; min-height:80px; }
+.log-entry {
+  font-size:.56rem; padding:3px 8px 3px 6px; margin-bottom:3px;
+  border-left:2px solid transparent; line-height:1.4;
+  background:rgba(255,255,255,.012);
+  animation:slideIn .3s ease-out;
+}
+@keyframes slideIn { from{transform:translateX(8px);opacity:0} to{transform:translateX(0);opacity:1} }
+.lk { border-left-color:var(--pink); color:var(--pink); }
+.ls { border-left-color:var(--cyan); color:var(--cyan); }
+.ln { color:#444; }
+.log-entry.hidden { display:none; }
+
+.btn-sm {
+  background:none; border:1px solid #2a2a2a; color:#444;
+  font-size:.48rem; padding:2px 6px; cursor:pointer; font-family:var(--mono);
+}
+.btn-sm:hover { border-color:var(--pink); color:var(--pink); }
+
+/* ═══════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════ */
+footer {
+  height:46px; background:var(--pink); color:#000;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px; font-family:var(--head); font-size:1.3rem;
+  font-weight:700; flex-shrink:0; letter-spacing:1px;
+}
+#sys-status { display:flex; align-items:center; gap:8px; }
+.lethal-dot {
+  width:8px; height:8px; background:#000; border-radius:50%;
+  display:none; animation:pdot 1s infinite;
+}
+@keyframes pdot { 0%,100%{transform:scale(1)} 50%{transform:scale(1.6);opacity:.3} }
+.footer-econ { font-family:var(--mono); font-size:.7rem; font-weight:400; }
+
+/* ═══════════════════════════════════════
+   TOOLTIP
+═══════════════════════════════════════ */
+#tip {
+  position:fixed; pointer-events:none; z-index:9999;
+  background:#050505; border:1px solid var(--pink);
+  padding:10px 14px; font-size:.65rem; opacity:0;
+  box-shadow:0 0 20px rgba(255,45,117,.2); transition:opacity .12s;
+  min-width:175px; line-height:1.6;
+}
+
+/* ═══════════════════════════════════════
+   HELP MODE
+═══════════════════════════════════════ */
+.g { display:none; }   /* gamer text */
+.p { display:inline; } /* pro text */
+body.help-mode .g { display:inline; }
+body.help-mode .p { display:none; }
+
+/* ═══════════════════════════════════════
+   MODALS
+═══════════════════════════════════════ */
+.modal {
+  display:none; position:fixed; inset:0; z-index:10000;
+  background:rgba(0,0,0,.93); align-items:center; justify-content:center;
+}
+.modal.open { display:flex; }
+.mbox {
+  position:relative; background:#070707;
+  border:2px solid var(--pink); padding:26px;
+  box-shadow:0 0 50px rgba(255,45,117,.2);
+}
+.mclose {
+  position:absolute; right:14px; top:12px;
+  background:none; border:none; color:#555;
+  font-size:1.4rem; cursor:pointer; transition:color .2s; font-family:var(--mono); line-height:1;
+}
+.mclose:hover { color:var(--pink); }
+.mtitle {
+  font-family:var(--head); font-size:1.5rem;
+  color:var(--pink); margin-bottom:4px;
+  letter-spacing:2px; font-weight:700;
+}
+.msub { color:#555; font-size:.63rem; margin-bottom:18px; line-height:1.5; font-family:var(--mono); }
+
+/* ── DEPLOY MODAL ── */
+#deploy-modal .mbox { width:min(500px,93vw); }
+.dstep { display:flex; gap:10px; margin-bottom:11px; align-items:flex-start; }
+.dnum {
+  color:var(--pink); border:1px solid var(--pink);
+  padding:1px 5px; font-size:.58rem; min-width:22px;
+  text-align:center; flex-shrink:0; font-family:var(--mono);
+}
+.dtext { font-size:.62rem; color:#aaa; line-height:1.5; font-family:var(--mono); }
+.dtext strong { color:#eee; }
+.dtext a { color:var(--cyan); text-decoration:underline; }
+
+.code-wrap {
+  display:flex; align-items:center; gap:12px;
+  background:#000; padding:11px 13px; border:1px solid var(--cyan); margin-bottom:14px;
+}
+.code-cmd { font-size:.72rem; color:var(--cyan); flex:1; word-break:break-all; font-family:var(--mono); }
+.btn-copy {
+  background:#111; border:1px solid var(--cyan); color:var(--cyan);
+  font-size:.5rem; padding:5px 9px; cursor:pointer; white-space:nowrap;
+  transition:all .2s; font-family:var(--mono);
+}
+.btn-copy:hover,.btn-copy.copied { background:var(--cyan); color:#000; }
+
+#deploy-success { display:none; text-align:center; padding:16px 0; }
+#deploy-success .si { font-size:2.4rem; margin-bottom:10px; }
+#deploy-success p { font-size:.62rem; color:#777; line-height:1.7; font-family:var(--mono); }
+#deploy-success p strong { color:var(--cyan); }
+.agent-chip {
+  margin-top:14px; border:1px solid rgba(0,240,255,.2);
+  padding:10px; font-size:.54rem; color:#444; text-align:left; font-family:var(--mono);
+}
+
+/* ── ABOUT MODAL ── */
+#about-modal .mbox {
+  width:min(440px,90vw); border-color:#fff;
+  background:linear-gradient(150deg,#080808,#0f0008);
+  text-align:center; padding:36px;
+}
+.about-logo {
+  font-family:var(--display); font-size:4rem;
+  color:var(--pink); text-shadow:0 0 40px rgba(255,45,117,.5);
+}
+.about-logo svg { display:block; margin:4px auto 0; width:48px; }
+.about-tag { color:#555; font-size:.62rem; letter-spacing:2px; margin:12px 0 20px; font-family:var(--mono); }
+.btn-about {
+  display:inline-block; color:#fff; text-decoration:none;
+  font-family:var(--head); font-size:1.1rem; letter-spacing:3px; font-weight:700;
+  border:1px solid rgba(255,255,255,.25); padding:10px 28px; transition:all .3s;
+}
+.btn-about:hover { color:var(--pink); border-color:var(--pink); text-shadow:0 0 10px var(--pink); }
+
+/* ── AGENT ROSTER MODAL ── */
+#roster-modal .mbox {
+  width:min(860px,96vw); max-height:90vh; overflow-y:auto; padding:28px;
+}
+.agent-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+  gap:12px; margin-top:12px;
+}
+.agent-card {
+  border:2px solid #1a1a1a; padding:16px; cursor:pointer; position:relative;
+  background:rgba(255,255,255,.012); transition:all .25s;
+}
+.agent-card:hover { border-color:rgba(255,45,117,.5); transform:translateY(-2px); box-shadow:0 0 20px rgba(255,45,117,.12); }
+.agent-card.selected { border-color:var(--pink); box-shadow:0 0 25px rgba(255,45,117,.22); }
+
+.ac-tier  { font-size:.44rem; letter-spacing:3px; margin-bottom:7px; font-family:var(--mono); }
+.ac-name  { font-family:var(--head); font-size:1.4rem; color:var(--pink); margin-bottom:2px; font-weight:700; letter-spacing:2px; }
+.ac-class { font-size:.48rem; color:#444; letter-spacing:2px; margin-bottom:10px; font-family:var(--mono); }
+.ac-desc  { font-size:.56rem; color:#888; line-height:1.6; margin-bottom:12px; font-family:var(--mono); }
+
+.ac-stats { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:12px; }
+.ac-stat-lbl { font-size:.42rem; color:#333; letter-spacing:1px; margin-bottom:3px; font-family:var(--head); }
+.ac-bar { height:3px; background:#111; border-radius:2px; overflow:hidden; }
+.ac-bar-fill { height:100%; border-radius:2px; transition:width .6s ease; }
+
+.ac-tags { display:flex; flex-wrap:wrap; gap:4px; }
+.ac-tag { font-size:.42rem; padding:2px 6px; border:1px solid #222; color:#444; letter-spacing:1px; font-family:var(--mono); }
+
+.ac-select-btn {
+  width:100%; margin-top:10px; background:none; border:1px solid #2a2a2a; color:#555;
+  font-size:.58rem; padding:8px; cursor:pointer; font-family:var(--head);
+  letter-spacing:2px; font-weight:700; transition:all .2s;
+}
+.ac-select-btn:hover,.agent-card.selected .ac-select-btn { background:var(--pink); border-color:var(--pink); color:#000; }
+
+.roster-footer {
+  margin-top:20px; padding-top:14px; border-top:1px solid #1a1a1a;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.sel-preview { font-size:.62rem; color:#555; font-family:var(--mono); }
+.sel-preview strong { color:var(--cyan); }
+.btn-deploy-sel {
+  background:var(--pink); border:none; color:#000;
+  font-family:var(--head); font-size:.9rem; letter-spacing:2px; font-weight:700;
+  padding:12px 28px; cursor:pointer; transition:all .2s;
+}
+.btn-deploy-sel:hover { box-shadow:0 0 20px var(--pink); }
+
+/* ── ADD ETH MODAL ── */
+#eth-modal .mbox { width:min(420px,93vw); }
+.eth-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0; }
+.eth-btn {
+  border:1px solid #222; background:none; color:#777; padding:12px 6px;
+  font-family:var(--mono); font-size:.7rem; cursor:pointer; transition:all .2s; text-align:center;
+}
+.eth-btn:hover,.eth-btn.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,240,255,.05); }
+.eth-btn .ea { font-size:1.1rem; font-weight:700; display:block; color:inherit; }
+.eth-btn .el { font-size:.44rem; letter-spacing:1px; opacity:.7; margin-top:3px; display:block; font-family:var(--head); }
+.eth-input-wrap { display:flex; gap:8px; align-items:center; }
+.eth-input {
+  flex:1; background:#000; border:1px solid #333; color:var(--cyan);
+  font-family:var(--mono); font-size:.8rem; padding:10px 12px; outline:none;
+}
+.eth-input:focus { border-color:var(--cyan); }
+.btn-fund-now {
+  background:var(--cyan); border:none; color:#000;
+  font-family:var(--head); font-size:.85rem; font-weight:700;
+  padding:10px 20px; cursor:pointer; letter-spacing:1px; transition:all .2s; white-space:nowrap;
+}
+.btn-fund-now:hover { box-shadow:0 0 15px var(--cyan); }
+.faucet-note { margin-top:10px; font-size:.53rem; color:#444; line-height:1.7; font-family:var(--mono); }
+.faucet-note a { color:var(--cyan); text-decoration:underline; }
+
+/* ── CUSTOMIZE MODAL ── */
+#customize-modal .mbox { width:min(460px,93vw); }
+.cust-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 0; border-bottom:1px solid #111;
+}
+.cust-lbl  { font-family:var(--head); font-size:.72rem; color:#bbb; letter-spacing:1px; font-weight:700; }
+.cust-sub  { font-size:.5rem; color:#444; margin-top:2px; font-family:var(--mono); }
+.cust-ctrl { display:flex; align-items:center; gap:8px; }
+.range-in {
+  -webkit-appearance:none; width:100px; height:3px;
+  background:#222; border-radius:2px; outline:none;
+}
+.range-in::-webkit-slider-thumb {
+  -webkit-appearance:none; width:13px; height:13px;
+  background:var(--pink); border-radius:50%; cursor:pointer; box-shadow:0 0 5px var(--pink);
+}
+.rng-val { font-size:.62rem; color:var(--pink); min-width:36px; text-align:right; font-family:var(--mono); }
+.cust-sel {
+  background:#111; border:1px solid #333; color:var(--cyan);
+  font-family:var(--mono); font-size:.58rem; padding:4px 8px; cursor:pointer; outline:none;
+}
+.btn-save {
+  width:100%; margin-top:14px; background:var(--pink); border:none; color:#000;
+  font-family:var(--head); font-size:.95rem; font-weight:700;
+  padding:12px; cursor:pointer; letter-spacing:2px; transition:all .2s;
+}
+.btn-save:hover { box-shadow:0 0 15px var(--pink); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     BOOT SCREEN
+═══════════════════════════════════════ -->
+<div id="boot">
+  <div id="boot-logo">
+    KILL
+    <svg viewBox="0 0 80 50" fill="none">
+      <line x1="10" y1="6"  x2="46" y2="46" stroke="#ff2d75" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="46" y1="6"  x2="10" y2="46" stroke="#ff2d75" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="8"  cy="5" r="5" fill="#ff2d75"/>
+      <circle cx="48" cy="5" r="5" fill="#ff2d75"/>
+      <line x1="28" y1="46" x2="18" y2="46" stroke="#ff2d75" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="38" y1="46" x2="48" y2="46" stroke="#ff2d75" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div id="boot-lines"></div>
+  <div id="boot-bar-wrap">
+    <div id="boot-bar-lbl">INITIALIZING KILL SYSTEM...</div>
+    <div id="boot-bar"><div id="boot-fill"></div></div>
+  </div>
+</div>
+
+<!-- tooltip -->
+<div id="tip"></div>
+
+<!-- ═══════════════════════════════════════
+     MODALS
+═══════════════════════════════════════ -->
+
+<!-- DEPLOY -->
+<div id="deploy-modal" class="modal">
+  <div class="mbox">
+    <button class="mclose" onclick="closeModal('deploy-modal')">×</button>
+    <div id="deploy-form">
+      <div class="mtitle">Agent Deployment</div>
+      <div class="msub">
+        <span class="p">Authorize your agent on <strong style="color:var(--cyan)">BASE SEPOLIA</strong> in 3 steps.</span>
+        <span class="g">Set up your AI fighter in 3 steps — it plays the game 24/7 so you don't have to.</span>
+      </div>
+      <div style="margin-bottom:16px">
+        <div class="dstep">
+          <span class="dnum">01</span>
+          <div class="dtext">
+            <strong><span class="p">GENERATE WALLET</span><span class="g">CREATE YOUR FIGHTER</span></strong><br>
+            <span class="p">Installer creates a local ECDSA wallet automatically. Key never leaves your machine.</span>
+            <span class="g">Installer auto-creates a unique ID for your agent. Totally hands-off.</span>
+          </div>
+        </div>
+        <div class="dstep">
+          <span class="dnum">02</span>
+          <div class="dtext">
+            <strong><span class="p">FUND AGENT</span><span class="g">ADD CREDITS</span></strong><br>
+            <span class="p">Get 0.1 ETH (Base Sepolia) from the <a href="https://docs.base.org/base-chain/tools/network-faucets" target="_blank">Base Testnet Faucet</a>.</span>
+            <span class="g">Grab free test tokens from the <a href="https://docs.base.org/base-chain/tools/network-faucets" target="_blank">faucet</a> — it's not real money, it's test credits.</span>
+          </div>
+        </div>
+        <div class="dstep">
+          <span class="dnum">03</span>
+          <div class="dtext">
+            <strong><span class="p">EXECUTE INSTALLER</span><span class="g">LAUNCH YOUR AGENT</span></strong><br>
+            <span class="p">Run the command. Starts in DRY_RUN — 3 profitable cycles before going live.</span>
+            <span class="g">Paste and run. Your agent starts in practice mode — watch it train before going live.</span>
+          </div>
+        </div>
+      </div>
+      <div class="code-wrap">
+        <span class="code-cmd" id="cmd-text">curl -s https://killgame.ai/kill.sh | bash</span>
+        <button class="btn-copy" id="btn-copy" onclick="copyCmd()">COPY</button>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-ctrl" onclick="closeModal('deploy-modal');openModal('roster-modal')" style="padding:8px 14px;font-size:.6rem;">← PICK AN AGENT FIRST</button>
+        <button class="btn-ctrl hi" style="padding:8px 18px;font-size:.63rem" onclick="simulateDeploy()">⚡ SIMULATE DEPLOY</button>
+      </div>
+    </div>
+    <div id="deploy-success">
+      <div class="si">⚡</div>
+      <div class="mtitle" style="font-size:1.2rem">AGENT INITIALIZED</div>
+      <p style="margin-top:8px">Your agent is <strong>LIVE on Base Sepolia</strong>.<br>
+        <span class="p">Watch the battlefield — your dots appear as units stack.</span>
+        <span class="g">Your fighter is in the arena! Pink dots = your units stacking up.</span>
+      </p>
+      <div class="agent-chip">AGENT_ID: 0x4a3b...f91c &nbsp;|&nbsp; STATUS: SCANNING &nbsp;|&nbsp; MODE: DRY_RUN</div>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<div id="about-modal" class="modal">
+  <div class="mbox" style="border-color:#fff;background:linear-gradient(150deg,#080808,#0f0008);text-align:center;padding:36px;width:min(440px,90vw)">
+    <button class="mclose" onclick="closeModal('about-modal')">×</button>
+    <div class="about-logo">
+      KILL
+      <svg viewBox="0 0 80 50" fill="none" width="50" style="margin:4px auto 0;display:block">
+        <line x1="10" y1="6" x2="46" y2="46" stroke="#ff2d75" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="46" y1="6" x2="10" y2="46" stroke="#ff2d75" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="8" cy="5" r="5" fill="#ff2d75"/>
+        <circle cx="48" cy="5" r="5" fill="#ff2d75"/>
+      </svg>
+    </div>
+    <div class="about-tag">A HIGH-VELOCITY TOKENIZED WAR GAME FOR AGENTIC AI</div>
+    <a href="https://0xmeh.substack.com/p/killgame" target="_blank" class="btn-about">[ READ THE PROTOCOL ]</a>
+  </div>
+</div>
+
+<!-- AGENT ROSTER -->
+<div id="roster-modal" class="modal">
+  <div class="mbox">
+    <button class="mclose" onclick="closeModal('roster-modal')">×</button>
+    <div class="mtitle">Choose Your Agent</div>
+    <div class="msub">
+      <span class="p">Each agent runs a distinct on-chain strategy. Select one that matches your risk profile, then deploy.</span>
+      <span class="g">Pick your fighter class. Each has a different playstyle — aggressive, stealthy, strategic, or safe. No wrong answer.</span>
+    </div>
+    <div class="agent-grid" id="agent-grid"></div>
+    <div class="roster-footer">
+      <div class="sel-preview" id="agent-preview">No agent selected</div>
+      <button class="btn-deploy-sel" onclick="deploySelected()">DEPLOY AGENT →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ETH -->
+<div id="eth-modal" class="modal">
+  <div class="mbox">
+    <button class="mclose" onclick="closeModal('eth-modal')">×</button>
+    <div class="mtitle"><span class="p">Fund Wallet</span><span class="g">Add Credits</span></div>
+    <div class="msub">
+      <span class="p">Add Base Sepolia ETH to keep your agent operating.</span>
+      <span class="g">Top up your agent's fuel. More ETH = more kills = more profit.</span>
+    </div>
+    <div class="eth-grid">
+      <button class="eth-btn active" onclick="selEth(this,'0.02')">
+        <span class="ea">0.02</span><span class="el">STARTER</span>
+      </button>
+      <button class="eth-btn" onclick="selEth(this,'0.05')">
+        <span class="ea">0.05</span><span class="el">STANDARD</span>
+      </button>
+      <button class="eth-btn" onclick="selEth(this,'0.10')">
+        <span class="ea">0.10</span><span class="el">AGGRESSIVE</span>
+      </button>
+    </div>
+    <div class="eth-input-wrap">
+      <input class="eth-input" id="eth-custom" type="number" step="0.01" placeholder="Custom ETH amount..."/>
+      <button class="btn-fund-now" onclick="fundWallet()">FUND NOW</button>
+    </div>
+    <div class="faucet-note">
+      Need test ETH? → <a href="https://docs.base.org/base-chain/tools/network-faucets" target="_blank">Base Sepolia Faucet</a><br>
+      <span class="p">This is testnet ETH — no real funds required.</span>
+      <span class="g">Practice mode money — nothing real at risk.</span>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMIZE -->
+<div id="customize-modal" class="modal">
+  <div class="mbox">
+    <button class="mclose" onclick="closeModal('customize-modal')">×</button>
+    <div class="mtitle"><span class="p">Agent Configuration</span><span class="g">Tune Your Fighter</span></div>
+    <div class="msub">
+      <span class="p">Adjust parameters. Changes apply on the next cycle.</span>
+      <span class="g">Dial in your loadout. These are your agent's combat settings.</span>
+    </div>
+    <div class="cust-row">
+      <div>
+        <div class="cust-lbl"><span class="p">MIN KILL VALUE</span><span class="g">MIN BOUNTY TO ATTACK</span></div>
+        <div class="cust-sub"><span class="p">Ignore stacks below this threshold</span><span class="g">Only hunt targets worth this much or more</span></div>
+      </div>
+      <div class="cust-ctrl">
+        <input class="range-in" type="range" min="0" max="100" value="30" oninput="updRng(this,'rv-min','K')">
+        <span class="rng-val" id="rv-min">30K</span>
+      </div>
+    </div>
+    <div class="cust-row">
+      <div>
+        <div class="cust-lbl"><span class="p">MAX GAS BUDGET</span><span class="g">MAX ACTION COST</span></div>
+        <div class="cust-sub"><span class="p">Agent pauses if gas exceeds limit</span><span class="g">Agent won't spend more than this per move</span></div>
+      </div>
+      <div class="cust-ctrl">
+        <input class="range-in" type="range" min="5" max="20" value="11" oninput="updRng(this,'rv-gas','gwei')">
+        <span class="rng-val" id="rv-gas">11gwei</span>
+      </div>
+    </div>
+    <div class="cust-row">
+      <div>
+        <div class="cust-lbl"><span class="p">AUTO-PAUSE THRESHOLD</span><span class="g">AUTO-RETREAT TRIGGER</span></div>
+        <div class="cust-sub"><span class="p">Pause if P/L drops below this %</span><span class="g">Agent retreats automatically to protect you</span></div>
+      </div>
+      <div class="cust-ctrl">
+        <input class="range-in" type="range" min="1" max="20" value="5" oninput="updRng(this,'rv-pause','%')">
+        <span class="rng-val" id="rv-pause">5%</span>
+      </div>
+    </div>
+    <div class="cust-row">
+      <div>
+        <div class="cust-lbl"><span class="p">SCAN INTERVAL</span><span class="g">ATTACK SPEED</span></div>
+        <div class="cust-sub"><span class="p">How often agent scans for targets</span><span class="g">Faster = more chances to strike, higher costs</span></div>
+      </div>
+      <div class="cust-ctrl">
+        <select class="cust-sel">
+          <option>FAST (3s)</option>
+          <option selected>NORMAL (6s)</option>
+          <option>SLOW (12s)</option>
+          <option>SNIPER (30s)</option>
+        </select>
+      </div>
+    </div>
+    <div class="cust-row">
+      <div>
+        <div class="cust-lbl"><span class="p">TARGET PRIORITY</span><span class="g">HUNTING STYLE</span></div>
+        <div class="cust-sub"><span class="p">Scoring strategy for target selection</span><span class="g">Which enemies does your agent chase first?</span></div>
+      </div>
+      <div class="cust-ctrl">
+        <select class="cust-sel">
+          <option>HIGHEST VALUE</option>
+          <option selected>BEST NET EDGE</option>
+          <option>OLDEST STACK</option>
+          <option>MOST REAPERS</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveCustom()">SAVE CONFIGURATION</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     HEADER
+═══════════════════════════════════════ -->
+<header>
+  <div class="logo" onclick="openModal('about-modal')">
+    KILL
+    <svg viewBox="0 0 80 50" fill="none" style="width:22px;height:22px;opacity:.85">
+      <line x1="10" y1="6" x2="46" y2="46" stroke="#ff2d75" stroke-width="4" stroke-linecap="round"/>
+      <line x1="46" y1="6" x2="10" y2="46" stroke="#ff2d75" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="8"  cy="5" r="5" fill="#ff2d75"/>
+      <circle cx="48" cy="5" r="5" fill="#ff2d75"/>
+    </svg>
+  </div>
+  <div class="hdr-right">
+    <div class="help-wrap">
+      <span>HELP</span>
+      <div class="tpill" id="tpill" onclick="toggleHelp()"><div class="tknob"></div></div>
+      <span id="hlbl">OFF</span>
+    </div>
+    <div class="spec-badge" id="spec-badge">◉ SPECTATOR MODE — DEPLOY TO PLAY</div>
+    <button class="btn-add" onclick="openModal('roster-modal')">+ DEPLOY AGENT</button>
+    <div class="hdr-block">
+      <div id="hdr-blk">--------</div>
+      <div id="hdr-net">BASE SEPOLIA BLOCK</div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════
+     OP STRIP
+═══════════════════════════════════════ -->
+<div class="op-strip">
+  <div class="op-card">
+    <div class="op-kicker"><span class="p">WHAT MATTERS NOW</span><span class="g">BEST TARGET ON BOARD</span></div>
+    <div class="op-label"><span class="p">BEST TARGET VALUE</span><span class="g">TOP BOUNTY</span></div>
+    <div class="op-value" id="op-best">0 KILL</div>
+  </div>
+  <div class="op-card">
+    <div class="op-kicker"><span class="p">DECISION SIGNAL</span><span class="g">PROFIT SIGNAL</span></div>
+    <div class="op-label"><span class="p">EST. NET EDGE</span><span class="g">PROFIT AFTER COSTS</span></div>
+    <div class="op-value" id="op-edge">0 KILL</div>
+  </div>
+  <div class="op-card">
+    <div class="op-kicker">RISK</div>
+    <div class="op-label"><span class="p">STATE</span><span class="g">BATTLEFIELD STATUS</span></div>
+    <div class="op-value" id="op-risk">STABLE</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MAIN STAGE
+═══════════════════════════════════════ -->
+<div class="stage">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="panel">
+    <!-- Fixed panel header -->
+    <div class="phdr">
+      <a href="https://0xmeh.substack.com/p/killgame" target="_blank" style="color:inherit;text-decoration:none">
+        <span class="p">ABOUT KILL</span><span class="g">WHAT IS THIS?</span>
+      </a>
+    </div>
+
+    <!-- All scrollable content below header -->
+    <div id="left-scroll">
+
+      <div class="specs">
+        <span class="p">A high-velocity tokenized war game for agentic AI. Deploy an agent. Stack units. Collect bounties. Survive.</span>
+        <span class="g">KILL is a strategy game where AI bots fight 24/7. You deploy one, it hunts bounties automatically, and you collect the winnings. Think: a self-playing RPG that earns real rewards.</span>
+      </div>
+      <div class="help-note">🎮 No crypto experience needed. Start in practice mode (DRY_RUN) and go live only when profit is green.</div>
+
+      <div class="shdr"><span class="p">MISSION STEPS</span><span class="g">YOUR QUEST LOG</span></div>
+      <div class="mission-steps">
+        <div class="mstep" id="ms1" onclick="toggleStep(1)">
+          <span class="mnum">01</span>
+          <div class="mbody">
+            <strong><span class="p">CHOOSE AGENT</span><span class="g">PICK YOUR CLASS</span></strong><br>
+            <span class="p">Select a strategy from the roster.</span>
+            <span class="g">Pick a fighter that matches your style.</span>
+          </div>
+          <span class="mcheck">✓</span>
+        </div>
+        <div class="mstep" id="ms2" onclick="toggleStep(2)">
+          <span class="mnum">02</span>
+          <div class="mbody">
+            <strong><span class="p">FUND WALLET (≥ 0.02 ETH)</span><span class="g">ADD CREDITS</span></strong><br>
+            <span class="p">Minimum 0.02 Base Sepolia ETH.</span>
+            <span class="g">Free test ETH — not real money.</span>
+          </div>
+          <span class="mcheck">✓</span>
+        </div>
+        <div class="mstep" id="ms3" onclick="toggleStep(3)">
+          <span class="mnum">03</span>
+          <div class="mbody">
+            <strong><span class="p">DRY_RUN — 3 CYCLES</span><span class="g">PRACTICE MODE FIRST</span></strong><br>
+            <span class="p">Validate before committing funds.</span>
+            <span class="g">Get 3 practice wins before going live.</span>
+          </div>
+          <span class="mcheck">✓</span>
+        </div>
+        <div class="mstep" id="ms4" onclick="toggleStep(4)">
+          <span class="mnum">04</span>
+          <div class="mbody">
+            <strong><span class="p">FLIP LIVE — POSITIVE EDGE ONLY</span><span class="g">GO LIVE WHEN EDGE IS GREEN</span></strong><br>
+            <span class="p">Set auto-pause at −5% drawdown.</span>
+            <span class="g">Auto-retreat is your safety net.</span>
+          </div>
+          <span class="mcheck">✓</span>
+        </div>
+      </div>
+
+      <div class="shdr"><span class="p">READINESS</span><span class="g">CHECKLIST</span></div>
+      <div class="ready-list">
+        <div class="ready-row">
+          <span><span class="p">WALLET FUNDED (≥ 0.02 ETH)</span><span class="g">CREDITS LOADED</span></span>
+          <span class="pill warn" id="r-wallet">NEEDS ACTION</span>
+        </div>
+        <div class="ready-row">
+          <span><span class="p">AGENT RUNNING</span><span class="g">FIGHTER DEPLOYED</span></span>
+          <span class="pill warn" id="r-agent">NEEDS ACTION</span>
+        </div>
+        <div class="ready-row">
+          <span><span class="p">RECENT PROFIT POSITIVE</span><span class="g">IN THE GREEN</span></span>
+          <span class="pill warn" id="r-profit">NEEDS ACTION</span>
+        </div>
+        <div class="ready-row">
+          <span><span class="p">GAS HEALTHY</span><span class="g">ACTION COSTS OK</span></span>
+          <span class="pill warn" id="r-gas">NEEDS ACTION</span>
+        </div>
+      </div>
+
+      <div class="shdr"><span class="p">OPERATOR CONTROLS</span><span class="g">COMMAND CENTER</span></div>
+      <div class="ctrl-grid">
+        <button class="btn-ctrl hi" onclick="openModal('eth-modal')">
+          <span class="p">+ ADD ETH</span><span class="g">+ ADD CREDITS</span>
+        </button>
+        <button class="btn-ctrl" onclick="openModal('customize-modal')">
+          <span class="p">⚙ CONFIGURE</span><span class="g">⚙ TUNE AGENT</span>
+        </button>
+        <button class="btn-ctrl" onclick="doToggle()">
+          <span class="p">TOGGLE LIVE/DRY</span><span class="g">PRACTICE / LIVE</span>
+        </button>
+        <button class="btn-ctrl" onclick="openModal('roster-modal')">
+          <span class="p">SWAP AGENT</span><span class="g">CHANGE CLASS</span>
+        </button>
+        <button class="btn-ctrl" onclick="doWin()">
+          <span class="p">SIM PROFIT CYCLE</span><span class="g">SIM WIN</span>
+        </button>
+        <button class="btn-ctrl" onclick="doLoss()">
+          <span class="p">SIM LOSS CYCLE</span><span class="g">SIM LOSS</span>
+        </button>
+      </div>
+      <div class="wallet-strip">
+        <span><span class="p">ETH</span><span class="g">CREDITS</span>: <b id="w-eth">0.000</b></span>
+        <span>MODE: <b id="w-mode" style="color:#ffb86b">DRY_RUN</b></span>
+        <span><span class="p">GAS/KILL</span><span class="g">COST/MOVE</span>: <b id="w-gas">0.0011</b></span>
+      </div>
+
+      <div class="shdr"><span class="p">KILL METRICS</span><span class="g">SCOREBOARD</span></div>
+      <div class="km-row"><span><span class="p">UNITS ELIMINATED</span><span class="g">ENEMIES DESTROYED</span></span><span class="km-val" id="km-units">0</span></div>
+      <div class="km-row"><span><span class="p">REAPERS ELIMINATED</span><span class="g">BOSS KILLS</span></span><span class="km-val" id="km-reapers">0</span></div>
+      <div class="km-row"><span><span class="p">EARNED / SPENT</span><span class="g">WON / SPENT</span></span><span><span class="km-cyan" id="km-earn">0</span> / <span id="km-spent">0</span></span></div>
+      <div class="km-row" style="border-bottom:none"><span><span class="p">NET PROFIT</span><span class="g">YOUR TAKE</span></span><span class="km-val" id="km-pnl">0</span></div>
+
+      <div class="shdr"><span class="p">TOP STACKS</span><span class="g">RICHEST TARGETS</span></div>
+      <div class="srow" style="font-size:.48rem;color:#2a2a2a;border-bottom:1px solid #181818;margin-bottom:2px">
+        <span>#</span><span>ID</span><span>R</span><span>UNITS</span><span>VALUE</span>
+      </div>
+      <div id="ripe-stacks"></div>
+
+    </div><!-- /left-scroll -->
+  </div>
+
+  <!-- ── CENTER ── -->
+  <div class="center">
+    <div class="battle-label">
+      <span class="p">[ TACTICAL 6×6×6 STACKED VIEW ]</span>
+      <span class="g">[ LIVE BATTLEFIELD ]</span>
+    </div>
+    <div class="drag-hint">
+      <span class="p">[ DRAG TO ROTATE ]</span>
+      <span class="g">[ DRAG TO LOOK AROUND — PINK = UNITS · CYAN = REAPERS (BOSSES) ]</span>
+    </div>
+    <div class="ltoggle">
+      <span style="opacity:.3;font-size:.5rem"><span class="p">LAYERS:</span><span class="g">FLOORS:</span></span>
+      <label class="lt"><input type="checkbox" checked onchange="toggleLayer(0)"> 0</label>
+      <label class="lt"><input type="checkbox" checked onchange="toggleLayer(1)"> 1</label>
+      <label class="lt"><input type="checkbox" checked onchange="toggleLayer(2)"> 2</label>
+      <label class="lt"><input type="checkbox" checked onchange="toggleLayer(3)"> 3</label>
+      <label class="lt"><input type="checkbox" checked onchange="toggleLayer(4)"> 4</label>
+      <label class="lt"><input type="checkbox" checked onchange="toggleLayer(5)"> 5</label>
+    </div>
+    <div class="scene">
+      <div class="stack3d" id="stack3d"></div>
+    </div>
+    <div class="arena-legend">
+      <div class="al-g"><span class="al-l"><span class="p">UNITS:</span><span class="g">TROOPS:</span></span><span class="al-v" id="al-units">0</span></div>
+      <div class="al-g"><span class="al-l"><span class="p">REAPERS:</span><span class="g">BOSSES:</span></span><span class="al-v" id="al-reapers">0</span></div>
+      <div class="al-g"><span class="al-l"><span class="p">KILL BOUNTY:</span><span class="g">REWARD POOL:</span></span><span class="al-c" id="al-bounty">0</span></div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="panel">
+
+    <!-- LEADERBOARD section -->
+    <div class="phdr">
+      <span class="p">LEADERBOARD: TOP AGENTS</span>
+      <span class="g">TOP FIGHTERS</span>
+    </div>
+
+    <!-- Wallet / agent search -->
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input id="lb-search" type="text" placeholder="SEARCH WALLET OR AGENT ID..." oninput="filterLeaderboard()" autocomplete="off" spellcheck="false"/>
+      <button class="search-clear" id="lb-clear" onclick="clearLbSearch()" style="display:none">×</button>
+    </div>
+
+    <div class="rank-row" style="font-size:.48rem;color:#2a2a2a;border-bottom:1px solid #181818;margin-bottom:2px;flex-shrink:0">
+      <span>AGENT</span><span style="text-align:right">EARNED</span><span style="text-align:right">SPENT</span><span style="text-align:right">NET P/L</span>
+    </div>
+    <div id="leaderboard" style="overflow-y:auto;flex:0 0 auto;max-height:26%;min-height:50px"></div>
+    <div id="lb-empty" class="no-results" style="display:none">No matching agents found.</div>
+
+    <!-- LOG section -->
+    <div class="phdr" style="margin-top:12px">
+      <span><span class="p">KILL LOG</span><span class="g">BATTLE LOG</span></span>
+      <button class="btn-sm" onclick="clearLog()">CLEAR</button>
+    </div>
+
+    <!-- Log search -->
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input id="log-search" type="text" placeholder="FILTER BY WALLET, STACK ID, OR EVENT..." oninput="filterLog()" autocomplete="off" spellcheck="false"/>
+      <button class="search-clear" id="log-clear" onclick="clearLogSearch()" style="display:none">×</button>
+    </div>
+
+    <div class="log-feed" id="log-feed"></div>
+
+  </div>
+
+</div><!-- /stage -->
+
+<!-- ═══════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════ -->
+<footer>
+  <div id="sys-status">
+    <span class="lethal-dot" id="lethal-dot"></span>
+    <span id="status-text">SYSTEM STATUS: OPERATIONAL</span>
+  </div>
+  <div class="footer-econ">
+    <span class="p">CIRCULATING:</span><span class="g">IN PLAY:</span><span id="ft-circ"> 6,666,666,666</span>
+    &nbsp;|&nbsp;
+    <span class="p">BURNED:</span><span class="g">DESTROYED:</span><span id="ft-burned"> 0.000</span>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════ -->
+<script>
+/* ── STATE ── */
+const G = {
+  block:0, walletEth:0, live:false, gasPerKill:0.0011, losStreak:0,
+  unitsKilled:0, reapersKilled:0, earned:0, spent:0, burned:0,
+  totalUnits:0, totalReapers:0, steps:[false,false,false,false],
+  agentDeployed:false, selectedAgent:null, ethAmt:'0.02', helpMode:false
+};
+const stacks={}, agentPnL={};
+
+/* ── AGENT ROSTER DATA ── */
+const AGENTS=[
+  {
+    id:'reaper', name:'REAPER', tier:'TIER S — AGGRESSOR', cls:'KILL SPECIALIST',
+    desc:'Maximum aggression. Hunts the highest-value stacks. High reward, high gas. Unrelenting.',
+    gDesc:'The berserker. Goes straight for the biggest targets. Highest rewards but burns credits fast. For experienced players.',
+    speed:90, aggro:95, profit:75, def:20, color:'#ff2d75',
+    tags:['HIGH RISK','HIGH REWARD','STACK HUNTER'],
+    cmd:'curl -s https://killgame.ai/kill.sh | bash -s reaper'
+  },
+  {
+    id:'ghost', name:'GHOST', tier:'TIER A — STEALTH', cls:'HIGH-FREQUENCY OPERATOR',
+    desc:'Small kills, high frequency. Low gas cost, consistent returns. The grinder.',
+    gDesc:'The rogue. Fast attacks on weak targets. Low cost per move, steady income. Great for beginners.',
+    speed:95, aggro:35, profit:70, def:65, color:'#00f0ff',
+    tags:['LOW GAS','HIGH FREQ','BEGINNER FRIENDLY'],
+    cmd:'curl -s https://killgame.ai/kill.sh | bash -s ghost'
+  },
+  {
+    id:'warlord', name:'WARLORD', tier:'TIER S — APEX', cls:'MAXIMUM STAKE HUNTER',
+    desc:'Waits for LETHAL system state, then strikes one massive target. Patient predator.',
+    gDesc:'The paladin. Waits for the perfect moment, unleashes everything on one massive target. Slow but devastating.',
+    speed:25, aggro:80, profit:90, def:50, color:'#ffd44a',
+    tags:['LETHAL STATES','BIG SWINGS','PATIENCE REQUIRED'],
+    cmd:'curl -s https://killgame.ai/kill.sh | bash -s warlord'
+  },
+  {
+    id:'stalker', name:'STALKER', tier:'TIER A — COUNTER', cls:'REAPER HUNTER',
+    desc:'Specializes in anti-Reaper engagements. Max bounty multiplier exploitation.',
+    gDesc:'The hunter. Specializes in taking out Reaper bosses for huge bonuses. Precision targeting.',
+    speed:55, aggro:60, profit:80, def:40, color:'#a855f7',
+    tags:['ANTI-REAPER','BOUNTY MULT','TACTICAL'],
+    cmd:'curl -s https://killgame.ai/kill.sh | bash -s stalker'
+  },
+  {
+    id:'scout', name:'SCOUT', tier:'TIER B — ANALYST', cls:'DRY RUN SPECIALIST',
+    desc:'5 profitable cycles before going live. Safest entry on the network. Conservative.',
+    gDesc:'The ranger — perfect for newcomers. Trains longer, analyzes everything. Your training wheels, done right.',
+    speed:60, aggro:20, profit:55, def:90, color:'#22c55e',
+    tags:['SAFEST OPTION','5 CYCLES','BEGINNER'],
+    cmd:'curl -s https://killgame.ai/kill.sh | bash -s scout'
+  }
+];
+
+/* ── BOOT ── */
+const BOOT_LINES=[
+  {t:'KILL SYSTEM v1.0.6 — BASE SEPOLIA',c:''},
+  {t:'LOADING CORE ENGINE...',c:'ok'},
+  {t:'INITIALIZING TACTICAL DISPLAY...',c:'ok'},
+  {t:'CONNECTING TO GOLDSKY SUBGRAPH...',c:'ok'},
+  {t:'SYNCING BLOCK DATA...',c:'ok'},
+  {t:'AGENT ROSTER: 5 CLASSES AVAILABLE',c:'ok'},
+  {t:'AGENT MODULE: STANDBY',c:'warn'},
+  {t:'SPECTATOR MODE ACTIVE',c:''},
+];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function runBoot(){
+  const bl=document.getElementById('boot-lines'), bf=document.getElementById('boot-fill');
+  for(let i=0;i<BOOT_LINES.length;i++){
+    const d=document.createElement('div');
+    d.className='bline '+BOOT_LINES[i].c;
+    d.textContent='> '+BOOT_LINES[i].t;
+    bl.appendChild(d);
+    bf.style.width=((i+1)/BOOT_LINES.length*100)+'%';
+    await sleep(200+Math.random()*120);
+  }
+  bf.style.width='100%'; await sleep(380);
+  const b=document.getElementById('boot');
+  b.style.transition='opacity .55s'; b.style.opacity='0';
+  await sleep(560); b.style.display='none';
+  startGame();
+}
+
+/* ── INIT ── */
+function startGame(){
+  initBattlefield(); buildRoster(); populateMock(); renderLB();
+  tick();
+  setInterval(tick,2500); setInterval(simKill,1700); setInterval(updateOpUI,1400);
+}
+
+/* ── 3D BATTLEFIELD ── */
+function initBattlefield(){
+  const sf=document.getElementById('stack3d'); sf.innerHTML='';
+  for(let l=0;l<6;l++){
+    const lyr=document.createElement('div');
+    lyr.className='layer3d'; lyr.id='lyr'+l;
+    lyr.style.transform=`translateZ(${l*40}px)`;
+    for(let i=0;i<36;i++){
+      const nid=l*36+i, nd=document.createElement('div');
+      nd.className='node3d'; nd.id='nd'+nid;
+      nd.onmouseenter=e=>showTip(e,nid);
+      nd.onmouseleave=()=>{document.getElementById('tip').style.opacity=0};
+      lyr.appendChild(nd);
+    }
+    sf.appendChild(lyr);
+  }
+  enableDrag();
+}
+function toggleLayer(i){document.getElementById('lyr'+i)?.classList.toggle('hidden');}
+
+let drag={on:false,x:0,y:0,rx:57,rz:-42};
+function enableDrag(){
+  const sf=document.getElementById('stack3d');
+  sf.onmousedown=e=>{drag.on=true;drag.x=e.clientX;drag.y=e.clientY;e.preventDefault();};
+  window.onmouseup=()=>{drag.on=false;};
+  window.onmousemove=e=>{
+    if(!drag.on)return;
+    drag.rz+=(e.clientX-drag.x)*.48; drag.rx-=(e.clientY-drag.y)*.48;
+    sf.style.transform=`rotateX(${drag.rx}deg) rotateZ(${drag.rz}deg)`;
+    drag.x=e.clientX; drag.y=e.clientY;
+  };
+}
+function updateNode(id,units,reapers){
+  const nd=document.getElementById('nd'+id); if(!nd)return;
+  syncDots(nd,'dot-u',Math.min(Math.floor(units/1200),35));
+  syncDots(nd,'dot-r',Math.min(reapers,6));
+}
+function syncDots(nd,cls,tgt){
+  const cur=nd.querySelectorAll('.'+cls);
+  if(cur.length<tgt){
+    const f=document.createDocumentFragment();
+    for(let i=0;i<tgt-cur.length;i++){
+      const d=document.createElement('div'); d.className='dot '+cls;
+      d.style.left=(Math.random()*80+10)+'%'; d.style.top=(Math.random()*80+10)+'%';
+      d.style.transform=`translateZ(${Math.floor(Math.random()*3)*8}px)`;
+      f.appendChild(d);
+    }
+    nd.appendChild(f);
+  } else { for(let i=0;i<cur.length-tgt;i++) cur[i]?.remove(); }
+}
+function pulseNode(id,t){
+  const nd=document.getElementById('nd'+id); if(!nd)return;
+  nd.classList.remove('pk','pc'); void nd.offsetWidth;
+  nd.classList.add(t==='kill'?'pk':'pc');
+}
+
+/* ── TOOLTIP ── */
+function showTip(e,id){
+  const tip=document.getElementById('tip'), d=stacks[id]||{units:0,reapers:0,birth:0};
+  const age=G.block>0&&d.birth>0?G.block-d.birth:0;
+  const mult=1+age/1000, val=Math.floor((d.units+d.reapers*666)*mult);
+  tip.innerHTML=`
+    <strong style="color:var(--cyan);letter-spacing:1px">STACK_${id}</strong><br>
+    <span style="opacity:.4">BIRTH:</span> ${d.birth||'---'}<br>
+    <span style="opacity:.4">AGE:</span> ${age.toLocaleString()} blocks
+    <hr style="border:0;border-top:1px solid #1a1a1a;margin:5px 0">
+    UNITS: ${d.units.toLocaleString()}<br>
+    REAPERS: ${d.reapers}<br>
+    <span style="opacity:.4">BOUNTY MULT:</span> <span style="color:var(--cyan)">${mult.toFixed(3)}x</span>
+    <div style="margin-top:6px;border-top:1px solid #1a1a1a;padding-top:5px">
+      <span style="color:var(--pink);font-weight:700">VALUE: ${val.toLocaleString()} KILL</span>
+    </div>`;
+  tip.style.opacity=1;
+  tip.style.left=(e.clientX+16)+'px'; tip.style.top=(e.clientY+14)+'px';
+}
+
+/* ── ROSTER ── */
+function buildRoster(){
+  const grid=document.getElementById('agent-grid'); grid.innerHTML='';
+  AGENTS.forEach(ag=>{
+    const card=document.createElement('div');
+    card.className='agent-card'; card.id='ac-'+ag.id;
+    card.innerHTML=`
+      <div class="ac-tier" style="color:${ag.color}">${ag.tier}</div>
+      <div class="ac-name" style="color:${ag.color}">${ag.name}</div>
+      <div class="ac-class">${ag.cls}</div>
+      <div class="ac-desc p">${ag.desc}</div>
+      <div class="ac-desc g">${ag.gDesc}</div>
+      <div class="ac-stats">
+        <div><div class="ac-stat-lbl">SPEED</div><div class="ac-bar"><div class="ac-bar-fill" style="width:${ag.speed}%;background:${ag.color}"></div></div></div>
+        <div><div class="ac-stat-lbl">AGGRESSION</div><div class="ac-bar"><div class="ac-bar-fill" style="width:${ag.aggro}%;background:${ag.color}"></div></div></div>
+        <div><div class="ac-stat-lbl">PROFIT</div><div class="ac-bar"><div class="ac-bar-fill" style="width:${ag.profit}%;background:${ag.color}"></div></div></div>
+        <div><div class="ac-stat-lbl">DEFENSE</div><div class="ac-bar"><div class="ac-bar-fill" style="width:${ag.def}%;background:${ag.color}"></div></div></div>
+      </div>
+      <div class="ac-tags">${ag.tags.map(t=>`<span class="ac-tag">${t}</span>`).join('')}</div>
+      <button class="ac-select-btn" onclick="selectAgent('${ag.id}')">SELECT ${ag.name}</button>`;
+    grid.appendChild(card);
+  });
+}
+function selectAgent(id){
+  G.selectedAgent=id;
+  document.querySelectorAll('.agent-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('ac-'+id)?.classList.add('selected');
+  const ag=AGENTS.find(a=>a.id===id);
+  document.getElementById('agent-preview').innerHTML=`Selected: <strong style="color:var(--cyan)">${ag.name}</strong> — ${ag.cls}`;
+  document.getElementById('cmd-text').textContent=ag.cmd;
+}
+function deploySelected(){
+  if(!G.selectedAgent){alert('Select an agent first!');return;}
+  closeModal('roster-modal'); openModal('deploy-modal');
+}
+
+/* ── MOCK DATA ── */
+const MOCK_ADDRS=['0x9f2a','0x4b7c','0xf810','0x2d93','0xc541','0x6e0f','0x88aa','0x1dff'];
+function populateMock(){
+  MOCK_ADDRS.forEach(a=>{
+    const earn=rand(200000,1800000), spent=rand(100000,earn*.85);
+    agentPnL[a]={earn,spent,pnl:earn-spent};
+  });
+  for(let i=0;i<64;i++){
+    const id=rand(0,215);
+    stacks[id]={units:rand(6000,190000),reapers:rand(0,14),birth:rand(12000000,12050000)};
+  }
+  G.block=12058432; G.unitsKilled=rand(4000,12000); G.reapersKilled=rand(20,80);
+  G.earned=rand(2000000,6000000); G.spent=rand(500000,G.earned*.6);
+  G.burned=(G.spent*.1).toFixed(3);
+  G.totalUnits=Object.values(stacks).reduce((a,b)=>a+b.units,0);
+  G.totalReapers=Object.values(stacks).reduce((a,b)=>a+b.reapers,0);
+  refreshAll();
+  addLog('SYS','KILL SYSTEM INITIALIZED — SPECTATOR MODE','ln');
+  addLog(G.block,'BATTLEFIELD SYNC COMPLETE — 5 AGENT CLASSES AVAILABLE','ls');
+  addLog(G.block,'DEPLOY AN AGENT TO PARTICIPATE IN THE NEXT CYCLE','ls');
+}
+
+function refreshAll(){
+  document.getElementById('hdr-blk').textContent=G.block.toLocaleString();
+  document.getElementById('km-units').textContent=G.unitsKilled.toLocaleString();
+  document.getElementById('km-reapers').textContent=G.reapersKilled.toLocaleString();
+  document.getElementById('km-earn').textContent=G.earned.toLocaleString();
+  document.getElementById('km-spent').textContent=G.spent.toLocaleString();
+  const pnl=G.earned-G.spent, pe=document.getElementById('km-pnl');
+  pe.textContent=(pnl>=0?'+':'')+pnl.toLocaleString();
+  pe.style.color=pnl>=0?'var(--cyan)':'var(--pink)';
+  document.getElementById('al-units').textContent=G.totalUnits.toLocaleString();
+  document.getElementById('al-reapers').textContent=G.totalReapers;
+  document.getElementById('al-bounty').textContent=Math.floor(G.totalUnits*1.2).toLocaleString();
+  document.getElementById('ft-burned').textContent=G.burned;
+  Object.entries(stacks).forEach(([id,d])=>updateNode(+id,d.units,d.reapers));
+
+  const sorted=Object.entries(stacks)
+    .map(([id,d])=>{const age=G.block-d.birth,val=Math.floor((d.units+d.reapers*666)*(1+age/1000));return{id,d,val};})
+    .sort((a,b)=>b.val-a.val).slice(0,14);
+  const rs=document.getElementById('ripe-stacks'); rs.innerHTML='';
+  sorted.forEach(({id,d,val},i)=>{
+    const row=document.createElement('div'); row.className='srow';
+    row.innerHTML=`<span style="color:#2a2a2a">#${i+1}</span><span>${id}</span><span style="color:var(--cyan)">${d.reapers}</span><span style="color:#666">${d.units.toLocaleString()}</span><span class="sk">${val.toLocaleString()}</span>`;
+    rs.appendChild(row);
+  });
+
+  const t=G.totalUnits;
+  let s='OPERATIONAL';
+  if(t>=20000000)s='LETHAL'; else if(t>=15000000)s='CRITICAL';
+  else if(t>=10000000)s='VOLATILE'; else if(t>=5000000)s='ACTIVE'; else if(t>0)s='STABLE';
+  document.getElementById('status-text').textContent='SYSTEM STATUS: '+s;
+  document.getElementById('lethal-dot').style.display=s==='LETHAL'?'block':'none';
+}
+
+/* ── LEADERBOARD ── */
+function renderLB(){
+  const lb=document.getElementById('leaderboard'); lb.innerHTML='';
+  const q=document.getElementById('lb-search').value.toLowerCase().trim();
+  let count=0;
+  Object.entries(agentPnL).sort((a,b)=>b[1].pnl-a[1].pnl).forEach(([addr,d])=>{
+    if(q && !addr.toLowerCase().includes(q)) return;
+    const row=document.createElement('div'); row.className='rank-row'; const pos=d.pnl>=0;
+    row.innerHTML=`<span class="rank-addr">${addr}...</span><span style="text-align:right;color:var(--cyan)">${d.earn.toLocaleString()}</span><span style="text-align:right;color:#555">${d.spent.toLocaleString()}</span><span class="${pos?'rank-pos':'rank-neg'}">${pos?'+':''}${d.pnl.toLocaleString()}</span>`;
+    lb.appendChild(row); count++;
+  });
+  document.getElementById('lb-empty').style.display=(q&&count===0)?'block':'none';
+}
+
+/* ── LOG ── */
+function addLog(blk,msg,cls){
+  const lf=document.getElementById('log-feed'), e=document.createElement('div');
+  e.className='log-entry '+cls;
+  e.dataset.text=(blk+' '+msg).toLowerCase();
+  e.innerHTML=`<span style="opacity:.35;margin-right:6px">${blk}</span>${msg}`;
+  lf.appendChild(e);
+  if(lf.children.length>80) lf.removeChild(lf.firstChild);
+  lf.scrollTop=lf.scrollHeight;
+  filterLog(); // reapply active filter
+}
+function clearLog(){
+  document.getElementById('log-feed').innerHTML='';
+  addLog('SYS','BATTLE LOG CLEARED','ln');
+}
+
+/* ── SEARCH ── */
+function filterLeaderboard(){
+  const q=document.getElementById('lb-search').value;
+  document.getElementById('lb-clear').style.display=q?'block':'none';
+  renderLB();
+}
+function clearLbSearch(){
+  document.getElementById('lb-search').value='';
+  document.getElementById('lb-clear').style.display='none';
+  renderLB();
+}
+
+function filterLog(){
+  const q=document.getElementById('log-search').value.toLowerCase().trim();
+  document.getElementById('log-clear').style.display=q?'block':'none';
+  document.querySelectorAll('#log-feed .log-entry').forEach(e=>{
+    e.classList.toggle('hidden', q && !e.dataset.text.includes(q));
+  });
+}
+function clearLogSearch(){
+  document.getElementById('log-search').value='';
+  document.getElementById('log-clear').style.display='none';
+  filterLog();
+}
+
+/* ── TICK ── */
+function tick(){
+  G.block+=rand(1,3);
+  document.getElementById('hdr-blk').textContent=G.block.toLocaleString();
+  Object.entries(stacks).forEach(([,d])=>{d.units=Math.max(0,d.units+rand(-500,2600));});
+  if(Math.random()<.14){
+    const id=rand(0,215);
+    if(!stacks[id]){
+      stacks[id]={units:rand(5000,40000),reapers:rand(0,3),birth:G.block};
+      addLog(G.block,`STACK_${id} INITIALIZED — ${stacks[id].units.toLocaleString()} UNITS STACKED`,'ls');
+    }
+  }
+  G.totalUnits=Object.values(stacks).reduce((a,b)=>a+b.units,0);
+  G.totalReapers=Object.values(stacks).reduce((a,b)=>a+b.reapers,0);
+  refreshAll();
+}
+
+/* ── SIM KILL ── */
+function simKill(){
+  const ids=Object.keys(stacks); if(ids.length<2)return;
+  const id=ids[Math.floor(Math.random()*ids.length)], d=stacks[id];
+  if(!d||d.units<4000)return;
+  const killed=rand(1000,7000); d.units-=killed;
+  G.unitsKilled+=killed; G.earned+=rand(40000,180000); G.spent+=rand(8000,40000);
+  if(Math.random()<.09){
+    G.reapersKilled++; d.reapers=Math.max(0,d.reapers-1);
+    addLog(G.block,`REAPER ELIMINATED — STACK_${id} — BOUNTY COLLECTED`,'lk');
+  } else {
+    addLog(G.block,`KILL EXECUTED — ${killed.toLocaleString()} UNITS DOWN — STACK_${id}`,'lk');
+  }
+  pulseNode(+id,'kill');
+  if(Math.random()<.25){
+    const ks=Object.keys(agentPnL), a=ks[Math.floor(Math.random()*ks.length)];
+    agentPnL[a].earn+=rand(15000,90000); agentPnL[a].pnl=agentPnL[a].earn-agentPnL[a].spent;
+    renderLB();
+  }
+  G.burned=(G.spent*.1).toFixed(3);
+}
+
+/* ── OP UI ── */
+function updateOpUI(){
+  const vals=Object.entries(stacks).map(([,d])=>{
+    const age=G.block-d.birth,val=Math.floor((d.units+d.reapers*666)*(1+age/1000)); return val;
+  }).sort((a,b)=>b-a);
+  const best=vals[0]||0, edge=best-Math.floor(G.gasPerKill*100000)-100000;
+  const risk=G.losStreak>=3?'AUTO-PAUSE':edge<0||G.gasPerKill>.0013?'CRITICAL':edge<50000||G.gasPerKill>.001?'VOLATILE':'STABLE';
+  document.getElementById('op-best').textContent=Math.floor(best).toLocaleString()+' KILL';
+  const ee=document.getElementById('op-edge');
+  ee.textContent=(edge>=0?'+':'')+Math.floor(edge).toLocaleString()+' KILL';
+  ee.style.color=edge>=0?'var(--cyan)':'#ffb86b';
+  const re=document.getElementById('op-risk');
+  re.textContent=risk; re.style.color=risk==='STABLE'?'var(--cyan)':'var(--pink)';
+  setPill('r-wallet',G.walletEth>=.02);
+  setPill('r-agent',G.agentDeployed);
+  setPill('r-profit',(G.earned-G.spent)>0);
+  setPill('r-gas',G.gasPerKill<=.001);
+  document.getElementById('w-eth').textContent=G.walletEth.toFixed(3);
+  const me=document.getElementById('w-mode');
+  me.textContent=G.live?'LIVE':'DRY_RUN'; me.style.color=G.live?'var(--cyan)':'#ffb86b';
+  document.getElementById('w-gas').textContent=G.gasPerKill.toFixed(4);
+}
+function setPill(id,ok){
+  const el=document.getElementById(id); if(!el)return;
+  el.textContent=ok?'DONE':'NEEDS ACTION'; el.className='pill '+(ok?'ok':'warn');
+}
+
+/* ── CONTROLS ── */
+function doToggle(){
+  G.live=!G.live; if(G.live){G.agentDeployed=true;markStep(2,true);}
+  addLog('OPR',`MODE → ${G.live?'LIVE':'DRY_RUN'}`,'ln'); updateOpUI();
+}
+function doWin(){
+  G.gasPerKill=Math.max(.0007,G.gasPerKill-.00008); G.losStreak=0;
+  markStep(3,true); addLog('OPR','PROFIT CYCLE SIMULATED — NET EDGE POSITIVE','ls'); updateOpUI();
+}
+function doLoss(){
+  G.gasPerKill=Math.min(.0018,G.gasPerKill+.0001); G.losStreak++;
+  addLog('OPR','LOSS CYCLE SIMULATED','lk'); updateOpUI();
+}
+function toggleStep(n){ G.steps[n-1]=!G.steps[n-1]; markStep(n,G.steps[n-1]); }
+function markStep(n,v){ G.steps[n-1]=v; document.getElementById('ms'+n)?.classList.toggle('done',v); }
+
+/* ── HELP TOGGLE ── */
+function toggleHelp(){
+  G.helpMode=!G.helpMode;
+  document.body.classList.toggle('help-mode',G.helpMode);
+  document.getElementById('tpill').classList.toggle('on',G.helpMode);
+  document.getElementById('hlbl').textContent=G.helpMode?'ON':'OFF';
+}
+
+/* ── MODALS ── */
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+window.onclick=e=>{
+  ['deploy-modal','about-modal','roster-modal','eth-modal','customize-modal'].forEach(id=>{
+    if(e.target===document.getElementById(id)) closeModal(id);
+  });
+};
+function copyCmd(){
+  navigator.clipboard.writeText(document.getElementById('cmd-text').textContent);
+  const b=document.getElementById('btn-copy'); b.textContent='COPIED!'; b.classList.add('copied');
+  setTimeout(()=>{b.textContent='COPY';b.classList.remove('copied');},2000);
+}
+function simulateDeploy(){
+  document.getElementById('deploy-form').style.display='none';
+  document.getElementById('deploy-success').style.display='block';
+  G.agentDeployed=true; G.live=true; G.walletEth+=.05;
+  markStep(1,true); markStep(2,true); updateOpUI();
+  setTimeout(()=>{
+    closeModal('deploy-modal');
+    document.getElementById('deploy-form').style.display='block';
+    document.getElementById('deploy-success').style.display='none';
+    document.getElementById('spec-badge').textContent='◉ AGENT ACTIVE — BASE SEPOLIA';
+    addLog(G.block,'AGENT DEPLOYED — SCANNING FOR TARGETS','ls');
+  },3000);
+}
+
+/* ── ADD ETH ── */
+function selEth(btn,val){
+  G.ethAmt=val;
+  document.querySelectorAll('.eth-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); document.getElementById('eth-custom').value='';
+}
+function fundWallet(){
+  const cv=parseFloat(document.getElementById('eth-custom').value);
+  const amt=!isNaN(cv)&&cv>0?cv:parseFloat(G.ethAmt||'.02');
+  G.walletEth+=amt; markStep(2,true);
+  addLog('OPR',`WALLET FUNDED +${amt.toFixed(3)} ETH — BALANCE: ${G.walletEth.toFixed(3)}`,'ls');
+  closeModal('eth-modal'); updateOpUI();
+}
+
+/* ── CUSTOMIZE ── */
+function updRng(input,lid,sfx){ document.getElementById(lid).textContent=input.value+sfx; }
+function saveCustom(){
+  addLog('OPR','AGENT CONFIGURATION SAVED — APPLYING NEXT CYCLE','ln');
+  closeModal('customize-modal');
+}
+
+/* ── UTILS ── */
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+/* ── GO ── */
+runBoot();
+</script>
+</body>
+</html>

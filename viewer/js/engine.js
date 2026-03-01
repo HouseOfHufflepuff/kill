@@ -28,18 +28,47 @@ const totalKillBountyEl = document.getElementById('total-kill-bounty');
 const gameProfitEl = document.getElementById('stat-game-profit');
 const gameCostEl = document.getElementById('stat-game-cost');
 const gamePnlEl = document.getElementById('stat-game-pnl');
+const opBestEl = document.getElementById('op-best');
+const opPnlEl = document.getElementById('op-pnl');
+const opAgentEl = document.getElementById('op-agent');
 
-function toggleModal(show) { 
-    if (agentModal) agentModal.style.display = show ? 'flex' : 'none'; 
+function toggleModal(show) {
+    if (agentModal) agentModal.style.display = show ? 'flex' : 'none';
 }
 
 function toggleAboutModal(show) {
     if (aboutModal) aboutModal.style.display = show ? 'flex' : 'none';
 }
 
+function openRosterModal() {
+    const m = document.getElementById('roster-modal');
+    if (m) m.style.display = 'flex';
+}
+
+function closeRosterModal() {
+    const m = document.getElementById('roster-modal');
+    if (m) m.style.display = 'none';
+}
+
+function chooseAgent() {
+    closeRosterModal();
+    toggleModal(true);
+}
+
+function toggleHelp() {
+    document.body.classList.toggle('help-mode');
+    const pill  = document.getElementById('help-pill');
+    const label = document.getElementById('help-label');
+    const isOn  = document.body.classList.contains('help-mode');
+    if (pill)  pill.classList.toggle('on', isOn);
+    if (label) label.innerText = isOn ? 'ON' : 'OFF';
+}
+
 window.onclick = function(event) {
     if (event.target == agentModal) toggleModal(false);
     if (event.target == aboutModal) toggleAboutModal(false);
+    const rosterModal = document.getElementById('roster-modal');
+    if (event.target == rosterModal) closeRosterModal();
 };
 
 function copyCommand() {
@@ -156,9 +185,12 @@ function createParticle(type) {
 function triggerPulse(id, type) {
     const node = document.getElementById(`node-${id}`);
     if (!node) return;
-    const pulseClass = (type === 'kill') ? 'pulse-kill' : 'pulse-cyan';
-    node.classList.remove('pulse-kill', 'pulse-cyan');
-    void node.offsetWidth; 
+    let pulseClass;
+    if (type === 'kill')  pulseClass = 'pulse-kill';
+    else if (type === 'move') pulseClass = 'pulse-white';
+    else pulseClass = 'pulse-cyan'; // spawn
+    node.classList.remove('pulse-kill', 'pulse-cyan', 'pulse-white');
+    void node.offsetWidth;
     node.classList.add(pulseClass);
 }
 

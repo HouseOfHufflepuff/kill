@@ -97,8 +97,8 @@
     position: relative; z-index: 1000;
     display: flex; gap: 12px; font-size: 0.65rem; align-items: center;
     background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 4px;
-    border: 1px solid #333; margin-bottom: 20px;
-    pointer-events: auto;
+    border: 1px solid #333; margin-top: -36px; flex-shrink: 0;
+    pointer-events: auto; align-self: center;
 }
 .layer-toggle { cursor: pointer; color: var(--gray-active); display: flex; align-items: center; gap: 6px; }
 .layer-toggle input { accent-color: #666; cursor: pointer; }
@@ -115,12 +115,20 @@
 }
 .lethal-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
 
+/* --- LEFT PANEL SCROLL WRAPPER --- */
+.left-scroll {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    min-height: 0; padding-right: 4px;
+    scrollbar-width: thin; scrollbar-color: var(--pink) transparent;
+}
+.left-scroll::-webkit-scrollbar { width: 3px; }
+.left-scroll::-webkit-scrollbar-thumb { background: var(--pink); border-radius: 2px; }
+
 /* --- DATA FEEDS & SCROLLING --- */
 #ripe-stacks, #log-feed, #leaderboard {
     overflow-y: auto; padding-right: 8px;
     scrollbar-width: thin; scrollbar-color: var(--pink) transparent;
 }
-#ripe-stacks { max-height: 280px; }
 #log-feed { max-height: 160px; }
 #leaderboard { flex-grow: 1; min-height: 120px; }
 
@@ -241,6 +249,14 @@
     font-weight: 400;
     font-size: 0.55rem;
 }
+
+/* --- NODE PULSE ANIMATIONS --- */
+.node.pulse-kill  { animation: animPK .5s ease-out; }
+.node.pulse-cyan  { animation: animPC .5s ease-out; }
+.node.pulse-white { animation: animPW .5s ease-out; }
+@keyframes animPK { 0% { background: rgba(255, 45, 117, 0.65); } 100% { background: transparent; } }
+@keyframes animPC { 0% { background: rgba(0, 240, 255, 0.45); }  100% { background: transparent; } }
+@keyframes animPW { 0% { background: rgba(255, 255, 255, 0.35); } 100% { background: transparent; } }
 
 @keyframes log-slide { from { transform: translateX(10px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes pulse-dot { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }

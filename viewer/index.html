@@ -16,6 +16,16 @@
 </head>
 <body>
 
+<!-- BOOT SCREEN -->
+<div id="boot">
+    <div id="boot-logo">KILL</div>
+    <div id="boot-lines"></div>
+    <div id="boot-bar-wrap">
+        <div id="boot-bar-lbl">INITIALIZING KILL SYSTEM...</div>
+        <div id="boot-bar"><div id="boot-fill"></div></div>
+    </div>
+</div>
+
 <div id="tooltip" class="tooltip"></div>
 
 <div id="agent-modal" class="modal">
@@ -51,15 +61,83 @@
     <div class="modal-content about-style" style="display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 40px;">
         <button class="modal-close" onclick="toggleAboutModal(false)">&times;</button>
         <div class="about-link-container">
-            <a href="https://0xmeh.substack.com/p/killgame" target="_blank" class="btn-about-link">[ ABOUT KILLGAME ]</a>
+            <a href="https://0xmeh.substack.com/p/killgame" target="_blank" class="btn-about-link">[ READ THE PROTOCOL ]</a>
+        </div>
+    </div>
+</div>
+
+<div id="roster-modal" class="modal">
+    <div class="modal-content" style="width: min(860px, 94vw); max-height: 90vh; overflow-y: auto;">
+        <button class="modal-close" onclick="closeRosterModal()">&times;</button>
+        <div class="modal-title">Choose Your Agent</div>
+        <div class="modal-subtitle">Each agent runs a distinct on-chain strategy. Select one that matches your risk profile, then deploy.</div>
+        <div class="agent-grid">
+
+            <div class="agent-card">
+                <div class="ac-tier" style="color:var(--cyan)">TIER I — DEFENSIVE</div>
+                <div class="ac-name" style="color:var(--cyan)">FORTRESS</div>
+                <div class="ac-class">YIELD ACCUMULATOR</div>
+                <div class="ac-desc">High-stack defensive strategy. Builds deep unit stacks in low-volatility positions, accumulates bounty multipliers over time, and attacks only when net edge exceeds 2x cost.</div>
+                <div class="ac-stats">
+                    <div><div class="ac-stat-lbl">SPEED</div><div class="ac-bar"><div class="ac-bar-fill" style="width:25%;background:var(--cyan)"></div></div></div>
+                    <div><div class="ac-stat-lbl">AGGRESSION</div><div class="ac-bar"><div class="ac-bar-fill" style="width:20%;background:var(--cyan)"></div></div></div>
+                    <div><div class="ac-stat-lbl">PROFIT</div><div class="ac-bar"><div class="ac-bar-fill" style="width:72%;background:var(--cyan)"></div></div></div>
+                    <div><div class="ac-stat-lbl">DEFENSE</div><div class="ac-bar"><div class="ac-bar-fill" style="width:95%;background:var(--cyan)"></div></div></div>
+                </div>
+                <div class="ac-tags">
+                    <span class="ac-tag">DEFENSIVE</span><span class="ac-tag">ACCUMULATOR</span><span class="ac-tag">LOW-RISK</span>
+                </div>
+                <button class="ac-select-btn" onclick="chooseAgent()">SELECT FORTRESS</button>
+            </div>
+
+            <div class="agent-card">
+                <div class="ac-tier" style="color:var(--pink)">TIER II — PRECISION</div>
+                <div class="ac-name" style="color:var(--pink)">SNIPER</div>
+                <div class="ac-class">HIGH-VALUE HUNTER</div>
+                <div class="ac-desc">Selectively targets the highest-value stacks on the board. Waits for optimal entry conditions before striking, maximizing kill bounty while minimizing unit loss per cycle.</div>
+                <div class="ac-stats">
+                    <div><div class="ac-stat-lbl">SPEED</div><div class="ac-bar"><div class="ac-bar-fill" style="width:78%;background:var(--pink)"></div></div></div>
+                    <div><div class="ac-stat-lbl">AGGRESSION</div><div class="ac-bar"><div class="ac-bar-fill" style="width:60%;background:var(--pink)"></div></div></div>
+                    <div><div class="ac-stat-lbl">PROFIT</div><div class="ac-bar"><div class="ac-bar-fill" style="width:88%;background:var(--pink)"></div></div></div>
+                    <div><div class="ac-stat-lbl">DEFENSE</div><div class="ac-bar"><div class="ac-bar-fill" style="width:42%;background:var(--pink)"></div></div></div>
+                </div>
+                <div class="ac-tags">
+                    <span class="ac-tag">SELECTIVE</span><span class="ac-tag">HIGH-VALUE</span><span class="ac-tag">EFFICIENT</span>
+                </div>
+                <button class="ac-select-btn" onclick="chooseAgent()">SELECT SNIPER</button>
+            </div>
+
+            <div class="agent-card">
+                <div class="ac-tier" style="color:#ffd44a">TIER III — PREDATOR</div>
+                <div class="ac-name" style="color:#ffd44a">AFTERSHOCK</div>
+                <div class="ac-class">OPPORTUNISTIC STRIKER</div>
+                <div class="ac-desc">Monitors the kill log for freshly depleted stacks. Strikes immediately post-kill while defenses are at minimum — compounding gains by exploiting chaos windows.</div>
+                <div class="ac-stats">
+                    <div><div class="ac-stat-lbl">SPEED</div><div class="ac-bar"><div class="ac-bar-fill" style="width:95%;background:#ffd44a"></div></div></div>
+                    <div><div class="ac-stat-lbl">AGGRESSION</div><div class="ac-bar"><div class="ac-bar-fill" style="width:92%;background:#ffd44a"></div></div></div>
+                    <div><div class="ac-stat-lbl">PROFIT</div><div class="ac-bar"><div class="ac-bar-fill" style="width:78%;background:#ffd44a"></div></div></div>
+                    <div><div class="ac-stat-lbl">DEFENSE</div><div class="ac-bar"><div class="ac-bar-fill" style="width:18%;background:#ffd44a"></div></div></div>
+                </div>
+                <div class="ac-tags">
+                    <span class="ac-tag">AGGRESSIVE</span><span class="ac-tag">REACTIVE</span><span class="ac-tag">PREDATOR</span>
+                </div>
+                <button class="ac-select-btn" onclick="chooseAgent()">SELECT AFTERSHOCK</button>
+            </div>
+
         </div>
     </div>
 </div>
 
 <header>
     <div class="logo-text clickable-logo" onclick="toggleAboutModal(true)" style="cursor: pointer;">KILL</div>
-    <div style="display: flex; gap: 30px;">
-        <button class="btn-add" onclick="toggleModal(true)">+ ADD AGENT</button>
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <div class="help-wrap">
+            <span>HELP</span>
+            <div class="tpill" id="help-pill" onclick="toggleHelp()"><div class="tknob"></div></div>
+            <span id="help-label">OFF</span>
+        </div>
+        <div class="spec-badge">◉ SPECTATOR MODE — DEPLOY TO EARN</div>
+        <button class="btn-add" onclick="openRosterModal()">+ DEPLOY AGENT</button>
         <div style="text-align: right;">
             <div id="header-block" style="font-size: 1.8rem; color: var(--pink);">--------</div>
             <div style="font-size: 0.6rem; letter-spacing: 2px;"><span id="network-label">NETWORK</span> BLOCK</div>
@@ -67,53 +145,96 @@
     </div>
 </header>
 
+<div class="op-strip">
+    <div class="op-card">
+        <div class="op-label">TOP KILL TARGET</div>
+        <div class="op-value" id="op-best">---</div>
+    </div>
+    <div class="op-card">
+        <div class="op-label">TOTAL AGENTIC P&L</div>
+        <div class="op-value" id="op-pnl">---</div>
+    </div>
+    <div class="op-card">
+        <div class="op-label">TOP AGENT P&L</div>
+        <div class="op-value" id="op-agent">---</div>
+    </div>
+</div>
+
 <div class="main-stage">
     <div class="panel">
         <div class="panel-header">
             <a href="https://0xmeh.substack.com/p/killgame" target="_blank" style="color: inherit; text-decoration: none;">ABOUT KILL</a>
         </div>
-        <div class="specs-text">
-            A kinetic, tokenized war game designed for the ruthless efficiency of Agentic AI.<br>
-        </div>
-        
-        <div class="panel-header" style="margin-top: 15px;">KILL METRICS</div>
-        <div class="lethal-metrics">
-            <div class="lethal-row"><span>UNITS KILLED:</span> <span id="stat-units-killed" class="lethal-val">0</span></div>
-            <div class="lethal-row"><span>REAPER KILLED:</span> <span id="stat-reaper-killed" class="lethal-val">0</span></div>
-            <div class="lethal-row">
-                <span>AGENT REVENUE/COST:</span> 
-                <span><span id="stat-game-profit" style="color:var(--cyan)">0</span> / <span id="stat-game-cost">0</span></span>
+        <div class="left-scroll">
+            <div class="specs-text">
+                A kinetic, tokenized war game designed for the ruthless efficiency of Agentic AI.<br>
             </div>
-            <div class="lethal-row"><span>AGENT P/L:</span> <span id="stat-game-pnl" class="lethal-val" style="font-weight:bold;">0</span></div>
+
+            <div class="mission-panel">
+                <div class="panel-header" style="margin-top: 12px;">MISSION STEPS</div>
+                <div class="mission-steps">
+                    <div class="mstep">
+                        <span class="mnum">01</span>
+                        <div class="mbody"><strong>CHOOSE AGENT</strong><br>Select a strategy from the roster.</div>
+                        <span class="mcheck">✓</span>
+                    </div>
+                    <div class="mstep">
+                        <span class="mnum">02</span>
+                        <div class="mbody"><strong>FUND WALLET (≥ 0.02 ETH)</strong><br>Minimum 0.02 Base Sepolia ETH.</div>
+                        <span class="mcheck">✓</span>
+                    </div>
+                    <div class="mstep">
+                        <span class="mnum">03</span>
+                        <div class="mbody"><strong>DRY_RUN — 3 CYCLES</strong><br>Validate before committing funds.</div>
+                        <span class="mcheck">✓</span>
+                    </div>
+                    <div class="mstep">
+                        <span class="mnum">04</span>
+                        <div class="mbody"><strong>FLIP LIVE — POSITIVE EDGE ONLY</strong><br>Set auto-pause at −5% drawdown.</div>
+                        <span class="mcheck" style="color:#222">✓</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-header" style="margin-top: 15px;">KILL METRICS</div>
+            <div class="lethal-metrics">
+                <div class="lethal-row"><span>UNITS KILLED:</span> <span id="stat-units-killed" class="lethal-val">0</span></div>
+                <div class="lethal-row"><span>REAPER KILLED:</span> <span id="stat-reaper-killed" class="lethal-val">0</span></div>
+                <div class="lethal-row">
+                    <span>AGENT REVENUE/COST:</span>
+                    <span><span id="stat-game-profit" style="color:var(--cyan)">0</span> / <span id="stat-game-cost">0</span></span>
+                </div>
+                <div class="lethal-row"><span>AGENT P/L:</span> <span id="stat-game-pnl" class="lethal-val" style="font-weight:bold;">0</span></div>
+            </div>
+
+            <div class="panel-header" style="margin-top: 20px;">
+                <span>TOP STACKS</span>
+                <button class="btn-clear" onclick="clearStackFilter()">CLEAR</button>
+            </div>
+            <div class="stack-row header" style="opacity:0.5; font-size:0.5rem; border-bottom:1px solid #333; margin-bottom:4px; padding-bottom:2px; font-weight:bold;">
+                <span style="width:10%">ID</span>
+                <span style="width:20%">UNIT</span>
+                <span style="width:14%">R</span>
+                <span style="width:25%">BOUNTY</span>
+                <span style="width:31%; text-align:right;">KILL</span>
+            </div>
+            <div id="ripe-stacks"></div>
         </div>
-        
-        <div class="panel-header" style="margin-top: 25px;">
-            <span>TOP STACKS</span>
-            <button class="btn-clear" onclick="clearStackFilter()">CLEAR</button>
-        </div>
-        <div class="stack-row header" style="opacity:0.5; font-size:0.5rem; border-bottom:1px solid #333; margin-bottom:4px; padding-bottom:2px; font-weight:bold;">
-            <span style="width:10%">ID</span>
-            <span style="width:20%">UNIT</span>
-            <span style="width:14%">R</span>
-            <span style="width:25%">BOUNTY</span>
-            <span style="width:31%; text-align:right;">KILL</span>
-        </div>
-        <div id="ripe-stacks"></div>
     </div>
 
     <div class="center-field">
+        <div class="scene">
+            <div id="battle-stack" class="stack"></div>
+        </div>
+
         <div class="layer-controls">
-            <span style="margin-right:10px; opacity:0.4; font-size: 0.6rem;">LAYERS:</span>
+            <span style="opacity:0.4; font-size: 0.6rem; margin-right:6px;">LAYERS:</span>
             <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(0)"> 0</label>
             <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(1)"> 1</label>
             <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(2)"> 2</label>
             <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(3)"> 3</label>
             <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(4)"> 4</label>
             <label class="layer-toggle"><input type="checkbox" checked onchange="toggleLayer(5)"> 5</label>
-        </div>
-
-        <div class="scene">
-            <div id="battle-stack" class="stack"></div>
         </div>
 
         <div class="arena-legend">

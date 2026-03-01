@@ -3,9 +3,45 @@
  * FULL UNTRUNCATED BUILD v1.0.5
  */
 
+/* --- OP-STRIP SUBHEADER --- */
+.op-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 8px 24px;
+    flex-shrink: 0;
+    background: #000;
+    border-bottom: 1px solid rgba(255, 45, 117, 0.15);
+}
+.op-card {
+    border: 1px solid rgba(0, 240, 255, 0.18);
+    background: rgba(0, 0, 0, 0.9);
+    padding: 8px 12px;
+}
+.op-kicker {
+    color: #444;
+    font-size: 0.5rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+.op-label {
+    color: var(--pink);
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+.op-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--cyan);
+    font-weight: 700;
+    margin-top: 3px;
+}
+
 .main-stage {
-    flex-grow: 1; 
-    display: grid; 
+    flex-grow: 1;
+    display: grid;
     grid-template-columns: 320px 1fr 400px;
     gap: 15px; padding: 20px; box-sizing: border-box; 
     overflow: hidden;
@@ -60,6 +96,11 @@
 
     .panel:first-of-type { order: 2 !important; }
     .panel:last-of-type { order: 3 !important; }
+
+    .op-strip {
+        grid-template-columns: 1fr !important;
+        padding: 8px 10px !important;
+    }
 
     footer {
         height: auto;
