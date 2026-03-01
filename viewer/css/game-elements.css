@@ -236,7 +236,7 @@
     color: var(--pink);
     font-family: 'JetBrains Mono', monospace;
     font-weight: 400;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 @keyframes log-slide { from { transform: translateX(10px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
