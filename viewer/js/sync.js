@@ -318,9 +318,18 @@ async function syncData() {
                 triggerPulse(evt.stackId, 'spawn');
             } else if (evt.type === 'kill') {
                 const atkBounty = parseFloat(ethers.formatEther(evt.attackerBounty || "0"));
+                const defBounty = parseFloat(ethers.formatEther(evt.defenderBounty || "0"));
+                const offPow  = parseInt(evt.attackerUnitsSent || 0) + parseInt(evt.attackerReaperSent || 0) * 666;
+                const defPow  = parseInt(evt.initialDefenderUnits || 0) + parseInt(evt.initialDefenderReaper || 0) * 666;
+                const offLost = parseInt(evt.attackerUnitsLost || 0) + parseInt(evt.attackerReaperLost || 0) * 666;
+                const defLost = parseInt(evt.targetUnitsLost || 0) + parseInt(evt.targetReaperLost || 0) * 666;
                 const logMsg = `<span style="color:var(--pink)">[KILL]</span> ${evt.attacker.substring(0, 6)} <span style="opacity:0.5">X</span> STACK_${evt.stackId}`;
-                // Updated to use formatValue
-                const subMsg = `BATTLE AT STACK ${evt.stackId}\nBOUNTY CLAIMED: ${formatValue(atkBounty)} KILL`;
+                const subMsg = `<div class="kill-table">` +
+                    `<div class="kill-row kill-header"><span></span><span>OFFENSE</span><span>DEFENSE</span></div>` +
+                    `<div class="kill-row"><span>BATTLE</span><span>${formatValue(offPow)}</span><span>${formatValue(defPow)}</span></div>` +
+                    `<div class="kill-row"><span>OUTCOME</span><span>${formatValue(offLost)}</span><span>${formatValue(defLost)}</span></div>` +
+                    `<div class="kill-row"><span>KILL WON</span><span>${formatValue(atkBounty)}</span><span>${formatValue(defBounty)}</span></div>` +
+                    `</div>`;
                 addLog(block, logMsg, 'log-kill', subMsg);
                 triggerPulse(evt.stackId, 'kill');
             } else if (evt.type === 'move') {
