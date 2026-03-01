@@ -10,12 +10,17 @@
     gap: 8px;
     padding: 8px 24px;
     flex-shrink: 0;
-    background: #000;
-    border-bottom: 1px solid rgba(255, 45, 117, 0.15);
+    /* Transparent overlay — tactical view shows through */
+    background: rgba(5, 5, 5, 0.62);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 45, 117, 0.22);
+    position: relative;
+    z-index: 50;
 }
 .op-card {
-    border: 1px solid rgba(0, 240, 255, 0.18);
-    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(0, 240, 255, 0.22);
+    background: rgba(0, 0, 0, 0.28);
     padding: 8px 12px;
 }
 .op-kicker {
@@ -43,15 +48,22 @@
     flex-grow: 1;
     display: grid;
     grid-template-columns: 320px 1fr 400px;
-    gap: 15px; padding: 20px; box-sizing: border-box; 
+    gap: 15px; padding: 20px; box-sizing: border-box;
     overflow: hidden;
     max-height: calc(100vh - 150px);
+    /* Pull up behind the transparent op-strip */
+    margin-top: -72px;
+    position: relative;
+    z-index: 10;
 }
 
 .panel {
-    background: var(--panel-bg); 
+    background: var(--panel-bg);
     border: 1px solid rgba(255, 45, 117, 0.2);
-    padding: 20px; display: flex; flex-direction: column; 
+    /* Extra top padding compensates for the -72px pull-up so panel content
+       starts where it visually should, below the op-strip overlay */
+    padding: 92px 20px 20px;
+    display: flex; flex-direction: column;
     overflow: hidden;
     min-height: 0;
 }
@@ -105,6 +117,10 @@
 
     .panel:first-of-type { order: 2 !important; }
     .panel:last-of-type { order: 3 !important; }
+
+    /* Reset desktop overlay trick */
+    .main-stage { margin-top: 0 !important; }
+    .panel { padding: 20px !important; }
 
     /* Compact op-strip: keep 3 columns, shrink everything */
     .op-strip {
