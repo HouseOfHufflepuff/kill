@@ -123,6 +123,7 @@ function updateTopStacks(stacks, activeReaperMap) {
     if(totalKillBountyEl) totalKillBountyEl.innerText = formatValue(Math.floor(globalBountyKill));
 
     const sorted = processed.filter(s => s.units > 0 || s.reapers > 0).sort((a, b) => b.kill - a.kill);
+    if (opBestEl) opBestEl.innerText = sorted.length > 0 ? `${formatValue(Math.floor(sorted[0].kill))} KILL` : '---';
     if (sorted.length === 0) {
         topStacksEl.innerHTML = '<div style="font-size:0.7rem; color:#444; padding:10px;">ARENA EMPTY...</div>';
         return;
@@ -293,6 +294,17 @@ async function syncData() {
             gamePnlEl.innerText = (totalNet > 0 ? "+" : "") + formatValue(totalNet);
             gamePnlEl.style.color = totalNet >= 0 ? "var(--cyan)" : "var(--pink)";
         }
+        if (opPnlEl) {
+            opPnlEl.innerText = (totalNet > 0 ? "+" : "") + formatValue(totalNet);
+            opPnlEl.style.color = totalNet >= 0 ? "var(--cyan)" : "var(--pink)";
+        }
+        if (opAgentEl && agents.length > 0) {
+            const topEarned = parseFloat(ethers.formatEther(agents[0].totalEarned || "0"));
+            const topSpent  = parseFloat(ethers.formatEther(agents[0].totalSpent  || "0"));
+            const topNet    = topEarned - topSpent;
+            opAgentEl.innerText = `${topNet > 0 ? '+' : ''}${formatValue(topNet)} KILL`;
+            opAgentEl.style.color = topNet >= 0 ? 'var(--cyan)' : 'var(--pink)';
+        }
 
         if (globalStat) {
             // Updated to use formatValue
@@ -340,7 +352,7 @@ async function syncData() {
                 const logMsg = `<span style="color:#888">[MOVE]</span> <span class="log-addr-short">${evt.agent.substring(0, 6)}</span><span class="log-addr-full"><a href="${BLOCK_EXPLORER}/address/${evt.agent}" target="_blank">${evt.agent}</a></span> <span style="opacity:0.5">>></span> STACK_${evt.toStack}`;
                 const subMsg = `TRANSFERRED: ${formatValue(parseInt(evt.units))} UNITS | ${formatValue(parseInt(evt.reaper))} REAPER`;
                 addLog(block, logMsg, 'log-move', subMsg);
-                triggerPulse(evt.toStack, 'spawn');
+                triggerPulse(evt.toStack, 'move');
             }
             knownIds.add(evt.id);
         });
