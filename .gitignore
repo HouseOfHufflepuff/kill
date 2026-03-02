@@ -8,3 +8,8 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 .vscode/
+
+# Solana / Anchor
+test-ledger/
+contracts-solana/target/
+contracts-solana/.anchor/
