@@ -1042,8 +1042,8 @@
       ]
     },
     "/Users/houseofhufflepuff/Development/kill/contracts/KillToken.sol": {
-      "lastModificationDate": 1772229750599,
-      "contentHash": "c27906d4549bc094c8b724d2fb171ec0",
+      "lastModificationDate": 1772493708976,
+      "contentHash": "a4c961754796d68e7e149650df77c75c",
       "sourceName": "contracts/KillToken.sol",
       "solcConfig": {
         "version": "0.8.24",

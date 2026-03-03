@@ -34,17 +34,15 @@ describe("KILLGame: Economic Simulation", function () {
     killGame = await KILLGame.deploy(killToken.address);
     await killGame.deployed();
 
-    // Reduced to 1B to avoid ERC20ExceededCap (6.66B cap)
-    const amount = ethers.utils.parseEther("1000000000"); 
-    await killToken.mint(userA.address, amount);
-    await killToken.mint(userB.address, amount);
+    const amount = ethers.utils.parseEther("1000000000");
+    await killToken.connect(owner).transfer(userA.address, amount);
+    await killToken.connect(owner).transfer(userB.address, amount);
     await killToken.connect(userA).approve(killGame.address, amount);
     await killToken.connect(userB).approve(killGame.address, amount);
   });
 
   it("Should handle 4B KILL seed and display full combat summary", async function () {
-    const hugeSeed = ethers.utils.parseEther("4000000000"); 
-    await killToken.mint(owner.address, hugeSeed);
+    const hugeSeed = ethers.utils.parseEther("4000000000");
     await killToken.connect(owner).transfer(killGame.address, hugeSeed);
     
     await killGame.connect(userA).spawn(1, 666);

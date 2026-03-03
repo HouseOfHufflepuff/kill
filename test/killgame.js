@@ -19,12 +19,11 @@ describe("KILLGame: Full Suite", function () {
     killGame = await KILLGame.deploy(killToken.address);
     await killGame.deployed(); 
 
-    const amount = ethers.utils.parseEther("10000000"); 
-    await killToken.mint(userA.address, amount);
-    await killToken.mint(userB.address, amount);
-    
+    const amount = ethers.utils.parseEther("10000000");
+    await killToken.connect(owner).transfer(userA.address, amount);
+    await killToken.connect(owner).transfer(userB.address, amount);
+
     const seedAmount = ethers.utils.parseEther("1000000");
-    await killToken.mint(owner.address, seedAmount);
     await killToken.connect(owner).transfer(killGame.address, seedAmount);
     
     await killToken.connect(userA).approve(killGame.address, amount);
