@@ -1,0 +1,25 @@
+{
+  "role": "market-maker",
+  "network": {
+    "network_name": "basesepolia",
+    "rpc_url": "https://sepolia.base.org",
+    "kill_game_addr": "0xfd21c1c28d58e420837e8057A227C3D432D289Ec",
+    "kill_faucet_addr": "0x258042B01c4B1Bc749f296B477F703FC6e8462Cd",
+    "weth_addr": "0x4200000000000000000000000000000000000006",
+    "pool_addr": "0xe0f2D522dad89eB1fA3Dc829B760aCe8fc027Ae5",
+    "uniswap_v3_factory": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+    "position_manager": "0x27F971cb582BF9E50F397e4d29a5C7A34f11faA2",
+    "swap_router": "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
+    "fee_tier": 10000
+  },
+  "settings": {
+    "ETH_TARGET": "0.01",
+    "KILL_TARGET": "5000000",
+    "TOTAL_SUPPLY": 666000000000,
+    "MCAP_MIN_USD": 1000,
+    "MCAP_MAX_USD": 10000000,
+    "ETH_PRICE_USD": 2000,
+    "LOOP_DELAY_SECONDS": 3,
+    "REBALANCE_THRESHOLD": 0.15
+  }
+}

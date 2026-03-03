@@ -12,16 +12,22 @@ const AGENT4_PUBLIC_KEY=process.env.AGENT4_PUBLIC_KEY;
 const AGENT5_PUBLIC_KEY=process.env.AGENT5_PUBLIC_KEY;
 const MAX_PUB=process.env.MAX_PUB;
 
+
 //hardhat run scripts/mint.js --network base
 //hardhat run scripts/mint.js --network basesepolia
-async function main() {
-    const KillToken = await ethers.getContractFactory("KILLToken");
-    const killToken = await KillToken.attach(KILL_TOKEN);
+// Minimal ABI — hardcoded so the script works regardless of compiled artifact.
+// The deployed contract still has mint(address,uint256) onlyOwner on-chain.
+const MINT_ABI = [
+    "function mint(address to, uint256 amount) external"
+];
 
+async function main() {
     const [owner] = await ethers.getSigners();
+    const killToken = new ethers.Contract(KILL_TOKEN, MINT_ABI, owner);
     //666M game contract
-    await killToken.mint(KILL_GAME, "666000000000000000000000000");
-    await killToken.mint(KILL_FAUCET, "666000000000000000000000000");
+    //await killToken.mint(KILL_GAME, "666000000000000000000000000");
+    //await killToken.mint(KILL_FAUCET, "666000000000000000000000000");
+    await killToken.mint(PUBLIC_KEY, "666000000000000000000000000");
 
 
     //10M agent0
@@ -89,11 +95,12 @@ async function main() {
     // await killToken.mint("0x575d31181992a94562e23930ac66833392ce2498", "10000000000000000000000000");
 
     //         await killToken.mint("0x01d2BA275dD079A2764E72AD9527bd1A5F66a013", "10000000000000000000000000");
-    //await killToken.mint("0x2f90119A8E280d5a04419332D69d5B4aCDcCbb49", "10000000000000000000000000");
-    await killToken.mint("0xf90B731e9baCaa105FcA615BbB1A256d14ff15Ed", "10000000000000000000000000"); // invalid address — 22 bytes
+    // await killToken.mint("0x7c3b039704247c8ed795d8f1952a8b3fcca9f35e", "10000000000000000000000000");
+    // await killToken.mint("0xd91f0a0ae2fa0ad2a0915905a79af1ba0683233c", "10000000000000000000000000"); // invalid address — 22 bytes
+    // await killToken.mint("0xe3b2fa050c72ea2c0a2d1b965c1f1bc551e82ff3", "10000000000000000000000000"); 
+    // await killToken.mint("0x68fa594de4420125e928a9be799e53821effac2c", "10000000000000000000000000");
+    // await killToken.mint("0x83a39a36287a79ad317879af309d46290b859940", "10000000000000000000000000"); 
     
-    
-
     // //10M max
     //await killToken.mint(MAX_PUB, "50000000000000000000000000");
 
