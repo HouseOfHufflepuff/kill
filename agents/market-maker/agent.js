@@ -86,7 +86,8 @@ function getPositionAmounts(sqrtPriceX96, tickLower, tickUpper, liquidity) {
 }
 
 // Display last N swaps against the full pool (not just this NFT)
-async function displayRecentSwaps(pool, token0IsKill, killPerEth, ethPriceUsd, count = 5) {
+async function displayRecentSwaps(pool, token0IsKill, killPerEth, ethPriceUsd, feeTier, count = 5) {
+    const feeRate = feeTier / 1_000_000; // e.g. 10000 → 0.01 (1%)
     try {
         const events = await pool.queryFilter(pool.filters.Swap(), -10000);
         const recent = events.slice(-count).reverse();
@@ -105,13 +106,18 @@ async function displayRecentSwaps(pool, token0IsKill, killPerEth, ethPriceUsd, c
             const priceAfterKillPerEth = token0IsKill
                 ? 1 / Math.pow(1.0001, tickAfter)
                 : Math.pow(1.0001, tickAfter);
-            const killUsd   = (1 / priceAfterKillPerEth) * ethPriceUsd;
+            const killUsd = (1 / priceAfterKillPerEth) * ethPriceUsd;
+            // Fee is taken from the input token (1% of input)
+            const feeUsd = buyKill
+                ? ethAmt  * feeRate * ethPriceUsd
+                : killAmt * feeRate * killUsd;
             return {
-                "Block":     e.blockNumber,
-                "Action":    buyKill ? "BUY  KILL" : "SELL KILL",
-                "ETH":       (token0IsKill ? killAmt : ethAmt).toFixed(6),
-                "KILL":      Math.round(token0IsKill ? ethAmt : killAmt).toLocaleString(),
-                "KILL Price": `$${killUsd.toExponential(3)}`
+                "Block":      e.blockNumber,
+                "Action":     buyKill ? "BUY  KILL" : "SELL KILL",
+                "ETH":        (token0IsKill ? killAmt : ethAmt).toFixed(6),
+                "KILL":       Math.round(token0IsKill ? ethAmt : killAmt).toLocaleString(),
+                // "KILL Price": `$${killUsd.toExponential(3)}`,
+                "Fee USD":    `$${feeUsd < 0.0001 ? feeUsd.toExponential(3) : feeUsd.toFixed(6)}`
             };
         });
         console.log(`${CYA}── RECENT POOL SWAPS (last ${rows.length}) ──────────────────────────${RES}`);
@@ -170,108 +176,106 @@ async function main() {
             const currentTick  = slot0[1];
             const rawPrice = tickToPrice(currentTick);
 
-            // rawPrice = token1/token0. With WETH=token0: rawPrice = KILL/WETH (KILL per 1 ETH).
-            // killPerEth: how many KILL per 1 ETH at current price.
-            const killPerEth   = token0IsKill ? (1 / rawPrice) : rawPrice;
+            const killPerEth      = token0IsKill ? (1 / rawPrice) : rawPrice;
             const priceEthPerKill = 1 / killPerEth;
-            const impliedMcap  = priceEthPerKill * ETH_PRICE_USD * TOTAL_SUPPLY;
+            const killPriceUsd    = priceEthPerKill * ETH_PRICE_USD;
+            const impliedMcap     = priceEthPerKill * ETH_PRICE_USD * TOTAL_SUPPLY;
+            const fmtUsd = v => v < 0.000001 ? `$${v.toExponential(3)}` : `$${v.toFixed(8)}`;
 
-            const killPriceUsd = priceEthPerKill * ETH_PRICE_USD;
-            console.log(`\n${CYA}── MARKET-MAKER STATUS ─────────────────────────────${RES}`);
-            console.table([{
-                "ETH Balance":  parseFloat(ethers.utils.formatEther(ethBalance)).toFixed(6),
-                "KILL Balance": parseFloat(ethers.utils.formatEther(killBalance)).toLocaleString(),
-                "KILL Price":   `$${killPriceUsd.toExponential(3)}`,
-                "Implied MCap": `$${impliedMcap.toFixed(0)}`,
-                "Position ID":  positionTokenId ?? "none"
-            }]);
-            await displayRecentSwaps(pool, token0IsKill, killPerEth, ETH_PRICE_USD);
-
-
-            // ── Recover existing position NFT ──
+            // ── Recover existing position NFT (silent) ──
             if (positionTokenId === null) {
                 const nftCount = await posManager.balanceOf(wallet.address);
                 if (nftCount.gt(0)) {
                     positionTokenId = (await posManager.tokenOfOwnerByIndex(wallet.address, 0)).toNumber();
-                    console.log(`[INFO] Recovered existing position NFT: ${positionTokenId}`);
                 }
             }
 
+            // ── Fetch position & fees upfront ──
+            let pos = null, posEth = 0, inRange = false, feeTotalUsd = null;
+            if (positionTokenId !== null) {
+                pos = await posManager.positions(positionTokenId);
+                const { amount0, amount1 } = getPositionAmounts(sqrtPriceX96, pos.tickLower, pos.tickUpper, pos.liquidity);
+                posEth  = token0IsKill ? amount1 : amount0;
+                inRange = currentTick >= pos.tickLower && currentTick <= pos.tickUpper;
+
+                // callStatic.collect reveals full accumulated fees (tokensOwed alone misses
+                // fees still tracked in feeGrowthInside until a liquidity event flushes them)
+                const MAX_UINT128 = ethers.BigNumber.from(2).pow(128).sub(1);
+                const collected = await posManager.callStatic.collect({
+                    tokenId:    positionTokenId,
+                    recipient:  wallet.address,
+                    amount0Max: MAX_UINT128,
+                    amount1Max: MAX_UINT128
+                });
+                const feeToken0  = parseFloat(ethers.utils.formatEther(collected.amount0));
+                const feeToken1  = parseFloat(ethers.utils.formatEther(collected.amount1));
+                const feeEth     = token0IsKill ? feeToken1 : feeToken0;
+                const feeKill    = token0IsKill ? feeToken0 : feeToken1;
+                feeTotalUsd      = feeEth * ETH_PRICE_USD + feeKill * killPriceUsd;
+            }
+
+            // ── STATUS table ──
+            console.log(`\n${CYA}── MARKET-MAKER STATUS ─────────────────────────────${RES}`);
+            console.table([{
+                "ETH Balance":  parseFloat(ethers.utils.formatEther(ethBalance)).toFixed(6),
+                "KILL Balance": parseFloat(ethers.utils.formatEther(killBalance)).toLocaleString(),
+                // "KILL Price":   `$${killPriceUsd.toExponential(3)}`,
+                "Implied MCap": `$${impliedMcap.toFixed(0)}`,
+                "Position ID":  positionTokenId ?? "none",
+                "Fees $":       feeTotalUsd !== null ? fmtUsd(feeTotalUsd) : "n/a"
+            }]);
+
+            // ── SWAPS table ──
+            await displayRecentSwaps(pool, token0IsKill, killPerEth, ETH_PRICE_USD, fee_tier, 10);
+
             let needsOpen = positionTokenId === null;
 
-            // ── Position status, threshold swaps, rebalance check ──
-            if (positionTokenId !== null) {
-                const pos = await posManager.positions(positionTokenId);
-                const { amount0, amount1 } = getPositionAmounts(sqrtPriceX96, pos.tickLower, pos.tickUpper, pos.liquidity);
-
-                // Map amount0/amount1 → posEth/posKill based on token ordering
-                const posEth  = token0IsKill ? amount1 : amount0;
-                const posKill = token0IsKill ? amount0 : amount1;
-
-                console.log(`${CYA}── POSITION #${positionTokenId} ────────────────────────────${RES}`);
-                console.table([{
-                    "Pos ETH":    posEth.toFixed(6),
-                    "Pos KILL":   Math.round(posKill).toLocaleString(),
-                    "ETH Target": ETH_TARGET,
-                    "KILL Target": parseFloat(KILL_TARGET).toLocaleString(),
-                    "Ticks":      `[${pos.tickLower}, ${pos.tickUpper}]`,
-                    "Liquidity":  pos.liquidity.toString().slice(0, 12) + "..."
-                }]);
-
-                const inRange = currentTick >= pos.tickLower && currentTick <= pos.tickUpper;
-                console.log(`[RANGE] Ticks: [${pos.tickLower}, ${pos.tickUpper}] | Current: ${currentTick} | ${inRange ? `${GRN}IN RANGE${RES}` : `${YEL}OUT OF RANGE${RES}`}`);
-
-                // ── Top up ETH if below target and position is in range ──
-                if (posEth < parseFloat(ETH_TARGET)) {
-                    if (!inRange) {
-                        console.log(`${YEL}[TOP-UP] ETH low (${posEth.toFixed(6)}) but position is out of range — V3 cannot accept ETH here. Waiting.${RES}`);
-                    } else {
-                        const killBal   = await killToken.balanceOf(wallet.address);
-                        const wethBal   = await weth.balanceOf(wallet.address);
-                        const walletEth = parseFloat(ethers.utils.formatEther(await wallet.getBalance()));
-                        const GAS_RESERVE = 0.005;
-                        const ethToAdd  = parseFloat(ETH_TARGET) - posEth;
-                        const MIN_KILL  = ethers.utils.parseUnits("1000", 18);
-
-                        console.log(`[TOP-UP] killBal=${ethers.utils.formatEther(killBal)} KILL  wethBal=${ethers.utils.formatEther(wethBal)} WETH`);
-
-                        if (killBal.lt(MIN_KILL)) {
-                            console.log(`${RED}[TOP-UP] Wallet KILL too low (${ethers.utils.formatEther(killBal)}) — need ≥1000 KILL.${RES}`);
-                        } else if (walletEth + parseFloat(ethers.utils.formatEther(wethBal)) < ethToAdd + GAS_RESERVE) {
-                            console.log(`${RED}[TOP-UP] Insufficient ETH (have ${walletEth.toFixed(6)}, need ${(ethToAdd + GAS_RESERVE).toFixed(6)}).${RES}`);
-                        } else {
-                            const wethBalFloat = parseFloat(ethers.utils.formatEther(wethBal));
-                            const toWrap = Math.max(0, ethToAdd - wethBalFloat);
-                            const ethInWei = ethers.utils.parseEther(ethToAdd.toFixed(8));
-                            console.log(`${YEL}[TOP-UP] Adding ${ethToAdd.toFixed(6)} ETH + KILL to position (wrapping ${toWrap.toFixed(6)} ETH)...${RES}`);
-                            if (toWrap > 0) {
-                                await (await weth.deposit({ value: ethers.utils.parseEther(toWrap.toFixed(8)) })).wait();
-                            }
-                            const wethAllow = await weth.allowance(wallet.address, position_manager);
-                            if (wethAllow.lt(ethInWei)) {
-                                await (await weth.approve(position_manager, ethers.constants.MaxUint256)).wait();
-                            }
-                            const killAllow = await killToken.allowance(wallet.address, position_manager);
-                            if (killAllow.lt(killBal)) {
-                                await (await killToken.approve(position_manager, ethers.constants.MaxUint256)).wait();
-                            }
-                            const [a0Desired, a1Desired] = token0IsKill
-                                ? [killBal, ethInWei]
-                                : [ethInWei, killBal];
-                            const tx = await posManager.increaseLiquidity({
-                                tokenId:        positionTokenId,
-                                amount0Desired: a0Desired,
-                                amount1Desired: a1Desired,
-                                amount0Min:     0,
-                                amount1Min:     0,
-                                deadline:       Math.floor(Date.now() / 1000) + 600
-                            }, { gasLimit: 400000 });
-                            await tx.wait();
-                            console.log(`${GRN}[TOP-UP] Liquidity increased.${RES}`);
-                        }
-                    }
+            // ── Top up ETH if below target and position is in range ──
+            if (pos !== null && posEth < parseFloat(ETH_TARGET)) {
+                if (!inRange) {
+                    console.log(`${YEL}[TOP-UP] ETH low (${posEth.toFixed(6)}) but out of range — waiting.${RES}`);
                 } else {
-                    console.log(`${GRN}[OK] ETH in position (${posEth.toFixed(6)}) meets target (${ETH_TARGET}).${RES}`);
+                    const killBal   = await killToken.balanceOf(wallet.address);
+                    const wethBal   = await weth.balanceOf(wallet.address);
+                    const walletEth = parseFloat(ethers.utils.formatEther(await wallet.getBalance()));
+                    const GAS_RESERVE = 0.005;
+                    const ethToAdd  = parseFloat(ETH_TARGET) - posEth;
+                    const MIN_KILL  = ethers.utils.parseUnits("1000", 18);
+
+                    if (killBal.lt(MIN_KILL)) {
+                        console.log(`${RED}[TOP-UP] KILL too low (${ethers.utils.formatEther(killBal)}) — need ≥1000 KILL.${RES}`);
+                    } else if (walletEth + parseFloat(ethers.utils.formatEther(wethBal)) < ethToAdd + GAS_RESERVE) {
+                        console.log(`${RED}[TOP-UP] Insufficient ETH (have ${walletEth.toFixed(6)}, need ${(ethToAdd + GAS_RESERVE).toFixed(6)}).${RES}`);
+                    } else {
+                        const wethBalFloat = parseFloat(ethers.utils.formatEther(wethBal));
+                        const toWrap = Math.max(0, ethToAdd - wethBalFloat);
+                        const ethInWei = ethers.utils.parseEther(ethToAdd.toFixed(8));
+                        console.log(`${YEL}[TOP-UP] Adding ${ethToAdd.toFixed(6)} ETH + KILL to position (wrapping ${toWrap.toFixed(6)} ETH)...${RES}`);
+                        if (toWrap > 0) {
+                            await (await weth.deposit({ value: ethers.utils.parseEther(toWrap.toFixed(8)) })).wait();
+                        }
+                        const wethAllow = await weth.allowance(wallet.address, position_manager);
+                        if (wethAllow.lt(ethInWei)) {
+                            await (await weth.approve(position_manager, ethers.constants.MaxUint256)).wait();
+                        }
+                        const killAllow = await killToken.allowance(wallet.address, position_manager);
+                        if (killAllow.lt(killBal)) {
+                            await (await killToken.approve(position_manager, ethers.constants.MaxUint256)).wait();
+                        }
+                        const [a0Desired, a1Desired] = token0IsKill
+                            ? [killBal, ethInWei]
+                            : [ethInWei, killBal];
+                        const tx = await posManager.increaseLiquidity({
+                            tokenId:        positionTokenId,
+                            amount0Desired: a0Desired,
+                            amount1Desired: a1Desired,
+                            amount0Min:     0,
+                            amount1Min:     0,
+                            deadline:       Math.floor(Date.now() / 1000) + 600
+                        }, { gasLimit: 400000 });
+                        await tx.wait();
+                        console.log(`${GRN}[TOP-UP] Liquidity increased.${RES}`);
+                    }
                 }
             }
 
