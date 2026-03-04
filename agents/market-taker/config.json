@@ -1,23 +1,4 @@
 {
   "role": "market-taker",
-  "network": {
-    "network_name": "basesepolia",
-    "rpc_url": "https://sepolia.base.org",
-    "kill_game_addr": "0xfd21c1c28d58e420837e8057A227C3D432D289Ec",
-    "weth_addr": "0x4200000000000000000000000000000000000006",
-    "pool_addr": "0xe0f2D522dad89eB1fA3Dc829B760aCe8fc027Ae5",
-    "swap_router": "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
-    "fee_tier": 10000
-  },
-  "settings": {
-    "ACQUIRE": "KILL",
-    "SPEND": "ETH",
-    "TARGET_PRICE_USD": "0.000001",
-    "BUDGET": "0.01",
-    "BUY_INCREMENT": "0.001",
-    "BATCH_SIZE": 5,
-    "SLIPPAGE_BPS": 500,
-    "ETH_PRICE_USD": 2000,
-    "LOOP_DELAY_SECONDS": 12
-  }
+  "build": "1.0.0"
 }
