@@ -2,6 +2,21 @@
 const { ethers } = require("hardhat");
 const { GRN, YEL, RED, RES, getManhattanDist, isAdjacent, calcPower } = require('../common');
 
+function fmtPow(n) {
+    const v = parseFloat(n.toString());
+    if (v >= 1e9) return (v / 1e9).toFixed(1) + 'B';
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return Math.round(v / 1e3) + 'K';
+    return String(Math.round(v));
+}
+
+// Returns the strongest enemy (highest individual power) from an array of stack items
+function topEnemy(enemies) {
+    return [...enemies].sort((a, b) =>
+        calcPower(b.units, b.reapers).gt(calcPower(a.units, a.reapers)) ? 1 : -1
+    )[0];
+}
+
 module.exports = {
     async run({ wallet, killGame, config }) {
         const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, HUB_PERIMETER, MAX_GAS_PRICE_GWEI, KILL_MULTIPLIER } = config.settings;
@@ -44,7 +59,10 @@ module.exports = {
                     'Mine':   mp.toString(),
                     'Status': enemies.length === 0 ? `${GRN}SECURE${RES}` : canOwn ? `${YEL}READY${RES}` : `${RED}HOSTILE${RES}`
                 });
-                if (enemies.length > 0) validTargets.push({ id: stackId, target: enemies[0], dist, enemyPower: ep });
+                if (enemies.length > 0) {
+                    const top = topEnemy(enemies);
+                    validTargets.push({ id: stackId, target: top, dist, enemyPower: calcPower(top.units, top.reapers) });
+                }
             }
             if (stackId === HUB_STACK) hubState.enemies = enemies;
         }
@@ -70,15 +88,16 @@ module.exports = {
                 actionRows.push({ Action: 'RETREAT', Detail: `Stack ${stranded.id} → ${step}`, Result: `${YEL}PENDING${RES}` });
             }
         } else {
-            // At target power — only attack with overwhelming force
+            // At target power — only attack with overwhelming force against the strongest enemy
             if (hubState.enemies.length > 0 && hubState.self) {
-                const hubEnemyPower = hubState.enemies.reduce((acc, e) => acc.add(calcPower(e.units, e.reapers)), ethers.BigNumber.from(0));
-                const myHubPower    = calcPower(hubState.self.units, hubState.self.reapers);
-                if (myHubPower.gte(hubEnemyPower.mul(KILL_MULTIPLIER))) {
-                    actionBatch.push(killGame.interface.encodeFunctionData("kill", [hubState.enemies[0].occupant, HUB_STACK, hubState.self.units, hubState.self.reapers]));
-                    actionRows.push({ Action: 'KILL', Detail: `${hubState.enemies[0].occupant.slice(0, 10)} @ HUB`, Result: `${RED}PENDING${RES}` });
+                const top        = topEnemy(hubState.enemies);
+                const topPower   = calcPower(top.units, top.reapers);
+                const myHubPower = calcPower(hubState.self.units, hubState.self.reapers);
+                if (myHubPower.gte(topPower.mul(KILL_MULTIPLIER))) {
+                    actionBatch.push(killGame.interface.encodeFunctionData("kill", [top.occupant, HUB_STACK, hubState.self.units, hubState.self.reapers]));
+                    actionRows.push({ Action: 'KILL', Detail: `${top.occupant.slice(0, 10)} @ HUB | sent:${fmtPow(myHubPower)} def:${fmtPow(topPower)}`, Result: `${RED}PENDING${RES}` });
                 } else {
-                    actionRows.push({ Action: 'HUB', Detail: `Outgunned ${myHubPower}/${hubEnemyPower} (need ${KILL_MULTIPLIER}x)`, Result: `${YEL}WAIT${RES}` });
+                    actionRows.push({ Action: 'HUB', Detail: `Outgunned ${fmtPow(myHubPower)}/${fmtPow(topPower)} (need ${KILL_MULTIPLIER}x)`, Result: `${YEL}WAIT${RES}` });
                 }
             } else if (validTargets.length > 0 && myActiveStacks.length > 0) {
                 const raid = validTargets.sort((a, b) => a.dist - b.dist)[0];
@@ -86,7 +105,7 @@ module.exports = {
                 if (army.power.gte(raid.enemyPower.mul(KILL_MULTIPLIER))) {
                     if (army.id === raid.id) {
                         actionBatch.push(killGame.interface.encodeFunctionData("kill", [raid.target.occupant, raid.id, army.units, army.reapers]));
-                        actionRows.push({ Action: 'KILL', Detail: `${raid.target.occupant.slice(0, 10)} @ ${raid.id}`, Result: `${RED}PENDING${RES}` });
+                        actionRows.push({ Action: 'KILL', Detail: `${raid.target.occupant.slice(0, 10)} @ ${raid.id} | sent:${fmtPow(army.power)} def:${fmtPow(raid.enemyPower)}`, Result: `${RED}PENDING${RES}` });
                     } else {
                         const step = ALL_IDS.filter(id => isAdjacent(army.id, id)).sort((a, b) => getManhattanDist(a, raid.id) - getManhattanDist(b, raid.id))[0];
                         actionBatch.push(killGame.interface.encodeFunctionData("move", [army.id, step, army.units, army.reapers]));
@@ -100,7 +119,9 @@ module.exports = {
             try {
                 const tx = await killGame.multicall(actionBatch, txOpt);
                 await tx.wait();
-                const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}\x1b[24m` : '';
+                const fullUrl   = `${config.network.block_explorer}/${tx.hash}`;
+                const shortUrl  = `${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}`;
+                const txLinkStr = config.network.block_explorer ? `\x1b]8;;${fullUrl}\x1b\\\x1b[4m↗ ${shortUrl}\x1b[24m\x1b]8;;\x1b\\` : '';
                 actionRows.forEach(r => { r.Result = `${GRN}OK${RES}`; r.Tx = txLinkStr; });
             } catch (e) {
                 actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}`, Tx: '' });

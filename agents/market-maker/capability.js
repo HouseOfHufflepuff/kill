@@ -117,7 +117,9 @@ module.exports = {
                     const [a0, a1] = token0IsKill ? [killBal, ethInWei] : [ethInWei, killBal];
                     const tx = await posManager.increaseLiquidity({ tokenId: positionTokenId, amount0Desired: a0, amount1Desired: a1, amount0Min: 0, amount1Min: 0, deadline: Math.floor(Date.now() / 1000) + 600 }, { gasLimit: 400000 });
                     await tx.wait();
-                    const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}\x1b[24m` : '';
+                    const fullUrl   = `${config.network.block_explorer}/${tx.hash}`;
+                    const shortUrl  = `${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}`;
+                    const txLinkStr = config.network.block_explorer ? `\x1b]8;;${fullUrl}\x1b\\\x1b[4m↗ ${shortUrl}\x1b[24m\x1b]8;;\x1b\\` : '';
                     actionRows.push({ Action: 'TOP-UP', Detail: `Added ${ethToAdd.toFixed(6)} ETH`, Result: `${GRN}OK${RES}`, Tx: txLinkStr });
                 }
             }
@@ -134,7 +136,9 @@ module.exports = {
             const [a0, a1] = token0IsKill ? [killAmtWei, ethAmtWei] : [ethAmtWei, killAmtWei];
             const mintTx   = await posManager.mint({ token0, token1, fee: fee_tier, tickLower, tickUpper, amount0Desired: a0, amount1Desired: a1, amount0Min: 0, amount1Min: 0, recipient: wallet.address, deadline: Math.floor(Date.now() / 1000) + 600 });
             const receipt  = await mintTx.wait();
-            const mintLink = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer.replace(/^https?:\/\//, '')}/${mintTx.hash.slice(0, 10)}...${mintTx.hash.slice(-6)}\x1b[24m` : '';
+            const mintFullUrl = `${config.network.block_explorer}/${mintTx.hash}`;
+            const mintShortUrl = `${config.network.block_explorer.replace(/^https?:\/\//, '')}/${mintTx.hash.slice(0, 10)}...${mintTx.hash.slice(-6)}`;
+            const mintLink = config.network.block_explorer ? `\x1b]8;;${mintFullUrl}\x1b\\\x1b[4m↗ ${mintShortUrl}\x1b[24m\x1b]8;;\x1b\\` : '';
             const event    = receipt.events?.find(e => e.event === "Transfer" && e.args?.from === ethers.constants.AddressZero);
             if (event) {
                 positionTokenId = event.args.tokenId.toNumber();

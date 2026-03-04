@@ -87,7 +87,9 @@ module.exports = {
             try {
                 const tx = await killGame.connect(wallet).multicall(calls, { gasLimit: 2500000 });
                 await tx.wait();
-                const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}\x1b[24m` : '';
+                const fullUrl   = `${config.network.block_explorer}/${tx.hash}`;
+                const shortUrl  = `${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}`;
+                const txLinkStr = config.network.block_explorer ? `\x1b]8;;${fullUrl}\x1b\\\x1b[4m↗ ${shortUrl}\x1b[24m\x1b]8;;\x1b\\` : '';
                 actionRows.forEach(r => { if (r.Result.includes('PENDING')) r.Result = `${GRN}OK${RES}`; r.Tx = txLinkStr; });
             } catch (e) {
                 actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}`, Tx: '' });

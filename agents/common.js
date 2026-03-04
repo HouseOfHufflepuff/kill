@@ -127,7 +127,7 @@ function txLink(hash) { return `https://sepolia.basescan.org/tx/${hash}`; }
 // ── Display utilities ─────────────────────────────────────────────────────────
 // ANSI-aware string helpers so colored values align correctly in tables.
 
-const _ANSI_RE = /\x1b\[[0-9;]*m/g;
+const _ANSI_RE = /\x1b(?:\[[0-9;]*m|\]8;;[^\x1b]*\x1b\\)/g;
 function _visLen(s) { return String(s).replace(_ANSI_RE, '').length; }
 function _pad(s, w) { return String(s) + ' '.repeat(Math.max(0, w - _visLen(s))); }
 
