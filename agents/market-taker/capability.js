@@ -12,8 +12,6 @@ module.exports = {
         const { ACQUIRE, SPEND, TARGET_PRICE_USD, BUDGET, BUY_INCREMENT, BATCH_SIZE, SLIPPAGE_BPS, ETH_PRICE_USD } = config.settings;
         const { weth_addr, fee_tier } = config.network;
 
-        console.log(`[MARKET-TAKER] ACQUIRE=${ACQUIRE} SPEND=${SPEND} TARGET=$${TARGET_PRICE_USD} BUDGET=${BUDGET} INCREMENT=${BUY_INCREMENT} spent=${totalSpent}`);
-
         const killTokenAddr = killToken.address;
         const token0IsKill  = killTokenAddr.toLowerCase() < weth_addr.toLowerCase();
         const acquiring     = ACQUIRE.toUpperCase();
@@ -43,15 +41,14 @@ module.exports = {
         else if (priceOk) { statusStr = acquiring === "KILL" ? 'BUY KILL' : 'SELL KILL'; statusColor = RED; }
         else              { statusStr = 'WAITING';                                 statusColor = GRN; }
 
+        const fmtPrice = v => v < 0.000001 ? `$${v.toFixed(10)}` : `$${v.toFixed(8)}`;
         const statusRows = [{
-            'KILL Price': `$${killPriceUsd.toExponential(3)}`,
-            'Target':     `$${target.toExponential(3)}`,
+            'KILL Price': fmtPrice(killPriceUsd),
+            'Target':     fmtPrice(target),
             'Direction':  acquiring,
             'Spent':      spendLabel,
             'Status':     `${statusColor}${statusStr}${RES}`
         }];
-
-        console.log(`[MARKET-TAKER] killPriceUsd=${killPriceUsd.toExponential(3)} priceOk=${priceOk} budgetLeft=${budgetLeft.toFixed(6)} status=${statusStr}`);
 
         if (!budgetOk || !priceOk) {
             return [{ title: 'MARKET-TAKER', rows: statusRows, color: CYA }];
@@ -104,11 +101,12 @@ module.exports = {
 
             const tx = await swapRouter.multicall(calls, txOpts);
             await tx.wait();
+            if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
 
             totalSpent += increment * batchCount;
             actionRows.push({
                 Action: acquiring === "KILL" ? 'BUY KILL' : 'SELL KILL',
-                Detail: `${batchCount}x ${increment} ${SPEND.toUpperCase()} @ $${killPriceUsd.toExponential(3)}`,
+                Detail: `${batchCount}x ${increment} ${SPEND.toUpperCase()} @ ${fmtPrice(killPriceUsd)}`,
                 Result: `${GRN}OK${RES}`
             });
         } catch (e) {

@@ -87,6 +87,7 @@ module.exports = {
             try {
                 const tx = await killGame.connect(wallet).multicall(calls, { gasLimit: 2500000 });
                 await tx.wait();
+                if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
                 actionRows.forEach(r => { if (r.Result.includes('PENDING')) r.Result = `${GRN}OK${RES}`; });
             } catch (e) {
                 actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}` });

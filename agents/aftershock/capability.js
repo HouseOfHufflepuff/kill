@@ -12,12 +12,9 @@ module.exports = {
         const { KILL_MULTIPLIER, MIN_SPAWN, MAX_KILL, SUBGRAPH_URL } = config.settings;
         const { kill_game_addr } = config.network;
 
-        console.log(`[AFTERSHOCK] KILL_MULTIPLIER=${KILL_MULTIPLIER} MIN_SPAWN=${MIN_SPAWN} MAX_KILL=${MAX_KILL} pending=${pendingAttacks.length} firstRun=${isFirstRun}`);
-
         const ethBal    = await wallet.provider.getBalance(wallet.address);
         const killBal   = await killToken.balanceOf(wallet.address);
         const killAllow = await killToken.allowance(wallet.address, kill_game_addr);
-        console.log(`[AFTERSHOCK] ETH=${ethers.utils.formatEther(ethBal)} KILL=${ethers.utils.formatEther(killBal)}`);
 
         const rows = [];
 
@@ -55,6 +52,7 @@ module.exports = {
                         try {
                             const tx = await killGame.connect(wallet).multicall(calls, { gasLimit: 2500000 });
                             await tx.wait();
+                            if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
                             rows.push({ Phase: 'EXECUTE', Target: attack.target.slice(0, 10), Stack: String(attack.stackId), Detail: `Power ${ep} | ${spawnAmt}+${spawnReaper}R`, Result: `${CYA}OK${RES}` });
                         } catch (e) {
                             rows.push({ Phase: 'EXECUTE', Target: attack.target.slice(0, 10), Stack: String(attack.stackId), Detail: e.reason || e.message, Result: `${RED}FAIL${RES}` });
@@ -98,7 +96,6 @@ module.exports = {
             }
         }
 
-        console.log(`[AFTERSHOCK] Done. processed=${processedKills.size} pending=${pendingAttacks.length}`);
         rows.push({ Phase: 'STATUS', Target: '-', Stack: '-', Detail: `Pending: ${pendingAttacks.length}`, Result: `${CYA}IDLE${RES}` });
         return [{ title: 'AFTERSHOCK', rows, color: PNK }];
     }

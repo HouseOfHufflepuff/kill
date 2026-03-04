@@ -1,0 +1,12 @@
+{
+  "runs": {
+    "run1": [
+      "market-maker",
+      "market-taker"
+    ],
+    "run2": [
+      "market-maker"
+    ]
+  },
+  "strategy": ["run1", "run2"]
+}

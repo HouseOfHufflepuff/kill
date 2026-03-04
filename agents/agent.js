@@ -38,14 +38,14 @@ const SWAP_ROUTER_ABI = [
 async function main() {
     if (!process.env.AGENT_PK) throw new Error("Missing AGENT_PK in .env");
 
-    const config   = JSON.parse(fs.readFileSync(path.join(__dirname, "common-config.json"), "utf8"));
-    const agentStrategy = JSON.parse(fs.readFileSync(path.join(__dirname, "agent-strategy.json"), "utf8"));
+    const config   = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
+    const playbook = JSON.parse(fs.readFileSync(path.join(__dirname, "playbook.json"), "utf8"));
 
     const { BLOCK_DELTA, ETH_PRICE_USD, TOTAL_SUPPLY } = config.settings;
     const { kill_game_addr, kill_faucet_addr, weth_addr, pool_addr, position_manager, swap_router } = config.network;
 
     const wallet     = new ethers.Wallet(process.env.AGENT_PK, ethers.provider);
-    const killGame   = new ethers.Contract(kill_game_addr, loadABI('./data/abi/KILLGame.json'), wallet);
+    const killGame   = new ethers.Contract(kill_game_addr, loadABI('./KillGame.json'), wallet);
     const killToken  = new ethers.Contract(await killGame.killToken(), ERC20_ABI, wallet);
     const killFaucet = new ethers.Contract(kill_faucet_addr, FAUCET_ABI, wallet);
     const weth       = new ethers.Contract(weth_addr, WETH_ABI, wallet);
@@ -56,8 +56,8 @@ async function main() {
     const ctx = { wallet, killGame, killToken, killFaucet, weth, pool, posManager, swapRouter, config };
 
     // Flatten strategy → runs → blocks into an ordered slot list
-    const slots = agentStrategy.strategy.flatMap(runName =>
-        Object.entries(agentStrategy.runs[runName]).map(([blockName, cap]) => [`${runName}/${blockName}`, cap])
+    const slots = playbook.strategy.flatMap(runName =>
+        playbook.runs[runName].map((cap, i) => [`${runName}/block${i + 1}`, cap])
     );
 
     // Load each unique capability and call init() once if defined
@@ -74,7 +74,7 @@ async function main() {
         return `${cfg.role}@${cfg.build || 'dev'}`;
     });
 
-    const runSummary = agentStrategy.strategy.map(r => `${r}(${Object.keys(agentStrategy.runs[r]).length})`).join(' → ');
+    const runSummary = playbook.strategy.map(r => `${r}(${playbook.runs[r].length})`).join(' → ');
 
     let slotIndex = 0;
     console.log(`${CYA}[AGENT] Wallet: ${wallet.address}${RES}`);

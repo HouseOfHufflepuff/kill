@@ -100,6 +100,7 @@ module.exports = {
             try {
                 const tx = await killGame.multicall(actionBatch, txOpt);
                 await tx.wait();
+                if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
                 actionRows.forEach(r => { r.Result = `${GRN}OK${RES}`; });
             } catch (e) {
                 actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}` });

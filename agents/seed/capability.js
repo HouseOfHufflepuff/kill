@@ -11,15 +11,12 @@ module.exports = {
         const { SEED_AMOUNT, BATCH_SEED } = config.settings;
         const { kill_game_addr } = config.network;
 
-        console.log(`[SEED] SEED_AMOUNT=${SEED_AMOUNT} BATCH_SEED=${BATCH_SEED}`);
-
         const ethBalance   = await wallet.getBalance();
         const killBalRaw   = await killToken.balanceOf(wallet.address);
         const allowanceRaw = await killToken.allowance(wallet.address, kill_game_addr);
         const stack119     = await killGame.balanceOf(wallet.address, 119);
 
         const rows = [];
-        console.log(`[SEED] ETH=${ethers.utils.formatEther(ethBalance)} KILL=${ethers.utils.formatEther(killBalRaw)} stack119=${stack119.toString()}`);
 
         const totalKillNeeded   = ethers.BigNumber.from(BATCH_SEED).mul(SEED_AMOUNT).mul(20);
         const requiredAllowance = ethers.utils.parseUnits(totalKillNeeded.toString(), 18);
@@ -50,6 +47,7 @@ module.exports = {
             } else {
                 const tx = await killGame.connect(wallet).multicall(encodedCalls, { gasLimit: gasEst.mul(150).div(100) });
                 await tx.wait();
+                if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
                 rows.push({ Action: 'SEED', Detail: `${BATCH_SEED} stacks × ${SEED_AMOUNT} units`, Result: `${GRN}OK${RES}` });
             }
         } catch (e) {

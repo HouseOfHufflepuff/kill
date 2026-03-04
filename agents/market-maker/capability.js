@@ -46,8 +46,6 @@ module.exports = {
         const { ETH_TARGET, KILL_TARGET, MCAP_MIN_USD, MCAP_MAX_USD, ETH_PRICE_USD, TOTAL_SUPPLY } = config.settings;
         const { weth_addr, position_manager, fee_tier } = config.network;
 
-        console.log(`[MARKET-MAKER] ETH_TARGET=${ETH_TARGET} KILL_TARGET=${KILL_TARGET} MCAP=${MCAP_MIN_USD}-${MCAP_MAX_USD} posId=${positionTokenId}`);
-
         const killTokenAddr = killToken.address;
         const token0IsKill  = killTokenAddr.toLowerCase() < weth_addr.toLowerCase();
         const [token0, token1] = token0IsKill ? [killTokenAddr, weth_addr] : [weth_addr, killTokenAddr];
@@ -57,7 +55,7 @@ module.exports = {
         const currentTick  = slot0[1];
         const killPerEth   = token0IsKill ? (1 / tickToPrice(currentTick)) : tickToPrice(currentTick);
         const killPriceUsd = (1 / killPerEth) * ETH_PRICE_USD;
-        const fmtUsd       = v => v < 0.000001 ? `$${v.toExponential(3)}` : `$${v.toFixed(8)}`;
+        const fmtUsd       = v => v < 0.000001 ? `$${v.toFixed(10)}` : `$${v.toFixed(8)}`;
 
         // Resolve position ID
         if (positionTokenId === null) {
@@ -119,6 +117,7 @@ module.exports = {
                     const [a0, a1] = token0IsKill ? [killBal, ethInWei] : [ethInWei, killBal];
                     const tx = await posManager.increaseLiquidity({ tokenId: positionTokenId, amount0Desired: a0, amount1Desired: a1, amount0Min: 0, amount1Min: 0, deadline: Math.floor(Date.now() / 1000) + 600 }, { gasLimit: 400000 });
                     await tx.wait();
+                    if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
                     actionRows.push({ Action: 'TOP-UP', Detail: `Added ${ethToAdd.toFixed(6)} ETH`, Result: `${GRN}OK${RES}` });
                 }
             }
@@ -135,6 +134,7 @@ module.exports = {
             const [a0, a1] = token0IsKill ? [killAmtWei, ethAmtWei] : [ethAmtWei, killAmtWei];
             const mintTx   = await posManager.mint({ token0, token1, fee: fee_tier, tickLower, tickUpper, amount0Desired: a0, amount1Desired: a1, amount0Min: 0, amount1Min: 0, recipient: wallet.address, deadline: Math.floor(Date.now() / 1000) + 600 });
             const receipt  = await mintTx.wait();
+            if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${mintTx.hash}`);
             const event    = receipt.events?.find(e => e.event === "Transfer" && e.args?.from === ethers.constants.AddressZero);
             if (event) {
                 positionTokenId = event.args.tokenId.toNumber();
@@ -164,8 +164,6 @@ module.exports = {
                 });
             });
         } catch (_) { /* swap history is display-only; ignore errors */ }
-
-        console.log(`[MARKET-MAKER] killPriceUsd=${killPriceUsd.toExponential(3)} posEth=${posEth.toFixed(6)} inRange=${inRange} feesUsd=${feeTotalUsd !== null ? feeTotalUsd.toFixed(6) : 'n/a'}`);
 
         const sections = [{ title: 'POSITION', rows: posRows, color: CYA }];
         if (actionRows.length > 0) sections.push({ title: 'MARKET-MAKER ACTIONS', rows: actionRows, color: GRN });

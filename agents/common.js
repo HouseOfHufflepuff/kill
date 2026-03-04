@@ -200,12 +200,12 @@ function displayActivity(opts) {
 }
 
 // ── Config loader ─────────────────────────────────────────────────────────────
-// Merges common-config.json with the agent's own config.json.
+// Merges agents/config.json with the agent's own config.json.
 // Agent-specific values override common values.
 // Usage: const config = loadConfig(__dirname);
 
 function loadConfig(agentDir) {
-    const common = JSON.parse(fs.readFileSync(path.join(__dirname, "common-config.json"), "utf8"));
+    const common = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
     const agent  = JSON.parse(fs.readFileSync(path.join(agentDir, "config.json"), "utf8"));
     // Flatten the agent-named block from common settings so role-specific
     // values (e.g. SEED_AMOUNT, HUB_PERIMETER) remain top-level in settings.
@@ -218,7 +218,7 @@ function loadConfig(agentDir) {
 }
 
 // ── ABI loader (path relative to agents/) ────────────────────────────────────
-// Example: loadABI('../data/abi/KILLGame.json')
+// Example: loadABI('./KillGame.json')
 
 function loadABI(relPath) {
     return JSON.parse(fs.readFileSync(path.resolve(__dirname, relPath), "utf8")).abi;
