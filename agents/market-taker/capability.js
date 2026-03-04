@@ -101,7 +101,7 @@ module.exports = {
 
             const tx = await swapRouter.multicall(calls, txOpts);
             await tx.wait();
-            const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer}/${tx.hash}\x1b[24m` : '';
+            const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}\x1b[24m` : '';
 
             totalSpent += increment * batchCount;
             actionRows.push({

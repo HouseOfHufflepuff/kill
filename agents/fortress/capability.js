@@ -100,7 +100,7 @@ module.exports = {
             try {
                 const tx = await killGame.multicall(actionBatch, txOpt);
                 await tx.wait();
-                const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer}/${tx.hash}\x1b[24m` : '';
+                const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}\x1b[24m` : '';
                 actionRows.forEach(r => { r.Result = `${GRN}OK${RES}`; r.Tx = txLinkStr; });
             } catch (e) {
                 actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}`, Tx: '' });

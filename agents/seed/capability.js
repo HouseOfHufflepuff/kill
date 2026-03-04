@@ -47,7 +47,7 @@ module.exports = {
             } else {
                 const tx = await killGame.connect(wallet).multicall(encodedCalls, { gasLimit: gasEst.mul(150).div(100) });
                 await tx.wait();
-                const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer}/${tx.hash}\x1b[24m` : '';
+                const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}\x1b[24m` : '';
                 rows.push({ Action: 'SEED', Detail: `${BATCH_SEED} stacks × ${SEED_AMOUNT} units`, Result: `${GRN}OK${RES}`, Tx: txLinkStr });
             }
         } catch (e) {
