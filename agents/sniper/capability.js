@@ -87,13 +87,14 @@ module.exports = {
             try {
                 const tx = await killGame.connect(wallet).multicall(calls, { gasLimit: 2500000 });
                 await tx.wait();
-                if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
-                actionRows.forEach(r => { if (r.Result.includes('PENDING')) r.Result = `${GRN}OK${RES}`; });
+                const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer}/${tx.hash}\x1b[24m` : '';
+                actionRows.forEach(r => { if (r.Result.includes('PENDING')) r.Result = `${GRN}OK${RES}`; r.Tx = txLinkStr; });
             } catch (e) {
-                actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}` });
+                actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}`, Tx: '' });
             }
         }
 
+        actionRows.forEach(r => { if (r.Tx === undefined) r.Tx = ''; });
         const sections = [{ title: 'SNIPER TARGETS', rows: targetRows, color: YEL }];
         if (actionRows.length > 0) sections.push({ title: 'SNIPER ACTION', rows: actionRows, color: CYA });
         return sections;

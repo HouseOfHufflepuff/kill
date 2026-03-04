@@ -100,13 +100,14 @@ module.exports = {
             try {
                 const tx = await killGame.multicall(actionBatch, txOpt);
                 await tx.wait();
-                if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
-                actionRows.forEach(r => { r.Result = `${GRN}OK${RES}`; });
+                const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer}/${tx.hash}\x1b[24m` : '';
+                actionRows.forEach(r => { r.Result = `${GRN}OK${RES}`; r.Tx = txLinkStr; });
             } catch (e) {
-                actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}` });
+                actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}`, Tx: '' });
             }
         }
 
+        actionRows.forEach(r => { if (r.Tx === undefined) r.Tx = ''; });
         const sections = [{ title: `TACTICAL VIEW (Perimeter <= ${HUB_PERIMETER})`, rows: tacticalRows, color: YEL }];
         sections.push({ title: `FORTRESS | Power: ${totalPowerGlobal} / ${TARGET_UNITS} | ${hasReachedTarget ? `${GRN}COMBAT READY${RES}` : `${YEL}BUILDING${RES}`}`, rows: actionRows, color: GRN });
         return sections;

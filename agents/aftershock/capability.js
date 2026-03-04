@@ -52,10 +52,10 @@ module.exports = {
                         try {
                             const tx = await killGame.connect(wallet).multicall(calls, { gasLimit: 2500000 });
                             await tx.wait();
-                            if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
-                            rows.push({ Phase: 'EXECUTE', Target: attack.target.slice(0, 10), Stack: String(attack.stackId), Detail: `Power ${ep} | ${spawnAmt}+${spawnReaper}R`, Result: `${CYA}OK${RES}` });
+                            const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer}/${tx.hash}\x1b[24m` : '';
+                            rows.push({ Phase: 'EXECUTE', Target: attack.target.slice(0, 10), Stack: String(attack.stackId), Detail: `Power ${ep} | ${spawnAmt}+${spawnReaper}R`, Result: `${CYA}OK${RES}`, Tx: txLinkStr });
                         } catch (e) {
-                            rows.push({ Phase: 'EXECUTE', Target: attack.target.slice(0, 10), Stack: String(attack.stackId), Detail: e.reason || e.message, Result: `${RED}FAIL${RES}` });
+                            rows.push({ Phase: 'EXECUTE', Target: attack.target.slice(0, 10), Stack: String(attack.stackId), Detail: e.reason || e.message, Result: `${RED}FAIL${RES}`, Tx: '' });
                         }
                     }
                 }
@@ -97,6 +97,7 @@ module.exports = {
         }
 
         rows.push({ Phase: 'STATUS', Target: '-', Stack: '-', Detail: `Pending: ${pendingAttacks.length}`, Result: `${CYA}IDLE${RES}` });
+        rows.forEach(r => { if (r.Tx === undefined) r.Tx = ''; });
         return [{ title: 'AFTERSHOCK', rows, color: PNK }];
     }
 };

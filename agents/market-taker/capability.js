@@ -101,18 +101,20 @@ module.exports = {
 
             const tx = await swapRouter.multicall(calls, txOpts);
             await tx.wait();
-            if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
+            const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer}/${tx.hash}\x1b[24m` : '';
 
             totalSpent += increment * batchCount;
             actionRows.push({
                 Action: acquiring === "KILL" ? 'BUY KILL' : 'SELL KILL',
                 Detail: `${batchCount}x ${increment} ${SPEND.toUpperCase()} @ ${fmtPrice(killPriceUsd)}`,
-                Result: `${GRN}OK${RES}`
+                Result: `${GRN}OK${RES}`,
+                Tx: txLinkStr
             });
         } catch (e) {
-            actionRows.push({ Action: 'SWAP', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}` });
+            actionRows.push({ Action: 'SWAP', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}`, Tx: '' });
         }
 
+        actionRows.forEach(r => { if (r.Tx === undefined) r.Tx = ''; });
         return [
             { title: 'MARKET-TAKER', rows: statusRows, color: CYA },
             { title: 'MARKET-TAKER ACTIONS', rows: actionRows, color: GRN }

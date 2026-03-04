@@ -47,8 +47,8 @@ module.exports = {
             } else {
                 const tx = await killGame.connect(wallet).multicall(encodedCalls, { gasLimit: gasEst.mul(150).div(100) });
                 await tx.wait();
-                if (config.network.block_explorer) console.log(`  ↗ ${config.network.block_explorer}/${tx.hash}`);
-                rows.push({ Action: 'SEED', Detail: `${BATCH_SEED} stacks × ${SEED_AMOUNT} units`, Result: `${GRN}OK${RES}` });
+                const txLinkStr = config.network.block_explorer ? `\x1b[4m↗ ${config.network.block_explorer}/${tx.hash}\x1b[24m` : '';
+                rows.push({ Action: 'SEED', Detail: `${BATCH_SEED} stacks × ${SEED_AMOUNT} units`, Result: `${GRN}OK${RES}`, Tx: txLinkStr });
             }
         } catch (e) {
             rows.push({ Action: 'SEED', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}` });
@@ -60,6 +60,7 @@ module.exports = {
             Result: ethBalance.gt(ethers.utils.parseEther("0.01")) ? `${GRN}READY${RES}` : `${YEL}LOW ETH${RES}`
         });
 
+        rows.forEach(r => { if (r.Tx === undefined) r.Tx = ''; });
         return [{ title: 'SEED', rows, color: GRN }];
     }
 };
