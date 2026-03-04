@@ -158,9 +158,8 @@ module.exports = {
             await tx.wait();
 
             const fullUrl   = `${config.network.block_explorer}/${tx.hash}`;
-            const shortUrl  = `${config.network.block_explorer.replace(/^https?:\/\//, '')}/${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}`;
             const txLinkStr = config.network.block_explorer
-                ? `\x1b]8;;${fullUrl}\x1b\\\x1b[4m↗ ${shortUrl}\x1b[24m\x1b]8;;\x1b\\`
+                ? `\x1b]8;;${fullUrl}\x1b\\↗\x1b]8;;\x1b\\`
                 : '';
 
             totalSpent += increment * batchCount;
