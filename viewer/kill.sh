@@ -1,173 +1,163 @@
 #!/bin/bash
-# 🦞 KILLGame Agentic Installer v1.1.4 - Auto-Relocating
+# KILLGame Agent Installer v2.0.0
 
-# 1. Scaffolding - Ensures all directories exist
-mkdir -p agents/sniper agents/fortress agents/aftershock data/abi
+set -e
 
-# 2. Write ABIs
-cat <<EOT > data/abi/KILLGame.json
-{
-  "contractName": "KILLGame",
-  "abi": $(cat <<'ABI_EOF'
-[{"inputs":[{"internalType":"address","name":"_tokenAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"address","name":"target","type":"address"}],"name":"AddressEmptyCode","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"uint256","name":"balance","type":"uint256"},{"internalType":"uint256","name":"needed","type":"uint256"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ERC1155InsufficientBalance","type":"error"},{"inputs":[{"internalType":"address","name":"approver","type":"address"}],"name":"ERC1155InvalidApprover","type":"error"},{"inputs":[{"internalType":"uint256","name":"idsLength","type":"uint256"},{"internalType":"uint256","name":"valuesLength","type":"uint256"}],"name":"ERC1155InvalidArrayLength","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"}],"name":"ERC1155InvalidOperator","type":"error"},{"inputs":[{"internalType":"address","name":"receiver","type":"address"}],"name":"ERC1155InvalidReceiver","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"}],"name":"ERC1155InvalidSender","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"address","name":"owner","type":"address"}],"name":"ERC1155MissingApprovalForAll","type":"error"},{"inputs":[],"name":"FailedCall","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"OwnableInvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"OwnableUnauthorizedAccount","type":"error"},{"inputs":[],"name":"ReentrancyGuardReentrantCall","type":"error"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"defender","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"DefenderRewarded","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"totalUnitsKilled","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"totalReaperKilled","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"killAdded","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"killExtracted","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"killBurned","type":"uint256"}],"name":"GlobalStats","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"attacker","type":"address"},{"indexed":true,"internalType":"address","name":"target","type":"address"},{"indexed":true,"internalType":"uint16","name":"stackId","type":"uint16"},{"components":[{"internalType":"uint256","name":"attackerUnitsSent","type":"uint256"},{"internalType":"uint256","name":"attackerReaperSent","type":"uint256"},{"internalType":"uint256","name":"attackerUnitsLost","type":"uint256"},{"internalType":"uint256","name":"attackerReaperLost","type":"uint256"},{"internalType":"uint256","name":"targetUnitsLost","type":"uint256"},{"internalType":"uint256","name":"targetReaperLost","type":"uint256"},{"internalType":"uint256","name":"initialDefenderUnits","type":"uint256"},{"internalType":"uint256","name":"initialDefenderReaper","type":"uint256"},{"internalType":"uint256","name":"attackerBounty","type":"uint256"},{"internalType":"uint256","name":"defenderBounty","type":"uint256"}],"indexed":false,"internalType":"struct KILLGame.BattleSummary","name":"summary","type":"tuple"},{"indexed":false,"internalType":"uint256","name":"targetBirthBlock","type":"uint256"}],"name":"Killed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"agent","type":"address"},{"indexed":false,"internalType":"uint16","name":"fromStack","type":"uint16"},{"indexed":false,"internalType":"uint16","name":"toStack","type":"uint16"},{"indexed":false,"internalType":"uint256","name":"units","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"reaper","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"birthBlock","type":"uint256"}],"name":"Moved","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"agent","type":"address"},{"indexed":true,"internalType":"uint256","name":"stackId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"units","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"reapers","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"birthBlock","type":"uint256"}],"name":"Spawned","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256[]","name":"ids","type":"uint256[]"},{"indexed":false,"internalType":"uint256[]","name":"values","type":"uint256[]"}],"name":"TransferBatch","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"id","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"TransferSingle","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"oldBps","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newBps","type":"uint256"}],"name":"TreasuryBpsUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"value","type":"string"},{"indexed":true,"internalType":"uint256","name":"id","type":"uint256"}],"name":"URI","type":"event"},{"inputs":[],"name":"BURN_BPS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MOVE_COST","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"SPAWN_COST","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"THERMAL_PARITY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amt","type":"uint256"}],"name":"adminWithdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"agentStacks","outputs":[{"internalType":"uint256","name":"birthBlock","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"agentTotalProfit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"id","type":"uint256"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"accounts","type":"address[]"},{"internalType":"uint256[]","name":"ids","type":"uint256[]"}],"name":"balanceOfBatch","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"agent","type":"address"},{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getBirthBlock","outputs":[{"internalType":"uint256","name":"getBirthBlock","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint16","name":"stackId","type":"uint16"}],"name":"getFullStack","outputs":[{"components":[{"internalType":"address","name":"occupant","type":"address"},{"internalType":"uint256","name":"units","type":"uint256"},{"internalType":"uint256","name":"reapers","type":"uint256"},{"internalType":"uint256","name":"age","type":"uint256"},{"internalType":"uint256","name":"pendingBounty","type":"uint256"}],"internalType":"struct KILLGame.StackInfo[]","name":"","type":"tuple[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"agent","type":"address"},{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getPendingBounty","outputs":[{"internalType":"uint256","name":"getPendingBounty","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getTreasuryStats","outputs":[{"internalType":"uint256","name":"totalTreasury","type":"uint256"},{"internalType":"uint256","name":"globalMaxBounty","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"address","name":"operator","type":"address"}],"name":"isApprovedForAll","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"target","type":"address"},{"internalType":"uint16","name":"stackId","type":"uint16"},{"internalType":"uint256","name":"sentUnits","type":"uint256"},{"internalType":"uint256","name":"sentReaper","type":"uint256"}],"name":"kill","outputs":[{"internalType":"uint256","name":"attackerBounty","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"killToken","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint16","name":"fromStack","type":"uint16"},{"internalType":"uint16","name":"toStack","type":"uint16"},{"internalType":"uint256","name":"units","type":"uint256"},{"internalType":"uint256","name":"reaper","type":"uint256"}],"name":"move","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes[]","name":"data","type":"bytes[]"}],"name":"multicall","outputs":[{"internalType":"bytes[]","name":"results","type":"bytes[]"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256[]","name":"ids","type":"uint256[]"},{"internalType":"uint256[]","name":"values","type":"uint256[]"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"safeBatchTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"safeTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"bool","name":"approved","type":"bool"}],"name":"setApprovalForAll","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_newBps","type":"uint256"}],"name":"setTreasuryBps","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint16","name":"stackId","type":"uint16"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"spawn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes4","name":"id","type":"bytes4"}],"name":"supportsInterface","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalKillAdded","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalKillBurned","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalKillExtracted","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalReaperKilled","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalUnitsKilled","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"treasuryBps","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"uri","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"}]
-ABI_EOF
-)
-}
-EOT
-cat <<EOT > data/abi/KILLFaucet.json
-{
-  "contractName": "KILLFaucet",
-  "abi": [
-    "function pullKill() external",
-    "function hasClaimed(address) view returns (bool)"
-  ]
-}
-EOT
+BASE_URL="https://raw.githubusercontent.com/HouseOfHufflepuff/kill/main"
+AGENTS="sniper fortress aftershock seed market-maker market-taker"
+
+# 1. Scaffold directories
+echo "[1/5] Scaffolding directories..."
+for ROLE in $AGENTS; do
+  mkdir -p "agents/$ROLE"
+done
+
+# 2. Pull agent files from GitHub
+echo "[2/5] Fetching agent files from GitHub..."
+for ROLE in $AGENTS; do
+  curl -f -s "$BASE_URL/agents/$ROLE/capability.js" -o "agents/$ROLE/capability.js"
+  curl -f -s "$BASE_URL/agents/$ROLE/config.json"   -o "agents/$ROLE/config.json"
+done
+curl -f -s "$BASE_URL/agents/agent.js"      -o "agents/agent.js"
+curl -f -s "$BASE_URL/agents/common.js"     -o "agents/common.js"
+curl -f -s "$BASE_URL/agents/playbook.json" -o "agents/playbook.json"
+curl -f -s "$BASE_URL/agents/config.json"   -o "agents/config.json"
+curl -f -s "$BASE_URL/agents/KillGame.json" -o "agents/KillGame.json"
 
 # 3. Write package.json
-cat <<EOT > package.json
+echo "[3/5] Writing package.json..."
+cat <<'EOT' > package.json
 {
   "name": "killgame",
-  "version": "1.1.4",
+  "version": "2.0.0",
   "bin": { "killgame": "./cli.js" },
   "dependencies": {
     "node-fetch": "^2.6.7",
-    "commander": "^11.0.0", "inquirer": "^8.2.4", "dotenv": "^16.4.5", "ethers": "^5.7.2",
-    "hardhat": "^2.19.1", "@nomiclabs/hardhat-ethers": "^2.2.3", "@nomicfoundation/hardhat-toolbox": "^2.0.2"
+    "commander": "^11.0.0",
+    "inquirer": "^8.2.4",
+    "dotenv": "^16.4.5",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.19.1",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2"
   }
 }
 EOT
 
-# 4. Fetch Agents & Patch - Pulls .js and .json from GitHub for all three
-BASE_URL="https://raw.githubusercontent.com/HouseOfHufflepuff/kill/main"
-for ROLE in sniper fortress aftershock; do
-  curl -f -s "$BASE_URL/agents/$ROLE/agent.js" -o "agents/$ROLE/agent.js"
-  curl -f -s "$BASE_URL/agents/$ROLE/config.json" -o "agents/$ROLE/config.json"
-  if [ -f "agents/$ROLE/agent.js" ]; then
-    sed -i '' "s/await ethers.getContractAt(\"KILLGame\", kill_game_addr)/new ethers.Contract(kill_game_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '..\/..\/data\/abi\/KILLGame.json'), 'utf8')).abi, wallet)/g" "agents/$ROLE/agent.js"
-    sed -i '' "s/new ethers.Contract(kill_faucet_addr, faucetAbi, wallet)/new ethers.Contract(kill_faucet_addr, JSON.parse(fs.readFileSync(path.join(__dirname, '..\/..\/data\/abi\/KILLFaucet.json'), 'utf8')).abi, wallet)/g" "agents/$ROLE/agent.js"
-    sed -i '' "s/await ethers.getContractAt(\"IERC20\", killTokenAddr)/new ethers.Contract(killTokenAddr, ['function balanceOf(address) view returns (uint256)', 'function allowance(address, address) view returns (uint256)', 'function approve(address, uint256) returns (bool)', 'function transfer(address, uint256) returns (bool)'], wallet)/g" "agents/$ROLE/agent.js"
-    sed -i '' "s/config.private_key/process.env.PRIVATE_KEY/g" "agents/$ROLE/agent.js"
-  fi
-done
-
-# 5. Hardhat Config
-cat <<EOT > hardhat.config.js
+# 4. Write hardhat.config.js (reads network from agents/config.json)
+echo "[4/5] Writing hardhat.config.js..."
+cat <<'EOT' > hardhat.config.js
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
-module.exports = { 
-  solidity: "0.8.24", 
-  networks: { 
-    basesepolia: { 
-      url: "https://sepolia.base.org", 
-      accounts: [process.env.SNIPER_PK, process.env.FORTRESS_PK, process.env.AFTERSHOCK_PK].filter(Boolean) 
-    } 
-  } 
+const fs = require("fs");
+const cfg = JSON.parse(fs.readFileSync("./agents/config.json", "utf8"));
+module.exports = {
+  solidity: "0.8.24",
+  networks: {
+    [cfg.network.network_name]: {
+      url:      cfg.network.rpc_url,
+      accounts: process.env.AGENT_PK ? [process.env.AGENT_PK] : []
+    }
+  }
 };
 EOT
 
-# 6. CLI Router - Handles configuration and execution
-cat <<EOT > cli.js
+# 5. Write cli.js
+echo "[5/5] Writing CLI..."
+cat <<'CLIEOF' > cli.js
 #!/usr/bin/env node
 const { program } = require('commander');
-const inquirer = require('inquirer');
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
-const ROOT = __dirname;
+const inquirer    = require('inquirer');
+const fs          = require('fs');
+const path        = require('path');
+const { spawn }   = require('child_process');
+const ROOT        = __dirname;
 require('dotenv').config({ path: path.join(ROOT, '.env') });
 
-const stackValidator = (val) => {
-    const n = parseInt(val);
-    if (n >= 1 && n <= 216) return true;
-    return "Stack ID must be between 1 and 216";
-};
+program
+  .command('setup')
+  .description('Configure agent wallet and hub stack')
+  .action(async () => {
+    const configPath = path.join(ROOT, 'agents', 'config.json');
+    const config     = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-program.command('setup').action(async () => {
-  const ans = await inquirer.prompt([
-    { type: 'input', name: 'pk', message: 'Enter Private Key (used for all agents):', mask: '*' },
-    { type: 'input', name: 'hub', message: 'Hub Stack [1-216]:', default: '1', validate: stackValidator },
-    { type: 'input', name: 'units', message: 'Target Units:', default: '666' },
-    { type: 'input', name: 'f_replenish', message: 'Fortress: REPLENISH_AMT:', default: '666' },
-    { type: 'input', name: 'f_perimeter', message: 'Fortress: HUB_PERIMETER:', default: '1' },
-    { type: 'input', name: 's_mult', message: 'Sniper/Aftershock: KILL_MULTIPLIER:', default: '3' },
-    { type: 'input', name: 's_thresh', message: 'Sniper: PROFIT_THRESHOLD:', default: '0.25' },
-    { type: 'input', name: 'a_max_kill', message: 'Aftershock: MAX_KILL (effective power limit):', default: '1000000' }
-  ]);
+    const ans = await inquirer.prompt([
+      {
+        type:     'password',
+        name:     'pk',
+        message:  'Agent Private Key (AGENT_PK):',
+        mask:     '*',
+        validate: v => v.length > 0 || 'Required'
+      },
+      {
+        type:     'input',
+        name:     'hub',
+        message:  `Hub Stack ID [1-216] (current: ${config.settings.HUB_STACK}):`,
+        default:  String(config.settings.HUB_STACK),
+        validate: v => (parseInt(v) >= 1 && parseInt(v) <= 216) || 'Must be between 1 and 216'
+      }
+    ]);
 
-  fs.writeFileSync(path.join(ROOT, '.env'), \`SNIPER_PK=\${ans.pk}\nFORTRESS_PK=\${ans.pk}\nAFTERSHOCK_PK=\${ans.pk}\n\`);
+    // Write AGENT_PK to .env (preserve other existing vars)
+    const envPath  = path.join(ROOT, '.env');
+    const existing = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+    const lines    = existing.split('\n').filter(l => !l.startsWith('AGENT_PK=') && l.trim() !== '');
+    lines.push(`AGENT_PK=${ans.pk}`);
+    fs.writeFileSync(envPath, lines.join('\n') + '\n');
 
-  // Fortress Config
-  const fPath = path.join(ROOT, 'agents/fortress/config.json');
-  if(fs.existsSync(fPath)) {
-    let fConf = JSON.parse(fs.readFileSync(fPath, 'utf8'));
-    fConf.settings.HUB_STACK = parseInt(ans.hub);
-    fConf.settings.TARGET_UNITS = parseInt(ans.units);
-    fConf.settings.REPLENISH_AMT = parseInt(ans.f_replenish);
-    fConf.settings.HUB_PERIMETER = parseInt(ans.f_perimeter);
-    fs.writeFileSync(fPath, JSON.stringify(fConf, null, 2));
-  }
+    // Write HUB_STACK to agents/config.json
+    config.settings.HUB_STACK = parseInt(ans.hub);
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 
-  // Sniper Config
-  const sPath = path.join(ROOT, 'agents/sniper/config.json');
-  if(fs.existsSync(sPath)) {
-    let sConf = JSON.parse(fs.readFileSync(sPath, 'utf8'));
-    sConf.settings.HUB_STACK = parseInt(ans.hub);
-    sConf.settings.KILL_MULTIPLIER = parseInt(ans.s_mult);
-    sConf.settings.SPAWN_PROFITABILITY_THRESHOLD = parseFloat(ans.s_thresh);
-    sConf.settings.SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.2/gn";
-    fs.writeFileSync(sPath, JSON.stringify(sConf, null, 2));
-  }
-  
-  // Aftershock Config - Writes config based on prompt
-  const aPath = path.join(ROOT, 'agents/aftershock/config.json');
-  if(fs.existsSync(aPath)) {
-    let aConf = JSON.parse(fs.readFileSync(aPath, 'utf8'));
-    aConf.settings.KILL_MULTIPLIER = parseInt(ans.s_mult);
-    aConf.settings.MAX_KILL = parseInt(ans.a_max_kill);
-    aConf.settings.SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.2/gn";
-    fs.writeFileSync(aPath, JSON.stringify(aConf, null, 2));
-  }
-  console.log('✅ Setup Complete.');
-});
-
-program.command('list agents').action(() => {
-    console.log(JSON.stringify(['fortress', 'sniper', 'aftershock']));
-});
-
-program.command('start <role>').action((role) => {
-  const agentDir = path.join(ROOT, 'agents', role);
-  if (!fs.existsSync(agentDir)) { console.error(\`❌ Role \${role} not found. Use 'killgame list agents' to see available agents.\`); return; }
-  const agentPath = path.join(agentDir, 'agent.js');
-  const config = JSON.parse(fs.readFileSync(path.join(agentDir, 'config.json'), 'utf8'));
-  const networkName = config.network.network_name || "basesepolia";
-  const pk = process.env[\`\${role.toUpperCase()}_PK\`];
-  if(!pk) { console.error(\`❌ Run 'killgame setup' first.\`); process.exit(1); }
-
-  spawn('npx', ['hardhat', 'run', agentPath, '--network', networkName], { 
-    cwd: ROOT, stdio: 'inherit', shell: true, env: { ...process.env, PRIVATE_KEY: pk, FORCE_COLOR: "1" } 
+    console.log('\n✅ Setup complete.\n');
+    console.log('To adjust other settings, edit agents/config.json directly:');
+    console.log(`  nano ${configPath}`);
+    console.log('\nOr visit https://killgame.ai to configure your agent online.');
   });
-});
-program.parse(process.argv);
-EOT
 
-# 7. Finalize
+program
+  .command('start agent')
+  .description('Start the agent (network read from agents/config.json)')
+  .action(() => {
+    const configPath = path.join(ROOT, 'agents', 'config.json');
+    if (!fs.existsSync(configPath)) {
+      console.error('❌ agents/config.json not found. Run the installer first.');
+      process.exit(1);
+    }
+    const config  = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const network = config.network.network_name || 'basesepolia';
+    if (!process.env.AGENT_PK) {
+      console.error('❌ AGENT_PK not set. Run `killgame setup` first.');
+      process.exit(1);
+    }
+    console.log(`Starting agent on network: ${network}`);
+    spawn('npx', ['hardhat', 'run', 'agents/agent.js', '--network', network], {
+      cwd: ROOT, stdio: 'inherit', shell: true,
+      env: { ...process.env, FORCE_COLOR: '1' }
+    });
+  });
+
+program.parseAsync(process.argv);
+CLIEOF
+
 chmod +x cli.js
 npm install --quiet
-
-# RELOCATE LOGIC: Force global re-link to THIS directory
-echo "[SYSTEM] Updating global command path..."
 npm link --force --quiet
 
 echo ""
 echo "------------------------------------------------"
-echo "🎉 SUCCESS: KILLGame Relocated to $(pwd)"
+echo "SUCCESS: KILLGame Agent installed at $(pwd)"
 echo "------------------------------------------------"
-echo "Usage:"
-echo "1. killgame setup"
-echo "2. killgame list agents"
-echo "3. killgame start <agent_name>"
+echo ""
+echo "Next steps:"
+echo ""
+echo "  1.  killgame setup"
+echo "      Configure AGENT_PK and HUB_STACK."
+echo ""
+echo "  2.  killgame start agent"
+echo "      Starts the agent (network from agents/config.json)."
+echo ""
+echo "To adjust game settings:"
+echo "  nano agents/config.json"
+echo "  Or visit https://killgame.ai to configure online."
 echo "------------------------------------------------"
-echo "Example: killgame start aftershock"
-echo "------------------------------------------------"
-

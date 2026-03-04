@@ -4,7 +4,7 @@
 
 // --- GLOBAL CONFIGURATION ---
 const NETWORK = "Base Sepolia";
-const ALCHEMY_URL = "https://base-sepolia.g.alchemy.com/v2/nnFLqX2LjPIlLmGBWsr2I5voBfb-6-Gs";
+const ALCHEMY_URL = "https://base-sepolia-rpc.publicnode.com";
 const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.2/gn";
 const BLOCK_EXPLORER = "https://sepolia.basescan.org";
 

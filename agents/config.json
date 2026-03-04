@@ -1,0 +1,91 @@
+{
+  "_doc": {
+    "agent-identity":              "Display name and version shown at agent startup",
+    "network.network_name":        "Hardhat network name to connect to (must match hardhat.config.js)",
+    "network.rpc_url":             "HTTP RPC endpoint for the network",
+    "network.kill_game_addr":      "Deployed KILLGame contract address",
+    "network.kill_faucet_addr":    "Deployed KILLFaucet contract address (used by seed/sniper init)",
+    "network.weth_addr":           "WETH contract address on this network",
+    "network.pool_addr":           "Uniswap V3 KILL/WETH pool address",
+    "network.uniswap_v3_factory":  "Uniswap V3 factory — used when computing pool addresses",
+    "network.position_manager":    "Uniswap V3 NonfungiblePositionManager address",
+    "network.swap_router":         "Uniswap V3 SwapRouter02 address",
+    "network.fee_tier":            "Pool fee tier in hundredths of a bip (10000 = 1%)",
+    "network.wss_url":             "WebSocket RPC endpoint — used by onBlock() for live block events",
+    "network.block_explorer":      "Block explorer base URL for tx links (no trailing slash)",
+    "settings.SUBGRAPH_URL":       "Goldsky subgraph endpoint for kill/stack event queries",
+    "settings.MIN_SPAWN":          "Minimum number of units to spawn in any single spawn call",
+    "settings.HUB_STACK":          "Stack ID used as the home base / fortress hub",
+    "settings.MAX_GAS_PRICE_GWEI": "Hard cap on gas price; transactions skip if network exceeds this",
+    "settings.ETH_PRICE_USD":      "Manual ETH price used for USD display values (update as needed)",
+    "settings.TOTAL_SUPPLY":       "Total KILL token supply — used for market cap calculations",
+    "settings.BLOCK_DELTA":        "Number of blocks between each agent run cycle",
+    "settings.KILL_MULTIPLIER":    "Spawn multiplier vs enemy power; e.g. 3 = spawn 3× enemy force",
+    "settings.seed.*":             "SEED_AMOUNT: units per spawn; BATCH_SEED: stacks seeded per run",
+    "settings.fortress.*":         "TARGET_UNITS: total power before combat; REPLENISH_AMT: units spawned per top-up; HUB_PERIMETER: Manhattan radius guarded",
+    "settings.sniper.*":           "SPAWN_PROFITABILITY_THRESHOLD: minimum bounty/cost ratio to attack",
+    "settings.aftershock.*":       "MAX_KILL: skip targets whose effective power exceeds this value",
+    "settings.market-maker.*":     "ETH_TARGET/KILL_TARGET: desired liquidity amounts; MCAP_MIN/MAX_USD: price range for LP position",
+    "settings.market-taker.*":     "ACQUIRE: token to buy (KILL|ETH); SPEND: token to sell; TARGET_PRICE_USD: trigger price; BUDGET: session spend cap; BUY_INCREMENT: ETH per swap; BATCH_SIZE: swaps per multicall"
+  },
+  "agent-identity": {
+    "name": "Agent K",
+    "build": "1.0.0",
+    "description": ""
+  },
+  "network": {
+    "network_name": "basesepolia",
+    "rpc_url": "https://sepolia.base.org",
+    "kill_game_addr": "0xfd21c1c28d58e420837e8057A227C3D432D289Ec",
+    "kill_faucet_addr": "0x258042B01c4B1Bc749f296B477F703FC6e8462Cd",
+    "weth_addr": "0x4200000000000000000000000000000000000006",
+    "pool_addr": "0xe0f2D522dad89eB1fA3Dc829B760aCe8fc027Ae5",
+    "uniswap_v3_factory": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+    "position_manager": "0x27F971cb582BF9E50F397e4d29a5C7A34f11faA2",
+    "swap_router": "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
+    "fee_tier": 10000,
+    "wss_url": "wss://base-sepolia-rpc.publicnode.com",
+    "block_explorer": "https://sepolia.basescan.org/tx"
+  },
+  "settings": {
+    "SUBGRAPH_URL": "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.2/gn",
+    "MIN_SPAWN": 666,
+    "HUB_STACK": 22,
+    "MAX_GAS_PRICE_GWEI": 5,
+    "ETH_PRICE_USD": 2000,
+    "TOTAL_SUPPLY": 666000000000,
+    "BLOCK_DELTA": 6,
+    "KILL_MULTIPLIER": 3,
+    "seed": {
+      "SEED_AMOUNT": 666,
+      "BATCH_SEED": 20
+    },
+    "fortress": {
+      "TARGET_UNITS": 666000000,
+      "REPLENISH_AMT": 66600000,
+      "HUB_PERIMETER": 1
+    },
+    "sniper": {
+      "SPAWN_PROFITABILITY_THRESHOLD": 0.15
+    },
+    "aftershock": {
+      "MAX_KILL": 1000000
+    },
+    "market-maker": {
+      "ETH_TARGET": "0.01",
+      "KILL_TARGET": "5000000",
+      "MCAP_MIN_USD": 1000,
+      "MCAP_MAX_USD": 10000000,
+      "REBALANCE_THRESHOLD": 0.15
+    },
+    "market-taker": {
+      "ACQUIRE": "KILL",
+      "SPEND": "ETH",
+      "TARGET_PRICE_USD": "0.000001",
+      "BUDGET": "0.01",
+      "BUY_INCREMENT": "0.0025",
+      "BATCH_SIZE": 2,
+      "SLIPPAGE_BPS": 500
+    }
+  }
+}
