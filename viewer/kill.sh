@@ -76,11 +76,8 @@ require('dotenv').config({ path: path.join(ROOT, '.env') });
 
 program
   .command('setup')
-  .description('Configure agent wallet and hub stack')
+  .description('Set agent private key')
   .action(async () => {
-    const configPath = path.join(ROOT, 'agents', 'config.json');
-    const config     = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-
     const ans = await inquirer.prompt([
       {
         type:     'password',
@@ -88,13 +85,6 @@ program
         message:  'Agent Private Key (AGENT_PK):',
         mask:     '*',
         validate: v => v.length > 0 || 'Required'
-      },
-      {
-        type:     'input',
-        name:     'hub',
-        message:  `Hub Stack ID [1-216] (current: ${config.settings.HUB_STACK}):`,
-        default:  String(config.settings.HUB_STACK),
-        validate: v => (parseInt(v) >= 1 && parseInt(v) <= 216) || 'Must be between 1 and 216'
       }
     ]);
 
@@ -105,25 +95,7 @@ program
     lines.push(`AGENT_PK=${ans.pk}`);
     fs.writeFileSync(envPath, lines.join('\n') + '\n');
 
-    // Write HUB_STACK to agents/config.json
-    config.settings.HUB_STACK = parseInt(ans.hub);
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-
-    // Configure playbook.json run1
-    const AGENT_CHOICES = ['sniper', 'fortress', 'aftershock', 'seed', 'market-maker', 'market-taker'];
-    const pb = await inquirer.prompt([
-      { type: 'list', name: 'b1', message: 'Agent for block1 (suggested: sniper):',   choices: AGENT_CHOICES, default: 'sniper' },
-      { type: 'list', name: 'b2', message: 'Agent for block2 (suggested: fortress):', choices: AGENT_CHOICES, default: 'fortress' },
-      { type: 'list', name: 'b3', message: 'Agent for block3 (suggested: fortress):', choices: AGENT_CHOICES, default: 'fortress' }
-    ]);
-    const playbookPath = path.join(ROOT, 'agents', 'playbook.json');
-    const playbook = { runs: { run1: [pb.b1, pb.b2, pb.b3] }, strategy: ['run1'] };
-    fs.writeFileSync(playbookPath, JSON.stringify(playbook, null, 2));
-
-    console.log('\n✅ Setup complete.\n');
-    console.log('To adjust other settings, edit agents/config.json directly:');
-    console.log(`  nano ${configPath}`);
-    console.log('\nOr visit https://killgame.ai to configure your agent online.');
+    console.log('\n✅ Private key saved to .env\n');
   });
 
 program
@@ -156,19 +128,39 @@ npm install --quiet
 npm link --force --quiet
 
 echo ""
+echo "================================================"
+echo " KILLGame Agent installed at $(pwd)"
+echo "================================================"
+echo ""
+echo "STEP 1 — Set your private key"
+echo ""
+echo "  killgame setup"
+echo ""
+echo "  Saves your AGENT_PK to .env so the agent can"
+echo "  sign transactions on your behalf."
+echo ""
 echo "------------------------------------------------"
-echo "SUCCESS: KILLGame Agent installed at $(pwd)"
+echo ""
+echo "STEP 2 — Configure your agents"
+echo ""
+echo "  Option A: Terminal"
+echo ""
+echo "    Playbook  (which agents run and in what order):"
+echo "    nano agents/playbook.json"
+echo ""
+echo "    Parameters  (hub stack, gas, strategy settings):"
+echo "    nano agents/config.json"
+echo ""
+echo "  Option B: Web UI"
+echo ""
+echo "    Visit https://killgame.ai"
+echo "    Use the Agent configure panel to set your"
+echo "    playbook and parameters, then sync to this folder."
+echo ""
 echo "------------------------------------------------"
 echo ""
-echo "Next steps:"
+echo "STEP 3 — Run your agent"
 echo ""
-echo "  1.  killgame setup"
-echo "      Configure AGENT_PK and HUB_STACK."
+echo "  killgame agent"
 echo ""
-echo "  2.  killgame agent"
-echo "      Starts the agent (network from agents/config.json)."
-echo ""
-echo "To adjust game settings:"
-echo "  nano agents/config.json"
-echo "  Or visit https://killgame.ai to configure online."
-echo "------------------------------------------------"
+echo "================================================"
