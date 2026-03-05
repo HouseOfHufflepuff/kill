@@ -193,7 +193,7 @@ node scripts-solana/<script>.js [args]
 |---|---|---|
 | `balance.js` | `node scripts-solana/balance.js` | SOL + KILL balance, GameConfig state |
 | `airdrop.js` | `node scripts-solana/airdrop.js [sol]` | Devnet SOL airdrop (default: 2 SOL) |
-| `spawn.js` | `node scripts-solana/spawn.js <stack_id> <units> [reapers]` | Spawn/reinforce a stack (costs 20 KILL) |
+| `spawn.js` | `node scripts-solana/spawn.js <stack_id> <units>` | Spawn/reinforce a stack (costs 20 KILL) |
 | `move.js` | `node scripts-solana/move.js <from> <to>` | Move stack to adjacent position (costs 100 KILL) |
 | `kill.js` | `node scripts-solana/kill.js <atk_stack> <defender_pubkey> <def_stack>` | Attack an enemy stack |
 | `stacks.js` | `node scripts-solana/stacks.js [pubkey]` | List all stacks with grid coordinates |
