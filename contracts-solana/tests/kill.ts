@@ -9,7 +9,7 @@
  *   kill_faucet — setup and claim
  *
  * Key Solana vs EVM differences reflected in these tests:
- *   - Reapers are explicit spawn params (no auto-bonus at 666 threshold)
+ *   - Spawn costs 20 KILL per unit (not per call); 1 free Reaper per 666 units spawned
  *   - kill() requires ADJACENT stacks (attacker and defender in different slots)
  *   - move_units() moves ALL units from a stack (no partial moves)
  *   - Bounty = units × 666 × clamp(age_slots/32400, 1, 20)
@@ -41,7 +41,8 @@ import type { KillGame }   from "../target/types/kill_game";
 import type { KillFaucet } from "../target/types/kill_faucet";
 
 // ── Constants (must match programs/kill_*/src/constants.rs) ──────────────────
-const SPAWN_COST     = new BN(20_000_000);          // 20 KILL @ 6 decimals
+const SPAWN_COST     = new BN(20_000_000);          // 20 KILL per unit @ 6 decimals
+const REAPER_THRESHOLD = new BN(666);               // units required for 1 free reaper
 const MOVE_COST      = new BN(100_000_000);         // 100 KILL @ 6 decimals
 const HARD_CAP       = new BN("66666666666000000"); // 66.666B KILL
 const THERMAL_PARITY = new BN(666);
@@ -112,15 +113,15 @@ describe("KILL System", () => {
   }
 
   // ── Shared helper: spawn units for an agent ───────────────────────────────────
+  // Reapers are granted automatically (1 per 666 units) — no explicit reaper param.
   async function spawnFor(
     agent: Keypair,
     agentAta: PublicKey,
     stackId: number,
-    units: BN,
-    reapers: BN
+    units: BN
   ) {
     await gameProg.methods
-      .spawn(stackId, units, reapers)
+      .spawn(stackId, units)
       .accounts({
         gameConfig:        gameConfigPda,
         agentStack:        stackPda(agent.publicKey, stackId),
@@ -231,18 +232,20 @@ describe("KILL System", () => {
     });
 
     // ── spawn (baseline) ──────────────────────────────────────────────────────
-    it("spawn — deploys units to grid position 0 (x=0,y=0,z=0) [test 6]", async () => {
-      await spawnFor(admin as any as Keypair, adminAta, 0, new BN(666), new BN(1));
+    it("spawn — deploys 666 units to grid position 0, auto-grants 1 reaper [test 6]", async () => {
+      // 666 units → 1 free reaper (666 / 666 = 1); cost = 666 × 20 KILL
+      await spawnFor(admin as any as Keypair, adminAta, 0, new BN(666));
 
       const stack = await gameProg.account.agentStack.fetch(stackPda(admin.publicKey, 0));
       assert.equal(stack.units.toString(),   "666", "units correct");
-      assert.equal(stack.reapers.toString(), "1",   "reapers correct");
+      assert.equal(stack.reapers.toString(), "1",   "auto-reaper granted");
       assert.equal(stack.stackId, 0,                "position correct");
       assert.isTrue(stack.spawnSlot.toNumber() > 0, "spawn_slot recorded [test 6]");
 
       const vault = await getAccount(provider.connection, gameVaultKp.publicKey);
-      assert.equal(vault.amount.toString(), SPAWN_COST.toString(), "vault funded");
-      console.log("  ✓ Admin stack spawned at grid[0]; spawn_slot recorded");
+      const expectedCost = new BN(666).mul(SPAWN_COST);
+      assert.equal(vault.amount.toString(), expectedCost.toString(), "vault funded (666 × SPAWN_COST)");
+      console.log("  ✓ Admin stack spawned at grid[0]; 1 auto-reaper granted; spawn_slot recorded");
     });
 
     // ── Spawn mechanics ───────────────────────────────────────────────────────
@@ -254,35 +257,38 @@ describe("KILL System", () => {
         [userC, userCata] = await newUser(new BN(500_000_000_000));
       });
 
-      it("spawn explicit reaper at stack 1 [test 7 analog]", async () => {
-        // In EVM, spawning 666 units auto-awards 1 Reaper.
-        // In Solana, reapers are explicit — the caller passes them directly.
-        await spawnFor(userC, userCata, 1, new BN(0), new BN(1));
+      it("auto-reaper: 666 units at stack 1 grants 1 free reaper [test 7 analog]", async () => {
+        // 666 / 666 = 1 reaper automatically; no explicit reaper param
+        await spawnFor(userC, userCata, 1, new BN(666));
         const stack = await gameProg.account.agentStack.fetch(stackPda(userC.publicKey, 1));
-        assert.equal(stack.reapers.toString(), "1", "reaper stored");
-        console.log("  ✓ Reaper unit spawned at stack 1");
+        assert.equal(stack.units.toString(),   "666", "units stored");
+        assert.equal(stack.reapers.toString(), "1",   "1 auto-reaper granted");
+        console.log("  ✓ 666 units at stack 1 → 1 auto-reaper");
       });
 
-      it("spawn multiple reapers at stack 2 [test 8 analog]", async () => {
-        await spawnFor(userC, userCata, 2, new BN(0), new BN(2));
+      it("auto-reaper: 1332 units at stack 2 grants 2 free reapers [test 8 analog]", async () => {
+        // 1332 / 666 = 2 reapers automatically
+        await spawnFor(userC, userCata, 2, new BN(1332));
         const stack = await gameProg.account.agentStack.fetch(stackPda(userC.publicKey, 2));
-        assert.equal(stack.reapers.toString(), "2", "two reapers stored");
-        console.log("  ✓ Two reapers spawned at stack 2");
+        assert.equal(stack.units.toString(),   "1332", "units stored");
+        assert.equal(stack.reapers.toString(), "2",    "2 auto-reapers granted");
+        console.log("  ✓ 1332 units at stack 2 → 2 auto-reapers");
       });
 
       it("reinforcement accumulates units and preserves spawn_slot [test 9]", async () => {
-        // First spawn at stack 0
-        await spawnFor(userC, userCata, 0, new BN(10), new BN(0));
+        // First spawn at stack 0 (10 units < 666 → 0 reapers)
+        await spawnFor(userC, userCata, 0, new BN(10));
         const before = await gameProg.account.agentStack.fetch(stackPda(userC.publicKey, 0));
         const slotBefore = before.spawnSlot;
 
         // Reinforce same stack — spawn_slot must NOT reset
-        await spawnFor(userC, userCata, 0, new BN(5), new BN(0));
+        await spawnFor(userC, userCata, 0, new BN(5));
         const after = await gameProg.account.agentStack.fetch(stackPda(userC.publicKey, 0));
 
         assert.equal(after.units.toString(), "15",                "units accumulated");
+        assert.equal(after.reapers.toString(), "0",               "no reapers (15 < 666)");
         assert.equal(after.spawnSlot.toString(), slotBefore.toString(), "spawn_slot preserved");
-        console.log("  ✓ Reinforcement preserved spawn_slot; units now 15");
+        console.log("  ✓ Reinforcement preserved spawn_slot; units now 15, no reapers");
       });
     });
 
@@ -302,8 +308,8 @@ describe("KILL System", () => {
 
       it("defender (100 units) repels attacker (10 units) — attacker zeroed, defender unchanged [tests 1, 4]", async () => {
         // defender_power = 100 × 11 = 1100; attacker_power = 10 → attacker loses
-        await spawnFor(userA, userAata, DEF_STACK, new BN(100), new BN(0));
-        await spawnFor(userB, userBata, ATK_STACK, new BN(10),  new BN(0));
+        await spawnFor(userA, userAata, DEF_STACK, new BN(100));
+        await spawnFor(userB, userBata, ATK_STACK, new BN(10));
 
         await gameProg.methods
           .kill(ATK_STACK, DEF_STACK)
@@ -353,8 +359,8 @@ describe("KILL System", () => {
 
       it("attacker (1000 units) beats defender (10 units), receives bounty, defender zeroed [test 2]", async () => {
         // defender_power = 10 × 11 = 110; attacker_power = 1000 → attacker wins
-        await spawnFor(userA, userAata, DEF_STACK, new BN(10),   new BN(0));
-        await spawnFor(userB, userBata, ATK_STACK, new BN(1000), new BN(0));
+        await spawnFor(userA, userAata, DEF_STACK, new BN(10));
+        await spawnFor(userB, userBata, ATK_STACK, new BN(1000));
 
         const bBalBefore = (await getAccount(provider.connection, userBata)).amount;
 
@@ -414,11 +420,11 @@ describe("KILL System", () => {
         [userB, userBata] = await newUser(new BN(500_000_000_000));
       });
 
-      it("1 reaper (atk_pow 666) defeats 50 defender units (def_pow 550) [test 5]", async () => {
-        // def_pow = (50 + 0) × 11 = 550; atk_pow = 0 + 1 × 666 = 666 → attacker wins
-        // (EVM note: EVM had no 10% defender bonus; adjusted numbers for Solana's ×11 math)
-        await spawnFor(userA, userAata, DEF_STACK, new BN(50), new BN(0));
-        await spawnFor(userB, userBata, ATK_STACK, new BN(0),  new BN(1));
+      it("666 units (→ 1 auto-reaper, atk_pow 1332) defeats 50 defender units (def_pow 550) [test 5]", async () => {
+        // Spawning 666 units auto-grants 1 reaper.
+        // def_pow = (50 + 0) × 11 = 550; atk_pow = 666 + 1 × 666 = 1332 → attacker wins
+        await spawnFor(userA, userAata, DEF_STACK, new BN(50));
+        await spawnFor(userB, userBata, ATK_STACK, new BN(666));
 
         await gameProg.methods
           .kill(ATK_STACK, DEF_STACK)
@@ -438,7 +444,7 @@ describe("KILL System", () => {
 
         const aStack = await gameProg.account.agentStack.fetch(stackPda(userA.publicKey, DEF_STACK));
         assert.equal(aStack.units.toString(), "0", "defender zeroed by reaper");
-        console.log("  ✓ 1 reaper (power 666) defeated 50 units (def_pow 550)");
+        console.log("  ✓ 666 units (1 auto-reaper, atk_pow 1332) defeated 50 units (def_pow 550)");
       });
     });
 
@@ -456,7 +462,7 @@ describe("KILL System", () => {
         [userD, userDataAta] = await newUser(new BN(5_000_000_000_000));
 
         // Spawn initial units at SRC for move tests
-        await spawnFor(userD, userDataAta, SRC, new BN(10), new BN(0));
+        await spawnFor(userD, userDataAta, SRC, new BN(10));
       });
 
       it("move empties source stack and populates destination [test 10, 12]", async () => {
@@ -508,7 +514,7 @@ describe("KILL System", () => {
 
       it("non-adjacent move reverts with NotAdjacent [test 14]", async () => {
         // Seed SRC so it has units to move (cannot move from empty)
-        await spawnFor(userD, userDataAta, SRC, new BN(5), new BN(0));
+        await spawnFor(userD, userDataAta, SRC, new BN(5));
 
         let threw = false;
         try {
@@ -542,7 +548,7 @@ describe("KILL System", () => {
         const slotBefore = before.spawnSlot;
 
         // Spawn at DST=19 (currently empty after previous moves)
-        await spawnFor(userD, userDataAta, DST, new BN(5), new BN(0));
+        await spawnFor(userD, userDataAta, DST, new BN(5));
 
         // Move DST(19) → DST2(20): destination not empty → spawn_slot preserved
         await gameProg.methods
@@ -616,7 +622,7 @@ describe("KILL System", () => {
       it("spawn fails while paused (test 17 analog)", async () => {
         let threw = false;
         try {
-          await spawnFor(admin as any as Keypair, adminAta, 0, new BN(1), new BN(0));
+          await spawnFor(admin as any as Keypair, adminAta, 0, new BN(1));
         } catch (err: any) {
           threw = true;
           assert.include(err.toString(), "GamePaused");

@@ -1,0 +1,18 @@
+{
+  "network": {
+    "cluster":       "devnet",
+    "rpc_url":       "https://api.devnet.solana.com",
+    "explorer":      "https://explorer.solana.com"
+  },
+  "programs": {
+    "kill_game":   "2FbeFxvFH2b4KyAcwNToFr3pHzYK4ybYQWriXjjKEr5D",
+    "kill_token":  "3bcxaPX7ka8DgtJckaoJHVjaXqncBsa8EfGT2AfYaYSY",
+    "kill_faucet": "761RUKWGgStRshdz3HJcS7dPodFSckDAcudLtU1CZ1b6"
+  },
+  "kill_mint": "BQoMXQyRWmDgczz4pLs5wugPsywUaeFrQrCiXEMgWoH6",
+  "constants": {
+    "kill_decimals": 6,
+    "spawn_cost":    20,
+    "move_cost":     100
+  }
+}

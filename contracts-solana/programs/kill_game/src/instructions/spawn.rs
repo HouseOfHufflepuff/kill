@@ -7,12 +7,13 @@ use crate::state::{AgentStack, GameConfig, StackSpawned};
 
 /// Spawn or reinforce a stack at a given grid position.
 ///
-/// Equivalent to the EVM `spawn()` function.  Costs SPAWN_COST KILL tokens,
-/// which are transferred to the game vault.  If an AgentStack PDA already
-/// exists for this agent+position, units/reapers are added to it (reinforcement).
-/// Otherwise a new stack account is created.
+/// Costs SPAWN_COST KILL tokens **per unit**, transferred to the game vault.
+/// Reapers cannot be spawned explicitly — one free Reaper is granted automatically
+/// for every REAPER_THRESHOLD (666) units spawned in this call.
+/// If an AgentStack PDA already exists for this agent+position, units/reapers are
+/// added to it (reinforcement). Otherwise a new stack account is created.
 #[derive(Accounts)]
-#[instruction(stack_id: u16, units: u64, reapers: u64)]
+#[instruction(stack_id: u16, units: u64)]
 pub struct Spawn<'info> {
     /// Game config — validates the game is not paused and provides vault address.
     #[account(
@@ -57,11 +58,12 @@ pub struct Spawn<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<Spawn>, stack_id: u16, units: u64, reapers: u64) -> Result<()> {
+pub fn handler(ctx: Context<Spawn>, stack_id: u16, units: u64) -> Result<()> {
     require!(stack_id <= MAX_STACK_ID, KillError::InvalidStackId);
-    require!(units > 0 || reapers > 0, KillError::EmptyAttacker);
+    require!(units > 0, KillError::EmptyAttacker);
 
-    // Debit spawn cost from agent → vault
+    // Debit units × SPAWN_COST from agent → vault
+    let cost = units.checked_mul(SPAWN_COST).ok_or(KillError::Overflow)?;
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -71,7 +73,7 @@ pub fn handler(ctx: Context<Spawn>, stack_id: u16, units: u64, reapers: u64) -> 
                 authority: ctx.accounts.agent.to_account_info(),
             },
         ),
-        SPAWN_COST,
+        cost,
     )?;
 
     let stack = &mut ctx.accounts.agent_stack;
@@ -88,10 +90,13 @@ pub fn handler(ctx: Context<Spawn>, stack_id: u16, units: u64, reapers: u64) -> 
         stack.bump = ctx.bumps.agent_stack;
     }
 
+    // One free Reaper per REAPER_THRESHOLD units spawned in this call.
+    let auto_reapers = units / REAPER_THRESHOLD;
+
     stack.units = stack.units.checked_add(units).ok_or(KillError::Overflow)?;
     stack.reapers = stack
         .reapers
-        .checked_add(reapers)
+        .checked_add(auto_reapers)
         .ok_or(KillError::Overflow)?;
 
     emit!(StackSpawned {

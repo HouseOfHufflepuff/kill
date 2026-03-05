@@ -19,7 +19,7 @@ kill_token = "3bcxaPX7ka8DgtJckaoJHVjaXqncBsa8EfGT2AfYaYSY"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

@@ -1,8 +1,11 @@
 /// 6.66% burn on every bounty payout (matches EVM BURN_BPS)
 pub const BURN_BPS: u64 = 666;
 
-/// Cost to spawn a stack — 20 KILL at 6 decimal places
+/// Cost to spawn — 20 KILL per unit at 6 decimal places
 pub const SPAWN_COST: u64 = 20_000_000;
+
+/// Units required to automatically grant one free Reaper (1 reaper per 666 units)
+pub const REAPER_THRESHOLD: u64 = 666;
 
 /// Cost to move a stack — 100 KILL at 6 decimal places
 pub const MOVE_COST: u64 = 100_000_000;

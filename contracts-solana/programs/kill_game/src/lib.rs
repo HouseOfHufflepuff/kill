@@ -27,9 +27,10 @@ pub mod kill_game {
     }
 
     /// Spawn or reinforce a stack at a grid position (0–215).
-    /// Costs SPAWN_COST KILL tokens → vault.
-    pub fn spawn(ctx: Context<Spawn>, stack_id: u16, units: u64, reapers: u64) -> Result<()> {
-        instructions::spawn::handler(ctx, stack_id, units, reapers)
+    /// Costs SPAWN_COST KILL tokens per unit → vault.
+    /// One free Reaper is granted per 666 units spawned.
+    pub fn spawn(ctx: Context<Spawn>, stack_id: u16, units: u64) -> Result<()> {
+        instructions::spawn::handler(ctx, stack_id, units)
     }
 
     /// Move all units from one adjacent grid position to another.
