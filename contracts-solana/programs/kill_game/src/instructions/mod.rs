@@ -24,49 +24,50 @@ pub fn is_adjacent(a: u16, b: u16) -> bool {
     (ax - bx).abs() + (ay - by).abs() + (az - bz).abs() == 1
 }
 
-/// Lanchester square-law combat resolution.
+/// Combat resolution matching EVM KillGame.sol `_resolveCombat`.
 ///
-/// Reapers count as THERMAL_PARITY units each.  Defender receives a 10% power
-/// bonus (×11 / 10 equivalent via integer ×11 vs ×10).
+/// Reapers count as THERMAL_PARITY (666) units each.  Defender receives a 10%
+/// power bonus: we compare `atkRaw × 10  vs  defRaw × 11` to avoid fractions.
+/// Equivalent to EVM: `atkP > (defU + defR*666) * 110 / 100`.
 ///
 /// Returns `(attacker_won, surviving_units, surviving_reapers)`.
-/// On a loss both survivors are 0; the attacker's stack should be cleared.
+/// - Win:  attacker keeps ALL sent forces (EVM awards zero casualties to winner).
+/// - Loss: attacker loses all sent forces.
 pub fn resolve_combat(
     def_units: u64,
     atk_units: u64,
     def_reapers: u64,
     atk_reapers: u64,
 ) -> (bool, u64, u64) {
-    // Defender power with 10% bonus (×11 instead of ×10)
-    let def_pow = def_units
-        .saturating_add(def_reapers.saturating_mul(THERMAL_PARITY))
-        .saturating_mul(11);
-    let atk_pow = atk_units.saturating_add(atk_reapers.saturating_mul(THERMAL_PARITY));
+    let def_raw = def_units.saturating_add(def_reapers.saturating_mul(THERMAL_PARITY));
+    let atk_raw = atk_units.saturating_add(atk_reapers.saturating_mul(THERMAL_PARITY));
 
-    if atk_pow > def_pow {
-        // Proportion of attacker power that remains after combat
-        let surplus = atk_pow.saturating_sub(def_pow);
-        let remain_pct = surplus.saturating_mul(100) / atk_pow;
-        let rem_units = atk_units.saturating_mul(remain_pct) / 100;
-        let rem_reapers = atk_reapers.saturating_mul(remain_pct) / 100;
-        (true, rem_units, rem_reapers)
+    // 10% defender bonus: atkRaw×10 must beat defRaw×11
+    if atk_raw.saturating_mul(10) > def_raw.saturating_mul(11) {
+        // Attacker wins — EVM: winner suffers zero casualties
+        (true, atk_units, atk_reapers)
     } else {
+        // Defender wins — attacker loses all sent forces
         (false, 0, 0)
     }
 }
 
 /// Calculate the bounty owed for a defender stack based on its age in slots.
 ///
-/// Bounty = units × THERMAL_PARITY × multiplier
-/// where multiplier = clamp(age_slots / SLOTS_PER_MULTIPLIER, 1, MAX_MULTIPLIER)
-pub fn get_pending_bounty(stack: &AgentStack, current_slot: u64) -> u64 {
-    if stack.units == 0 {
+/// Matches EVM KillGame.sol getPendingBounty():
+///   power      = units + reapers × THERMAL_PARITY
+///   multiplier = clamp(1 + age_slots / SLOTS_PER_MULTIPLIER, 1, MAX_MULTIPLIER)
+///   raw_bounty = power × SPAWN_COST × multiplier
+///   cap        = vault_amount × GLOBAL_CAP_BPS / BPS_DENOM  (25% of treasury)
+///   bounty     = min(raw_bounty, cap)
+pub fn get_pending_bounty(stack: &AgentStack, current_slot: u64, vault_amount: u64) -> u64 {
+    if stack.units == 0 && stack.reapers == 0 {
         return 0;
     }
     let age_slots = current_slot.saturating_sub(stack.spawn_slot);
-    let mult = (age_slots / SLOTS_PER_MULTIPLIER).clamp(1, MAX_MULTIPLIER);
-    stack
-        .units
-        .saturating_mul(THERMAL_PARITY)
-        .saturating_mul(mult)
+    let mult = (1u64 + age_slots / SLOTS_PER_MULTIPLIER).min(MAX_MULTIPLIER);
+    let power = stack.units.saturating_add(stack.reapers.saturating_mul(THERMAL_PARITY));
+    let raw = power.saturating_mul(SPAWN_COST).saturating_mul(mult);
+    let cap = vault_amount.saturating_mul(GLOBAL_CAP_BPS) / BPS_DENOM;
+    if cap == 0 { raw } else { raw.min(cap) }
 }

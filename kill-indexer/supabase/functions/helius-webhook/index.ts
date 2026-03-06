@@ -67,6 +67,36 @@ function parseEvents(logs: string[]): AnchorEvent[] {
 function n(v: bigint): string { return v.toString(); }
 
 // deno-lint-ignore no-explicit-any
+async function updateGlobalStat(db: any, delta: {
+  units_killed?: bigint; reapers_killed?: bigint;
+  kill_added?: bigint; kill_extracted?: bigint; kill_burned?: bigint;
+}) {
+  const { data: existing } = await db.from("global_stat").select("*").eq("id", "current").maybeSingle();
+  const cur = existing ?? {
+    total_units_killed: "0", total_reaper_killed: "0",
+    kill_added: "0", kill_extracted: "0", kill_burned: "0",
+    total_pnl: "0", current_treasury: "0", max_bounty: "0",
+  };
+  const unitsKilled  = BigInt(cur.total_units_killed)  + (delta.units_killed   ?? 0n);
+  const reapKilled   = BigInt(cur.total_reaper_killed) + (delta.reapers_killed ?? 0n);
+  const killAdded    = BigInt(cur.kill_added)           + (delta.kill_added     ?? 0n);
+  const killExtracted= BigInt(cur.kill_extracted)       + (delta.kill_extracted ?? 0n);
+  const killBurned   = BigInt(cur.kill_burned)          + (delta.kill_burned    ?? 0n);
+  const treasury     = killAdded - killExtracted - killBurned;
+  await db.from("global_stat").upsert({
+    id: "current",
+    total_units_killed:  n(unitsKilled),
+    total_reaper_killed: n(reapKilled),
+    kill_added:          n(killAdded),
+    kill_extracted:      n(killExtracted),
+    kill_burned:         n(killBurned),
+    current_treasury:    n(treasury > 0n ? treasury : 0n),
+    total_pnl:           n(killExtracted),
+    max_bounty:          "0",
+  });
+}
+
+// deno-lint-ignore no-explicit-any
 async function upsertAgent(db: any, id: string, spent: bigint, earned: bigint, slot: bigint) {
   const { data: existing } = await db.from("agent").select("*").eq("id", id).maybeSingle();
   const cur = existing ?? { total_spent: "0", total_earned: "0", net_pnl: "0", last_active_slot: 0 };
@@ -105,7 +135,9 @@ async function handleStackSpawned(db: any, sig: string, idx: number, e: Extract<
   await db.from("spawned").upsert({ id, agent: e.agent, stack_id: e.stackId, units: n(e.units), reapers: n(e.reapers), birth_slot: Number(e.slot), slot: Number(e.slot) });
   await upsertStack(db, e.stackId, e.units, e.reapers, e.slot);
   await upsertAgentStack(db, e.agent, e.stackId, e.units, e.reapers, e.slot);
-  await upsertAgent(db, e.agent, e.units * SPAWN_COST, 0n, e.slot);
+  const spawnCost = e.units * SPAWN_COST;
+  await upsertAgent(db, e.agent, spawnCost, 0n, e.slot);
+  await updateGlobalStat(db, { kill_added: spawnCost });
 }
 
 // deno-lint-ignore no-explicit-any
@@ -144,6 +176,12 @@ async function handleKillEvent(db: any, sig: string, idx: number, e: Extract<Anc
   await db.from("agent_stack").upsert({ id: `${e.defender}-${e.defenderStack}`, agent: e.defender, stack_id: e.defenderStack, units: "0", reaper: "0", birth_slot: 0 });
   await db.from("agent_stack").upsert({ id: `${e.attacker}-${e.attackerStack}`, agent: e.attacker, stack_id: e.attackerStack, units: n(e.remainingUnits), reaper: n(e.remainingReapers), birth_slot: Number(e.slot) });
   await upsertAgent(db, e.attacker, 0n, netBounty, e.slot);
+  await updateGlobalStat(db, {
+    units_killed:   e.defenderUnits,
+    reapers_killed: e.defenderReapers,
+    kill_extracted: netBounty,
+    kill_burned:    e.burned,
+  });
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────

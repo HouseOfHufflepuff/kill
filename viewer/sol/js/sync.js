@@ -30,7 +30,7 @@ async function updateHeartbeat() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                jsonrpc: "2.0", id: 1, method: "getBlockHeight",
+                jsonrpc: "2.0", id: 1, method: "getSlot",
                 params: [{ commitment: "confirmed" }]
             })
         });
@@ -88,7 +88,13 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
 /**
  * UI: Render the Top Stacks leaderboard rows
  */
-function updateTopStacks(stacks, activeReaperMap) {
+// Bounty constants — mirrors Solana contract (50x over 3 days)
+const SLOTS_PER_MULT = 13_224;  // ~3 days / 49 steps ≈ 13,224 slots/step
+const MAX_MULT       = 50;
+const SPAWN_COST_KILL = 20;     // KILL per unit (display units, 6-decimal)
+const GLOBAL_CAP_BPS  = 0.25;  // 25% of treasury
+
+function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
     if (!topStacksEl) return;
     let globalUnits = 0, globalReapers = 0, globalBountyKill = 0;
 
@@ -97,10 +103,13 @@ function updateTopStacks(stacks, activeReaperMap) {
         const r      = activeReaperMap[s.id] || parseInt(s.total_boosted_units) || 0;
         const bSlot  = parseInt(s.birth_slot || 0);
 
-        const age          = (lastBlock > 0 && bSlot > 0) ? (lastBlock - bSlot) : 0;
-        const displayBounty = (1 + (age / 1000));
-        const basePower    = u + (r * 666);
-        const totalKillValue = basePower * displayBounty;
+        const age    = (lastBlock > 0 && bSlot > 0) ? Math.max(0, lastBlock - bSlot) : 0;
+        const mult   = Math.min(MAX_MULT, Math.max(1, 1 + Math.floor(age / SLOTS_PER_MULT)));
+        const power  = u + (r * 666);
+        const rawKill = power * SPAWN_COST_KILL * mult;
+        const cap    = (treasuryKill > 0) ? treasuryKill * GLOBAL_CAP_BPS : Infinity;
+        const totalKillValue = Math.min(rawKill, cap);
+        const displayBounty = mult;
 
         globalUnits    += u;
         globalReapers  += r;
@@ -268,7 +277,8 @@ async function syncData() {
                 : `SYSTEM STATUS: ${statusText}`;
         }
 
-        updateTopStacks(stacks, activeReaperMap);
+        const treasuryKill = globalStat ? parseFloat(globalStat.current_treasury || 0) / 1_000_000 : 0;
+        updateTopStacks(stacks, activeReaperMap, treasuryKill);
 
         // Agent P&L totals (6 decimals)
         let totalEarned = 0;

@@ -21,9 +21,10 @@ use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
 // then replace this ID with the one shown for kill_token.
 declare_id!("3bcxaPX7ka8DgtJckaoJHVjaXqncBsa8EfGT2AfYaYSY");
 
-/// 66,666,666,666 KILL at 6 decimal places.
+/// 666,000,000,000 KILL at 6 decimal places.
 /// Matches the EVM HARD_CAP (same token quantity, different decimal representation).
-pub const HARD_CAP: u64 = 66_666_666_666_000_000;
+/// EVM: 666_000_000_000 × 10^18.  Solana: 666_000_000_000 × 10^6 (fits in u64).
+pub const HARD_CAP: u64 = 666_000_000_000_000_000;
 
 /// SPL token decimals — 6 (like USDC).  EVM KillToken used 18; 6 fits in u64.
 pub const DECIMALS: u8 = 6;
@@ -56,7 +57,7 @@ impl TokenConfig {
 
 #[error_code]
 pub enum TokenError {
-    #[msg("Mint amount would exceed the hard cap of 66,666,666,666 KILL")]
+    #[msg("Mint amount would exceed the hard cap of 666,000,000,000 KILL")]
     CapExceeded,
     #[msg("Unauthorized — admin only")]
     Unauthorized,

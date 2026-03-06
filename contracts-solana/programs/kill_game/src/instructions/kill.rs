@@ -124,7 +124,17 @@ pub fn handler(
     }
 
     // ── Bounty calculation ────────────────────────────────────────────────────
-    let bounty = get_pending_bounty(&ctx.accounts.defender_stack, current_slot);
+    // EVM _applyRewards: battlePool scales with defPower relative to THERMAL_PARITY.
+    // When attacker wins (aPLost=0), attacker receives 100% of battlePool.
+    // battlePool = defPower >= THERMAL_PARITY ? pending : pending * defPower / THERMAL_PARITY
+    let def_power = def_units.saturating_add(def_reapers.saturating_mul(THERMAL_PARITY));
+    let vault_amount = ctx.accounts.game_vault.amount;
+    let pending = get_pending_bounty(&ctx.accounts.defender_stack, current_slot, vault_amount);
+    let bounty = if def_power >= THERMAL_PARITY {
+        pending
+    } else {
+        pending.saturating_mul(def_power) / THERMAL_PARITY
+    };
     let burn_amount = bounty.saturating_mul(BURN_BPS) / BPS_DENOM;
     let payout = bounty.saturating_sub(burn_amount);
 

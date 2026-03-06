@@ -13,12 +13,15 @@ pub const MOVE_COST: u64 = 100_000_000;
 /// Base bounty earned per unit (matches EVM THERMAL_PARITY)
 pub const THERMAL_PARITY: u64 = 666;
 
-/// Maximum bounty multiplier (capped at 20×)
-pub const MAX_MULTIPLIER: u64 = 20;
+/// Maximum bounty multiplier (capped at 50×, reached after ~3 days)
+pub const MAX_MULTIPLIER: u64 = 50;
 
 /// Slots between each multiplier step.
-/// 32,400 slots × 0.4s/slot ≈ 3.6 hours — equivalent to 1,080 EVM blocks @ 12s.
-pub const SLOTS_PER_MULTIPLIER: u64 = 32_400;
+/// 13,224 slots × 0.4s/slot ≈ 88 min per step → 50 steps ≈ 3 days.
+pub const SLOTS_PER_MULTIPLIER: u64 = 13_224;
+
+/// Bounty cap as a fraction of the game vault balance (25% = 2,500 / 10,000)
+pub const GLOBAL_CAP_BPS: u64 = 2_500;
 
 /// 3D grid side length (6 × 6 × 6 = 216 total stacks)
 pub const GRID_SIZE: u16 = 6;

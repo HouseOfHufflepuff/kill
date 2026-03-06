@@ -10,10 +10,11 @@
  *
  * Key Solana vs EVM differences reflected in these tests:
  *   - Spawn costs 20 KILL per unit (not per call); 1 free Reaper per 666 units spawned
- *   - kill() requires ADJACENT stacks (attacker and defender in different slots)
+ *   - kill() requires SAME stack_id (attacker and defender share a grid position)
  *   - move_units() moves ALL units from a stack (no partial moves)
- *   - Bounty = units × 666 × clamp(age_slots/32400, 1, 20)
- *     (minimum multiplier of 1 applies in tests since we can't warp 32400 slots)
+ *   - Bounty = power × SPAWN_COST × clamp(1 + age_slots/13224, 1, 50),
+ *     scaled by min(defPower, THERMAL_PARITY) / THERMAL_PARITY (EVM battlePool parity),
+ *     capped at 25% of vault (minimum multiplier of 1 applies in tests)
  *   - total_kills counts kill *events*, not total units destroyed
  *
  * Run with: anchor test   (starts a fresh validator each run)
@@ -44,7 +45,7 @@ import type { KillFaucet } from "../target/types/kill_faucet";
 const SPAWN_COST     = new BN(20_000_000);          // 20 KILL per unit @ 6 decimals
 const REAPER_THRESHOLD = new BN(666);               // units required for 1 free reaper
 const MOVE_COST      = new BN(100_000_000);         // 100 KILL @ 6 decimals
-const HARD_CAP       = new BN("66666666666000000"); // 66.666B KILL
+const HARD_CAP       = new BN("666000000000000000"); // 666B KILL (matches EVM)
 const THERMAL_PARITY = new BN(666);
 const BURN_BPS       = new BN(666);
 const BPS_DENOM      = new BN(10_000);
@@ -161,7 +162,7 @@ describe("KILL System", () => {
   // 1. kill_token
   // ═══════════════════════════════════════════════════════════════════════════
   describe("kill_token", () => {
-    it("initialize_token — creates the KILL mint with a 66.666B hard cap", async () => {
+    it("initialize_token — creates the KILL mint with a 666B hard cap (matches EVM)", async () => {
       await tokenProg.methods
         .initializeToken()
         .accounts({
@@ -179,7 +180,7 @@ describe("KILL System", () => {
       assert.equal(cfg.totalMinted.toString(), "0",                "nothing minted yet");
       assert.equal(cfg.cap.toString(),         HARD_CAP.toString(), "cap matches");
       assert.equal(cfg.admin.toBase58(), admin.publicKey.toBase58(), "admin correct");
-      console.log("  ✓ KILL mint:", killMintKp.publicKey.toBase58());
+      console.log("  ✓ KILL mint:", killMintKp.publicKey.toBase58(), "(cap: 666B)");
     });
 
     it("mint_to — mints 1M KILL to admin, enforces cap", async () => {
@@ -388,11 +389,19 @@ describe("KILL System", () => {
         const bBalAfter = (await getAccount(provider.connection, userBata)).amount;
         assert.isTrue(BigInt(bBalAfter) > BigInt(bBalBefore), "attacker received bounty [test 2]");
 
-        // Verify bounty math: 10 units × 666 × 1 (min multiplier) = 6,660
-        // burn = 6660 × 666 / 10000 = 443; payout = 6217
-        const expectedBounty = 10 * 666 * 1;
-        const expectedBurn   = Math.floor(expectedBounty * 666 / 10_000);
-        const expectedPayout = expectedBounty - expectedBurn;
+        // Verify bounty math (EVM parity):
+        //   pending    = defPower × SPAWN_COST × mult = 10 × 20_000_000 × 1 = 200_000_000
+        //   battlePool = defPower < THERMAL_PARITY(666) → pending × 10 / 666 = 3_003_003
+        //   burn       = 3_003_003 × 666 / 10_000 = 199_999
+        //   payout     = 3_003_003 - 199_999 = 2_803_004
+        const SPAWN_COST_RAW  = 20_000_000;
+        const THERMAL_PARITY  = 666;
+        const defUnits        = 10;
+        const defPower        = defUnits; // + 0 reapers
+        const pending         = defUnits * SPAWN_COST_RAW * 1; // mult=1 (freshly spawned)
+        const battlePool      = Math.floor(pending * Math.min(defPower, THERMAL_PARITY) / THERMAL_PARITY);
+        const expectedBurn    = Math.floor(battlePool * 666 / 10_000);
+        const expectedPayout  = battlePool - expectedBurn;
         const received = Number(BigInt(bBalAfter) - BigInt(bBalBefore));
         assert.equal(received, expectedPayout, "bounty payout matches formula");
 
