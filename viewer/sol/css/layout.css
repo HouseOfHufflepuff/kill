@@ -1,0 +1,144 @@
+/**
+ * KILL SYSTEM - layout.css
+ * FULL UNTRUNCATED BUILD v1.0.5
+ */
+
+/* --- OP-STRIP SUBHEADER --- */
+.op-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 8px 24px;
+    flex-shrink: 0;
+    /* Transparent overlay — tactical view shows through */
+    background: rgba(5, 5, 5, 0.35);
+    border-bottom: 1px solid rgba(255, 45, 117, 0.22);
+    position: relative;
+    z-index: 50;
+}
+.op-card {
+    border: 1px solid rgba(0, 240, 255, 0.22);
+    background: rgba(0, 0, 0, 0.22);
+    padding: 8px 12px;
+}
+.op-kicker {
+    color: #444;
+    font-size: 0.5rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+.op-label {
+    color: var(--pink);
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+.op-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--cyan);
+    font-weight: 700;
+    margin-top: 3px;
+}
+
+.main-stage {
+    flex-grow: 1;
+    display: grid;
+    grid-template-columns: 320px 1fr 400px;
+    gap: 15px; padding: 20px; box-sizing: border-box;
+    overflow: hidden;
+    max-height: calc(100vh - 150px);
+    /* Pull up behind the transparent op-strip */
+    margin-top: -72px;
+    position: relative;
+    z-index: 10;
+}
+
+.panel {
+    background: var(--panel-bg);
+    border: 1px solid rgba(255, 45, 117, 0.2);
+    /* Extra top padding compensates for the -72px pull-up so panel content
+       starts where it visually should, below the op-strip overlay */
+    padding: 72px 20px 20px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.panel-header {
+    color: #00C2FF; font-size: 0.85rem; text-transform: uppercase;
+    letter-spacing: 2px; margin-bottom: 12px; border-bottom: 1px solid rgba(0, 194, 255, 0.3);
+    padding-bottom: 5px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;
+}
+
+/* --- MOBILE VERTICAL FLEX OVERRIDES --- */
+@media (max-width: 1024px) {
+    body, html {
+        overflow-y: auto !important;
+        height: auto !important;
+    }
+
+    header {
+        padding: 10px 20px;
+        height: auto;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    /* Hide desktop-only header elements */
+    .spec-badge { display: none !important; }
+    .help-wrap { display: none !important; }
+
+    /* Tactical view first, op-strip after */
+    .main-stage { order: 1; }
+    .op-strip { order: 2; }
+    footer { order: 3; }
+
+    .main-stage {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        overflow: visible !important;
+        max-height: none !important;
+        grid-template-columns: 1fr !important;
+        padding: 10px !important;
+    }
+
+    .panel {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 300px !important;
+        overflow: visible !important;
+        margin-bottom: 20px !important;
+    }
+
+    .panel:first-of-type { order: 2 !important; }
+    .panel:last-of-type { order: 3 !important; }
+
+    /* Reset desktop overlay trick */
+    .main-stage { margin-top: 0 !important; }
+    .panel { padding: 20px !important; }
+
+    /* Compact op-strip: keep 3 columns, shrink everything */
+    .op-strip {
+        grid-template-columns: repeat(3, 1fr) !important;
+        padding: 4px 8px !important;
+        gap: 4px !important;
+    }
+    .op-card { padding: 4px 6px !important; }
+    .op-label { font-size: 0.48rem !important; margin-top: 1px !important; }
+    .op-value { font-size: 0.72rem !important; margin-top: 1px !important; }
+
+    footer {
+        height: auto;
+        flex-direction: column;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .footer-economy {
+        text-align: center;
+        margin-top: 10px;
+    }
+}

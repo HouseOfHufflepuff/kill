@@ -25,7 +25,7 @@ async function main() {
     const [owner] = await ethers.getSigners();
     const killToken = new ethers.Contract(KILL_TOKEN, MINT_ABI, owner);
     //666M game contract
-    await killToken.mint(KILL_GAME, "666000000000000000000000000");
+    //await killToken.mint(KILL_GAME, "666000000000000000000000000");
     //await killToken.mint(KILL_FAUCET, "666000000000000000000000000");
     //await killToken.mint(PUBLIC_KEY, "666000000000000000000000000");
 

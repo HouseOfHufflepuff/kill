@@ -5,6 +5,9 @@ pub enum KillError {
     #[msg("Stack is not adjacent to target (Manhattan distance must be 1)")]
     NotAdjacent,
 
+    #[msg("Attacker and defender must be on the same stack")]
+    NotSameStack,
+
     #[msg("Attacker stack is empty — deploy units first")]
     EmptyAttacker,
 

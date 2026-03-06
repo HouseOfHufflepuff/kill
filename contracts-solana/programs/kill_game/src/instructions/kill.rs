@@ -5,9 +5,9 @@ use crate::constants::*;
 use crate::errors::KillError;
 use crate::state::{AgentStack, GameConfig, KillEvent};
 
-use super::{get_pending_bounty, is_adjacent, resolve_combat};
+use super::{get_pending_bounty, resolve_combat};
 
-/// Attack an adjacent enemy stack.
+/// Attack an enemy stack on the same grid position.
 ///
 /// Equivalent to the EVM `kill()` function.  Uses Lanchester square-law combat
 /// to determine the winner.  If the attacker wins:
@@ -86,26 +86,40 @@ pub fn handler(
     ctx: Context<Kill>,
     attacker_stack_id: u16,
     defender_stack_id: u16,
+    sent_units: u64,
+    sent_reapers: u64,
 ) -> Result<()> {
     require!(
-        is_adjacent(attacker_stack_id, defender_stack_id),
-        KillError::NotAdjacent
+        attacker_stack_id == defender_stack_id,
+        KillError::NotSameStack
+    );
+    require!(sent_units > 0 || sent_reapers > 0, KillError::EmptyAttacker);
+    require!(
+        sent_units <= ctx.accounts.attacker_stack.units
+            && sent_reapers <= ctx.accounts.attacker_stack.reapers,
+        KillError::InsufficientBalance
     );
 
     let current_slot = Clock::get()?.slot;
 
+    // Snapshot defender before combat
+    let def_units   = ctx.accounts.defender_stack.units;
+    let def_reapers = ctx.accounts.defender_stack.reapers;
+
     // ── Combat ────────────────────────────────────────────────────────────────
     let (won, rem_units, rem_reapers) = resolve_combat(
-        ctx.accounts.defender_stack.units,
-        ctx.accounts.attacker_stack.units,
-        ctx.accounts.defender_stack.reapers,
-        ctx.accounts.attacker_stack.reapers,
+        def_units,
+        sent_units,
+        def_reapers,
+        sent_reapers,
     );
 
     if !won {
-        // Attacker wiped out — clear their stack, no bounty, no burn
-        ctx.accounts.attacker_stack.units = 0;
-        ctx.accounts.attacker_stack.reapers = 0;
+        // Sent units are lost; any units the attacker held back remain
+        ctx.accounts.attacker_stack.units =
+            ctx.accounts.attacker_stack.units.saturating_sub(sent_units);
+        ctx.accounts.attacker_stack.reapers =
+            ctx.accounts.attacker_stack.reapers.saturating_sub(sent_reapers);
         return Ok(());
     }
 
@@ -156,10 +170,10 @@ pub fn handler(
     defender.units = 0;
     defender.reapers = 0;
 
-    // Attacker: updated to survivors
+    // Attacker: subtract sent, add back surviving units
     let attacker = &mut ctx.accounts.attacker_stack;
-    attacker.units = rem_units;
-    attacker.reapers = rem_reapers;
+    attacker.units = attacker.units.saturating_sub(sent_units) + rem_units;
+    attacker.reapers = attacker.reapers.saturating_sub(sent_reapers) + rem_reapers;
     attacker.kill_slot = current_slot;
 
     // ── Global kill counter ────────────────────────────────────────────────────
@@ -179,6 +193,10 @@ pub fn handler(
         remaining_units: rem_units,
         remaining_reapers: rem_reapers,
         slot: current_slot,
+        attacker_units_sent: sent_units,
+        attacker_reapers_sent: sent_reapers,
+        defender_units: def_units,
+        defender_reapers: def_reapers,
     });
 
     Ok(())

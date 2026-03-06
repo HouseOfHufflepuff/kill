@@ -294,9 +294,9 @@ describe("KILL System", () => {
 
     // ── Combat — defender wins ────────────────────────────────────────────────
     describe("Combat — defender wins [tests 1, 4]", () => {
-      // userA at stack 6 (0,1,0), userB at stack 7 (1,1,0) — Manhattan dist = 1
+      // userA and userB both occupy stack 6 (same grid position)
       const DEF_STACK = 6;
-      const ATK_STACK = 7;
+      const ATK_STACK = 6;
 
       let userA: Keypair, userAata: PublicKey;
       let userB: Keypair, userBata: PublicKey;
@@ -312,7 +312,7 @@ describe("KILL System", () => {
         await spawnFor(userB, userBata, ATK_STACK, new BN(10));
 
         await gameProg.methods
-          .kill(ATK_STACK, DEF_STACK)
+          .kill(ATK_STACK, DEF_STACK, new BN(10), new BN(0))
           .accounts({
             gameConfig:           gameConfigPda,
             attackerStack:        stackPda(userB.publicKey, ATK_STACK),
@@ -327,7 +327,7 @@ describe("KILL System", () => {
           .signers([userB])
           .rpc();
 
-        // Attacker stack zeroed
+        // Attacker's sent units are lost (defender won)
         const bStack = await gameProg.account.agentStack.fetch(stackPda(userB.publicKey, ATK_STACK));
         assert.equal(bStack.units.toString(),   "0", "attacker units zeroed");
         assert.equal(bStack.reapers.toString(), "0", "attacker reapers zeroed");
@@ -345,9 +345,9 @@ describe("KILL System", () => {
 
     // ── Combat — attacker wins ────────────────────────────────────────────────
     describe("Combat — attacker wins [tests 2, 15]", () => {
-      // userA at stack 8 (2,1,0), userB at stack 9 (3,1,0) — adjacent
+      // userA and userB both occupy stack 8 (same grid position)
       const DEF_STACK = 8;
-      const ATK_STACK = 9;
+      const ATK_STACK = 8;
 
       let userA: Keypair, userAata: PublicKey;
       let userB: Keypair, userBata: PublicKey;
@@ -365,7 +365,7 @@ describe("KILL System", () => {
         const bBalBefore = (await getAccount(provider.connection, userBata)).amount;
 
         await gameProg.methods
-          .kill(ATK_STACK, DEF_STACK)
+          .kill(ATK_STACK, DEF_STACK, new BN(1000), new BN(0))
           .accounts({
             gameConfig:           gameConfigPda,
             attackerStack:        stackPda(userB.publicKey, ATK_STACK),
@@ -408,9 +408,9 @@ describe("KILL System", () => {
 
     // ── Combat — reaper power bonus ────────────────────────────────────────────
     describe("Combat — reaper power bonus [test 5]", () => {
-      // stacks 12 (0,2,0) and 13 (1,2,0) — adjacent
+      // userA and userB both occupy stack 12 (same grid position)
       const DEF_STACK = 12;
-      const ATK_STACK = 13;
+      const ATK_STACK = 12;
 
       let userA: Keypair, userAata: PublicKey;
       let userB: Keypair, userBata: PublicKey;
@@ -427,7 +427,7 @@ describe("KILL System", () => {
         await spawnFor(userB, userBata, ATK_STACK, new BN(666));
 
         await gameProg.methods
-          .kill(ATK_STACK, DEF_STACK)
+          .kill(ATK_STACK, DEF_STACK, new BN(666), new BN(1))
           .accounts({
             gameConfig:           gameConfigPda,
             attackerStack:        stackPda(userB.publicKey, ATK_STACK),

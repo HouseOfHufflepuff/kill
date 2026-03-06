@@ -50,8 +50,10 @@ pub mod kill_game {
         ctx: Context<Kill>,
         attacker_stack_id: u16,
         defender_stack_id: u16,
+        sent_units: u64,
+        sent_reapers: u64,
     ) -> Result<()> {
-        instructions::kill::handler(ctx, attacker_stack_id, defender_stack_id)
+        instructions::kill::handler(ctx, attacker_stack_id, defender_stack_id, sent_units, sent_reapers)
     }
 
     /// Admin: pause or unpause all gameplay instructions.

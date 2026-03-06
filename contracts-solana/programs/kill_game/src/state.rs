@@ -110,4 +110,12 @@ pub struct KillEvent {
     /// Attacker reapers remaining after combat
     pub remaining_reapers: u64,
     pub slot: u64,
+    /// Units attacker committed to this attack
+    pub attacker_units_sent: u64,
+    /// Reapers attacker committed to this attack
+    pub attacker_reapers_sent: u64,
+    /// Defender units before combat (snapshot)
+    pub defender_units: u64,
+    /// Defender reapers before combat (snapshot)
+    pub defender_reapers: u64,
 }

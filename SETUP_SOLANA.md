@@ -253,3 +253,105 @@ node scripts-solana/stacks.js
 | MAX_MULTIPLIER | 20× | Bounty cap |
 | Grid | 6 × 6 × 6 | 216 total stacks (IDs 0–215) |
 | KILL decimals | 6 | `1 KILL = 1_000_000` raw units |
+
+---
+
+## Indexer — Helius + Supabase
+
+On-chain events are indexed via a webhook pipeline:
+
+```
+Helius rawDevnet webhook
+    → Supabase Edge Function (Deno)
+        → PostgreSQL (via Supabase)
+            → pg_graphql API
+                → viewer/sol/ UI
+```
+
+### Credentials
+
+| Service | Value |
+|---|---|
+| Helius API key | `fbda4008-03a0-4aad-8f64-c54e7fd9147e` |
+| Helius webhook ID | `10b5607d-f635-454c-96cc-16ffebf6f9e1` |
+| Supabase project ref | `jclsklriyozveiykzead` |
+| Supabase URL | `https://jclsklriyozveiykzead.supabase.co` |
+| Supabase anon key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbHNrbHJpeW96dmVpeWt6ZWFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NDQzOTUsImV4cCI6MjA4ODMyMDM5NX0.ka7UCBzLiZNvU5WKPWmpB7x7xM99thukFwtBGRvr-I8` |
+| Supabase GraphQL | `https://jclsklriyozveiykzead.supabase.co/graphql/v1` |
+| Helius RPC (devnet) | `https://devnet.helius-rpc.com/?api-key=fbda4008-03a0-4aad-8f64-c54e7fd9147e` |
+
+### Indexer project structure
+
+```
+kill-indexer/
+  supabase/
+    migrations/
+      20240101000000_init.sql   ← 7-table schema
+    functions/
+      helius-webhook/
+        index.ts                ← Deno Edge Function
+  test-helius.mjs               ← connectivity test
+```
+
+### Schema tables
+
+| Table | Purpose |
+|---|---|
+| `spawned` | StackSpawned events |
+| `moved` | StackMoved events |
+| `killed` | KillEvent events |
+| `stack` | Per-stack totals (upserted on each event) |
+| `agent_stack` | Per-agent per-stack holdings |
+| `agent` | Per-agent P&L totals |
+| `global_stat` | Global counters (id = "current") |
+
+All pubkeys are stored as base58 text. Slot numbers are `bigint`. Token amounts are `numeric` in raw units (divide by 1,000,000 for KILL).
+
+### Deploy / update Edge Function
+
+```bash
+cd kill-indexer
+npx supabase functions deploy helius-webhook --project-ref jclsklriyozveiykzead --no-verify-jwt
+```
+
+### Update Helius webhook URL
+
+```bash
+curl -X PUT https://api.helius.xyz/v0/webhooks/10b5607d-f635-454c-96cc-16ffebf6f9e1?api-key=fbda4008-03a0-4aad-8f64-c54e7fd9147e \
+  -H "Content-Type: application/json" \
+  -d '{
+    "webhookURL": "https://jclsklriyozveiykzead.supabase.co/functions/v1/helius-webhook",
+    "transactionTypes": ["Any"],
+    "accountAddresses": ["2FbeFxvFH2b4KyAcwNToFr3pHzYK4ybYQWriXjjKEr5D"],
+    "webhookType": "rawDevnet"
+  }'
+```
+
+### Query GraphQL via curl
+
+```bash
+# Recent spawns
+curl -X POST https://jclsklriyozveiykzead.supabase.co/graphql/v1 \
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbHNrbHJpeW96dmVpeWt6ZWFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NDQzOTUsImV4cCI6MjA4ODMyMDM5NX0.ka7UCBzLiZNvU5WKPWmpB7x7xM99thukFwtBGRvr-I8" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ spawnedCollection(orderBy: [{slot: DescNullsLast}], first: 5) { edges { node { id agent stack_id units reapers slot } } } }"}'
+
+# Active stacks by unit count
+curl -X POST https://jclsklriyozveiykzead.supabase.co/graphql/v1 \
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbHNrbHJpeW96dmVpeWt6ZWFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NDQzOTUsImV4cCI6MjA4ODMyMDM5NX0.ka7UCBzLiZNvU5WKPWmpB7x7xM99thukFwtBGRvr-I8" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ stackCollection(orderBy: [{total_standard_units: DescNullsLast}], first: 10) { edges { node { id total_standard_units total_boosted_units birth_slot } } } }"}'
+```
+
+### Known differences from EVM indexer (Goldsky)
+
+| Area | EVM (Goldsky) | Solana (Supabase) |
+|---|---|---|
+| Field naming | camelCase (`stackId`, `birthBlock`) | snake_case (`stack_id`, `birth_slot`) |
+| Token decimals | 18 (`ethers.formatEther`) | 6 (`/ 1_000_000`) |
+| Block reference | `block_number` | `slot` |
+| Address format | 42-char hex (`0x...`) | 44-char base58 |
+| GraphQL format | `stacks { id }` | `stackCollection { edges { node { id } } }` |
+| Combat stats | Full per-unit breakdown in KillEvent | `attacker_units_sent` etc. stored as 0 (not emitted) |
+| Global stat | Updated on every kill via event | Upserted by Edge Function on KillEvent |
+| Agent filter | `where: { agent: "..." }` | `filter: { agent: { eq: "..." } }` |
