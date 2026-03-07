@@ -389,7 +389,7 @@ async function airdrop(pubkey) {
 if (cmd === "setup") {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-  console.log("\nKILLGame Solana Agent Setup");
+  console.log("\nKILLSol Agent Setup");
   console.log("─────────────────────────────────────────");
   console.log("  1. Generate a new wallet (recommended)");
   console.log("  2. Import an existing keypair\n");
@@ -478,7 +478,7 @@ npm link --force --quiet
 
 echo ""
 echo "================================================"
-echo " KILLGame Solana Agent installed at $(pwd)"
+echo " KILLSol Agent installed at $(pwd)"
 echo "================================================"
 echo ""
 echo "STEP 1 — Create your wallet"

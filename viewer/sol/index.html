@@ -252,7 +252,7 @@
                     <span class="cfg-folder-name" id="cfg-folder-name">No folder selected</span>
                     <span class="cfg-folder-status" id="cfg-folder-status"></span>
                 </div>
-                <div style="font-size:.65rem;color:#666;line-height:1.8;">Expected: <code style="color:#888">killgame/agents/config.json</code> — Don't have killgame yet? Click <span style="color:var(--pink)">AGENT +</span> to deploy.</div>
+                <div style="font-size:.65rem;color:#666;line-height:1.8;">Expected: <code style="color:#888">killsol/agents/config.json</code> — Don't have killsol yet? Click <span style="color:var(--pink)">AGENT +</span> to deploy.</div>
             </div>
             <div id="cfg-folder-warn" style="display:none;background:#0a0000;border:1px solid #3a0000;padding:12px 16px;font-size:.68rem;color:#ff6666;margin-bottom:16px;line-height:1.7;"></div>
             <div class="cfg-nav">
@@ -324,10 +324,10 @@
                     <div class="cfg-result-msg" id="cfg-result-msg"></div>
                     <div style="font-size:.68rem;color:#888;margin-bottom:10px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">Run Command</div>
                     <div class="code-wrapper">
-                        <div id="cfg-run-cmd" class="code-block">killgame agent</div>
+                        <div id="cfg-run-cmd" class="code-block">killsol agent</div>
                         <button class="btn-copy" onclick="copyCommand('cfg-run-cmd',this)">COPY</button>
                     </div>
-                    <div style="font-size:.63rem;color:#555;margin-top:8px;">Run from your killgame directory. Use <code style="color:var(--cyan)">killsol setup</code> first if you haven't set AGENT_PK.</div>
+                    <div style="font-size:.63rem;color:#555;margin-top:8px;">Run from your killsol directory. Use <code style="color:var(--cyan)">killsol setup</code> first if you haven't set AGENT_PK.</div>
                 </div>
             </div>
             <div class="cfg-nav">
@@ -575,7 +575,7 @@ function goToStep(n) {
 function cfgNext(from) {
     if (from === 3 && !cfgDirHandle) {
         var warn = document.getElementById('cfg-folder-warn');
-        warn.textContent = 'Please select your killgame folder first.';
+        warn.textContent = 'Please select your killsol folder first.';
         warn.style.display = 'block';
         return;
     }
@@ -605,7 +605,7 @@ async function pickAgentFolder() {
             document.getElementById('cfg-folder-status').textContent = '✗ agents/ not found';
             document.getElementById('cfg-folder-status').className = 'cfg-folder-status err';
             var warn = document.getElementById('cfg-folder-warn');
-            warn.textContent = 'This folder doesn\'t contain an agents/ directory. Select the root killgame folder (e.g. ~/Development/killgame), not a subfolder. Run killgame setup first if not yet installed.';
+            warn.textContent = 'This folder doesn\'t contain an agents/ directory. Select the root killsol folder (e.g. ~/Development/killsol), not a subfolder. Run killsol setup first if not yet installed.';
             warn.style.display = 'block';
             cfgDirHandle = null; cfgAgentsDir = null;
             return;
@@ -618,7 +618,7 @@ async function pickAgentFolder() {
             document.getElementById('cfg-folder-status').textContent = '⚠ config not found';
             document.getElementById('cfg-folder-status').className = 'cfg-folder-status err';
             var warn = document.getElementById('cfg-folder-warn');
-            warn.textContent = 'agents/config.json not found. Run killgame setup first. You can still continue to create config files.';
+            warn.textContent = 'agents/config.json not found. Run killsol setup first. You can still continue to create config files.';
             warn.style.display = 'block';
             cfgDirHandle = rootHandle; cfgAgentsDir = agentsDir;
             return;
