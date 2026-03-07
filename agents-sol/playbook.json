@@ -1,7 +1,6 @@
 {
   "runs": {
-    "run1": ["seed", "sniper", "fortress", "aftershock"],
-    "run2": ["seed", "fortress"]
+    "run1": ["sniper", "sniper", "fortress"]
   },
-  "strategy": ["run1", "run2"]
+  "strategy": ["run1"]
 }
