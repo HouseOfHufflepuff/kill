@@ -34,6 +34,9 @@ async function main() {
     const attackerTokenAccount = await getOrCreateAssociatedTokenAccount(
         connection, wallet, KILL_MINT, wallet.publicKey
     );
+    const defenderTokenAccount = await getOrCreateAssociatedTokenAccount(
+        connection, wallet, KILL_MINT, defenderPubkey
+    );
 
     const [gameConfig]      = gameConfigPDA();
     const [attackerStack]   = agentStackPDA(wallet.publicKey, attackerStackId);
@@ -48,6 +51,7 @@ async function main() {
             attackerStack,
             defenderStack,
             attackerTokenAccount: attackerTokenAccount.address,
+            defenderTokenAccount: defenderTokenAccount.address,
             gameVault:            gc.gameVault,
             killMint:             KILL_MINT,
             attacker:             wallet.publicKey,

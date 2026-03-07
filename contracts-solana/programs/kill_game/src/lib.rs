@@ -33,14 +33,16 @@ pub mod kill_game {
         instructions::spawn::handler(ctx, stack_id, units)
     }
 
-    /// Move all units from one adjacent grid position to another.
-    /// Costs MOVE_COST KILL tokens → vault.
+    /// Move a specified number of units/reapers from one adjacent grid position to another.
+    /// Partial moves are supported (EVM parity).  Costs MOVE_COST KILL tokens → vault.
     pub fn move_units(
         ctx: Context<MoveUnits>,
         from_stack_id: u16,
         to_stack_id: u16,
+        units: u64,
+        reapers: u64,
     ) -> Result<()> {
-        instructions::move_units::handler(ctx, from_stack_id, to_stack_id)
+        instructions::move_units::handler(ctx, from_stack_id, to_stack_id, units, reapers)
     }
 
     /// Attack an adjacent enemy stack.

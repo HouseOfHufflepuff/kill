@@ -13,8 +13,12 @@ async function main() {
     const { wallet, killGame } = await setup();
     const { web3 } = require("@coral-xyz/anchor");
 
-    const target = process.argv[2]
-        ? new web3.PublicKey(process.argv[2])
+    // Filter out --wallet <name> flag so it doesn't get parsed as the target pubkey
+    const positional = process.argv.slice(2).filter((a, i, arr) =>
+        a !== "--wallet" && arr[i - 1] !== "--wallet"
+    );
+    const target = positional[0]
+        ? new web3.PublicKey(positional[0])
         : wallet.publicKey;
 
     console.log(`\nStacks for: ${target.toBase58()}\n`);

@@ -9,14 +9,16 @@ use super::{get_pending_bounty, resolve_combat};
 
 /// Attack an enemy stack on the same grid position.
 ///
-/// Equivalent to the EVM `kill()` function.  Uses Lanchester square-law combat
-/// to determine the winner.  If the attacker wins:
-///   1. Bounty is calculated from the defender's unit count × age multiplier.
-///   2. BURN_BPS percent of the bounty is burned from the vault.
-///   3. The remainder (payout) is transferred from vault → attacker.
-///   4. Defender stack is zeroed; attacker stack is updated to survivors.
+/// Equivalent to the EVM `kill()` function.  Uses a 10%-defender-bonus combat
+/// check to determine the winner, then applies EVM-parity bidirectional bounty:
 ///
-/// If the attacker loses, their stack is zeroed (pyrrhic loss) with no bounty.
+///   battlePool  = pending × min(totalPowerLost, THERMAL_PARITY) / THERMAL_PARITY
+///   atkBounty   = battlePool × defPowerLost / totalPowerLost  → to attacker
+///   defBounty   = battlePool × atkPowerLost / totalPowerLost  → to defender
+///   burn        = BURN_BPS% of each bounty, subtracted before payout
+///
+/// Attacker wins → all defender forces destroyed; attacker keeps all sent forces.
+/// Defender wins → attacker loses all sent forces; defender takes Lanchester partial loss.
 #[derive(Accounts)]
 #[instruction(attacker_stack_id: u16, defender_stack_id: u16)]
 pub struct Kill<'info> {
@@ -39,8 +41,6 @@ pub struct Kill<'info> {
     pub attacker_stack: Account<'info, AgentStack>,
 
     /// Defender's stack — must be non-empty and owned by a different agent.
-    /// The client must supply the correct defender_stack PDA address; Anchor
-    /// validates it via the seeds + bump constraint.
     #[account(
         mut,
         seeds = [b"agent_stack", defender.key().as_ref(), &defender_stack_id.to_le_bytes()],
@@ -50,7 +50,7 @@ pub struct Kill<'info> {
     )]
     pub defender_stack: Account<'info, AgentStack>,
 
-    /// Attacker's KILL token account — receives the net bounty payout.
+    /// Attacker's KILL token account — receives the net bounty payout if attacker wins.
     #[account(
         mut,
         constraint = attacker_token_account.owner == attacker.key(),
@@ -58,7 +58,15 @@ pub struct Kill<'info> {
     )]
     pub attacker_token_account: Account<'info, TokenAccount>,
 
-    /// Game vault — source for both the bounty payout and the burn.
+    /// Defender's KILL token account — receives the net bounty payout if defender wins.
+    #[account(
+        mut,
+        constraint = defender_token_account.owner == defender.key(),
+        constraint = defender_token_account.mint == game_config.kill_mint,
+    )]
+    pub defender_token_account: Account<'info, TokenAccount>,
+
+    /// Game vault — source for bounty payouts and the burn.
     #[account(
         mut,
         constraint = game_vault.key() == game_config.game_vault,
@@ -107,43 +115,53 @@ pub fn handler(
     let def_reapers = ctx.accounts.defender_stack.reapers;
 
     // ── Combat ────────────────────────────────────────────────────────────────
-    let (won, rem_units, rem_reapers) = resolve_combat(
-        def_units,
-        sent_units,
-        def_reapers,
-        sent_reapers,
-    );
+    // Returns: (won, rem_atk_u, rem_atk_r, atk_u_lost, atk_r_lost, def_u_lost, def_r_lost)
+    let (won, rem_units, rem_reapers, atk_u_lost, atk_r_lost, def_u_lost, def_r_lost) =
+        resolve_combat(def_units, sent_units, def_reapers, sent_reapers);
 
-    if !won {
-        // Sent units are lost; any units the attacker held back remain
-        ctx.accounts.attacker_stack.units =
-            ctx.accounts.attacker_stack.units.saturating_sub(sent_units);
-        ctx.accounts.attacker_stack.reapers =
-            ctx.accounts.attacker_stack.reapers.saturating_sub(sent_reapers);
-        return Ok(());
-    }
+    // ── Bounty calculation (EVM _applyRewards parity) ─────────────────────────
+    // Power destroyed by each side
+    let t_p_lost = def_u_lost.saturating_add(def_r_lost.saturating_mul(THERMAL_PARITY));
+    let a_p_lost = atk_u_lost.saturating_add(atk_r_lost.saturating_mul(THERMAL_PARITY));
+    let total_p_lost = t_p_lost.saturating_add(a_p_lost);
 
-    // ── Bounty calculation ────────────────────────────────────────────────────
-    // EVM _applyRewards: battlePool scales with defPower relative to THERMAL_PARITY.
-    // When attacker wins (aPLost=0), attacker receives 100% of battlePool.
-    // battlePool = defPower >= THERMAL_PARITY ? pending : pending * defPower / THERMAL_PARITY
-    let def_power = def_units.saturating_add(def_reapers.saturating_mul(THERMAL_PARITY));
     let vault_amount = ctx.accounts.game_vault.amount;
     let pending = get_pending_bounty(&ctx.accounts.defender_stack, current_slot, vault_amount);
-    let bounty = if def_power >= THERMAL_PARITY {
+
+    // battlePool scales by how much total power was destroyed (EVM parity)
+    let battle_pool = if total_p_lost == 0 {
+        0u64
+    } else if total_p_lost >= THERMAL_PARITY {
         pending
     } else {
-        pending.saturating_mul(def_power) / THERMAL_PARITY
+        pending.saturating_mul(total_p_lost) / THERMAL_PARITY
     };
-    let burn_amount = bounty.saturating_mul(BURN_BPS) / BPS_DENOM;
-    let payout = bounty.saturating_sub(burn_amount);
+
+    // Split battlePool proportionally to power each side destroyed
+    let atk_bounty = if total_p_lost == 0 || t_p_lost == 0 {
+        0u64
+    } else {
+        battle_pool.saturating_mul(t_p_lost) / total_p_lost
+    };
+    let def_bounty = if total_p_lost == 0 || a_p_lost == 0 {
+        0u64
+    } else {
+        battle_pool.saturating_mul(a_p_lost) / total_p_lost
+    };
+
+    // Apply BURN_BPS to each bounty
+    let atk_burn   = atk_bounty.saturating_mul(BURN_BPS) / BPS_DENOM;
+    let atk_payout = atk_bounty.saturating_sub(atk_burn);
+    let def_burn   = def_bounty.saturating_mul(BURN_BPS) / BPS_DENOM;
+    let def_payout = def_bounty.saturating_sub(def_burn);
+    let total_burn = atk_burn.saturating_add(def_burn);
 
     // PDA signer seeds — the game_config PDA signs on behalf of the vault
     let config_bump = ctx.accounts.game_config.bump;
     let signer_seeds: &[&[&[u8]]] = &[&[b"game_config", &[config_bump]]];
 
     // ── Payout vault → attacker ────────────────────────────────────────────────
-    if payout > 0 {
+    if atk_payout > 0 {
         token::transfer(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -154,12 +172,28 @@ pub fn handler(
                 },
                 signer_seeds,
             ),
-            payout,
+            atk_payout,
+        )?;
+    }
+
+    // ── Payout vault → defender ────────────────────────────────────────────────
+    if def_payout > 0 {
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.game_vault.to_account_info(),
+                    to: ctx.accounts.defender_token_account.to_account_info(),
+                    authority: ctx.accounts.game_config.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            def_payout,
         )?;
     }
 
     // ── Burn from vault ────────────────────────────────────────────────────────
-    if burn_amount > 0 {
+    if total_burn > 0 {
         token::burn(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -170,43 +204,47 @@ pub fn handler(
                 },
                 signer_seeds,
             ),
-            burn_amount,
+            total_burn,
         )?;
     }
 
     // ── Update stacks ──────────────────────────────────────────────────────────
-    // Defender: zeroed (defeated)
+    // Defender: subtract Lanchester loss (all units if attacker won)
     let defender = &mut ctx.accounts.defender_stack;
-    defender.units = 0;
-    defender.reapers = 0;
+    defender.units   = defender.units.saturating_sub(def_u_lost);
+    defender.reapers = defender.reapers.saturating_sub(def_r_lost);
 
-    // Attacker: subtract sent, add back surviving units
+    // Attacker: subtract sent, add back survivors (rem = 0 if lost, = sent if won)
     let attacker = &mut ctx.accounts.attacker_stack;
-    attacker.units = attacker.units.saturating_sub(sent_units) + rem_units;
+    attacker.units   = attacker.units.saturating_sub(sent_units) + rem_units;
     attacker.reapers = attacker.reapers.saturating_sub(sent_reapers) + rem_reapers;
-    attacker.kill_slot = current_slot;
 
-    // ── Global kill counter ────────────────────────────────────────────────────
-    ctx.accounts.game_config.total_kills = ctx
-        .accounts
-        .game_config
-        .total_kills
-        .saturating_add(1);
+    if won {
+        attacker.kill_slot = current_slot;
+        // ── Global kill counter (attacker wins only) ───────────────────────────
+        ctx.accounts.game_config.total_kills =
+            ctx.accounts.game_config.total_kills.saturating_add(1);
+    }
 
     emit!(KillEvent {
         attacker: ctx.accounts.attacker.key(),
         defender: ctx.accounts.defender.key(),
         attacker_stack: attacker_stack_id,
         defender_stack: defender_stack_id,
-        bounty,
-        burned: burn_amount,
+        attacker_bounty: atk_payout,
+        defender_bounty: def_payout,
+        total_burned: total_burn,
         remaining_units: rem_units,
         remaining_reapers: rem_reapers,
         slot: current_slot,
         attacker_units_sent: sent_units,
         attacker_reapers_sent: sent_reapers,
+        attacker_units_lost: atk_u_lost,
+        attacker_reapers_lost: atk_r_lost,
         defender_units: def_units,
         defender_reapers: def_reapers,
+        defender_units_lost: def_u_lost,
+        defender_reapers_lost: def_r_lost,
     });
 
     Ok(())

@@ -39,7 +39,7 @@ function pubkey(b: Uint8Array, o: number): string {
 type AnchorEvent =
   | { name: "StackSpawned"; agent: string; stackId: number; units: bigint; reapers: bigint; slot: bigint }
   | { name: "StackMoved";   agent: string; fromStack: number; toStack: number; units: bigint; reapers: bigint; slot: bigint }
-  | { name: "KillEvent";    attacker: string; defender: string; attackerStack: number; defenderStack: number; bounty: bigint; burned: bigint; remainingUnits: bigint; remainingReapers: bigint; slot: bigint; attackerUnitsSent: bigint; attackerReapersSent: bigint; defenderUnits: bigint; defenderReapers: bigint };
+  | { name: "KillEvent";    attacker: string; defender: string; attackerStack: number; defenderStack: number; attackerBounty: bigint; defenderBounty: bigint; totalBurned: bigint; remainingUnits: bigint; remainingReapers: bigint; slot: bigint; attackerUnitsSent: bigint; attackerReapersSent: bigint; attackerUnitsLost: bigint; attackerReapersLost: bigint; defenderUnits: bigint; defenderReapers: bigint; defenderUnitsLost: bigint; defenderReapersLost: bigint };
 
 function parseEvents(logs: string[]): AnchorEvent[] {
   const events: AnchorEvent[] = [];
@@ -57,7 +57,35 @@ function parseEvents(logs: string[]): AnchorEvent[] {
       events.push({ name: "StackMoved", agent: pubkey(d, 0), fromStack: u16(d, 32), toStack: u16(d, 34), units: u64(d, 36), reapers: u64(d, 44), slot: u64(d, 52) });
     } else if (disc.every((v, i) => v === DISC.KillEvent[i])) {
       const d = raw.slice(8);
-      events.push({ name: "KillEvent", attacker: pubkey(d, 0), defender: pubkey(d, 32), attackerStack: u16(d, 64), defenderStack: u16(d, 66), bounty: u64(d, 68), burned: u64(d, 76), remainingUnits: u64(d, 84), remainingReapers: u64(d, 92), slot: u64(d, 100), attackerUnitsSent: u64(d, 108), attackerReapersSent: u64(d, 116), defenderUnits: u64(d, 124), defenderReapers: u64(d, 132) });
+      // Field layout (Borsh, after 8-byte discriminator):
+      //   attacker(32) defender(32) attackerStack(2) defenderStack(2)
+      //   attackerBounty(8) defenderBounty(8) totalBurned(8)
+      //   remainingUnits(8) remainingReapers(8) slot(8)
+      //   attackerUnitsSent(8) attackerReapersSent(8)
+      //   attackerUnitsLost(8) attackerReapersLost(8)
+      //   defenderUnits(8) defenderReapers(8)
+      //   defenderUnitsLost(8) defenderReapersLost(8)
+      events.push({
+        name: "KillEvent",
+        attacker:            pubkey(d,   0),
+        defender:            pubkey(d,  32),
+        attackerStack:       u16(d,   64),
+        defenderStack:       u16(d,   66),
+        attackerBounty:      u64(d,   68),
+        defenderBounty:      u64(d,   76),
+        totalBurned:         u64(d,   84),
+        remainingUnits:      u64(d,   92),
+        remainingReapers:    u64(d,  100),
+        slot:                u64(d,  108),
+        attackerUnitsSent:   u64(d,  116),
+        attackerReapersSent: u64(d,  124),
+        attackerUnitsLost:   u64(d,  132),
+        attackerReapersLost: u64(d,  140),
+        defenderUnits:       u64(d,  148),
+        defenderReapers:     u64(d,  156),
+        defenderUnitsLost:   u64(d,  164),
+        defenderReapersLost: u64(d,  172),
+      });
     }
   }
   return events;
@@ -154,33 +182,49 @@ async function handleStackMoved(db: any, sig: string, idx: number, e: Extract<An
 // deno-lint-ignore no-explicit-any
 async function handleKillEvent(db: any, sig: string, idx: number, e: Extract<AnchorEvent, { name: "KillEvent" }>) {
   const id = `${sig}-${idx}`;
-  const netBounty = e.bounty - e.burned;
-  const attackerUnitsLost   = e.attackerUnitsSent  - e.remainingUnits;
-  const attackerReapersLost = e.attackerReapersSent - e.remainingReapers;
+
+  // Write immutable event record
   await db.from("killed").upsert({
     id, attacker: e.attacker, target: e.defender,
-    stack_id: e.defenderStack,
-    attacker_units_sent:    n(e.attackerUnitsSent),
-    attacker_reaper_sent:   n(e.attackerReapersSent),
-    attacker_units_lost:    n(attackerUnitsLost),
-    attacker_reaper_lost:   n(attackerReapersLost),
-    target_units_lost:      n(e.defenderUnits),
-    target_reaper_lost:     n(e.defenderReapers),
-    initial_defender_units: n(e.defenderUnits),
+    stack_id:                e.defenderStack,
+    attacker_units_sent:     n(e.attackerUnitsSent),
+    attacker_reaper_sent:    n(e.attackerReapersSent),
+    attacker_units_lost:     n(e.attackerUnitsLost),
+    attacker_reaper_lost:    n(e.attackerReapersLost),
+    target_units_lost:       n(e.defenderUnitsLost),
+    target_reaper_lost:      n(e.defenderReapersLost),
+    initial_defender_units:  n(e.defenderUnits),
     initial_defender_reaper: n(e.defenderReapers),
-    attacker_bounty: n(netBounty), defender_bounty: "0",
+    attacker_bounty:         n(e.attackerBounty),
+    defender_bounty:         n(e.defenderBounty),
+    total_burned:            n(e.totalBurned),
     target_birth_slot: 0, slot: Number(e.slot),
   });
-  // Defender stack wiped; attacker stack updated with remaining units
-  await db.from("stack").upsert({ id: e.defenderStack.toString(), total_standard_units: "0", total_boosted_units: "0", birth_slot: 0, active: false });
-  await db.from("agent_stack").upsert({ id: `${e.defender}-${e.defenderStack}`, agent: e.defender, stack_id: e.defenderStack, units: "0", reaper: "0", birth_slot: 0 });
-  await db.from("agent_stack").upsert({ id: `${e.attacker}-${e.attackerStack}`, agent: e.attacker, stack_id: e.attackerStack, units: n(e.remainingUnits), reaper: n(e.remainingReapers), birth_slot: Number(e.slot) });
-  await upsertAgent(db, e.attacker, 0n, netBounty, e.slot);
+
+  // attacker_stack_id == defender_stack_id (same grid position, required by contract)
+  // Apply net unit deltas to the shared grid position
+  const atkDeltaUnits   = e.remainingUnits   - e.attackerUnitsSent;
+  const atkDeltaReapers = e.remainingReapers - e.attackerReapersSent;
+  const netDeltaUnits   = atkDeltaUnits   - e.defenderUnitsLost;
+  const netDeltaReapers = atkDeltaReapers - e.defenderReapersLost;
+  await upsertStack(db, e.defenderStack, netDeltaUnits, netDeltaReapers, e.slot);
+
+  // Per-agent stack updates (delta-based so other agents at same position are unaffected)
+  await upsertAgentStack(db, e.defender, e.defenderStack, -e.defenderUnitsLost, -e.defenderReapersLost, e.slot);
+  await upsertAgentStack(db, e.attacker, e.attackerStack,  atkDeltaUnits,        atkDeltaReapers,        e.slot);
+
+  // Agent P&L
+  await upsertAgent(db, e.attacker, 0n, e.attackerBounty, e.slot);
+  if (e.defenderBounty > 0n) {
+    await upsertAgent(db, e.defender, 0n, e.defenderBounty, e.slot);
+  }
+
+  // Global stats
   await updateGlobalStat(db, {
-    units_killed:   e.defenderUnits,
-    reapers_killed: e.defenderReapers,
-    kill_extracted: netBounty,
-    kill_burned:    e.burned,
+    units_killed:   e.defenderUnitsLost,
+    reapers_killed: e.defenderReapersLost,
+    kill_extracted: e.attackerBounty + e.defenderBounty,
+    kill_burned:    e.totalBurned,
   });
 }
 

@@ -101,10 +101,12 @@ pub struct KillEvent {
     pub defender: Pubkey,
     pub attacker_stack: u16,
     pub defender_stack: u16,
-    /// Total bounty calculated for the defender stack
-    pub bounty: u64,
-    /// Amount burned (BURN_BPS / BPS_DENOM of bounty)
-    pub burned: u64,
+    /// Payout to the attacker (after burn deduction)
+    pub attacker_bounty: u64,
+    /// Payout to the defender (after burn deduction; non-zero when attacker loses)
+    pub defender_bounty: u64,
+    /// Total amount burned from vault across both bounties
+    pub total_burned: u64,
     /// Attacker units remaining after combat
     pub remaining_units: u64,
     /// Attacker reapers remaining after combat
@@ -114,8 +116,16 @@ pub struct KillEvent {
     pub attacker_units_sent: u64,
     /// Reapers attacker committed to this attack
     pub attacker_reapers_sent: u64,
+    /// Attacker units lost in combat
+    pub attacker_units_lost: u64,
+    /// Attacker reapers lost in combat
+    pub attacker_reapers_lost: u64,
     /// Defender units before combat (snapshot)
     pub defender_units: u64,
     /// Defender reapers before combat (snapshot)
     pub defender_reapers: u64,
+    /// Defender units lost in combat (Lanchester partial loss when defender wins)
+    pub defender_units_lost: u64,
+    /// Defender reapers lost in combat
+    pub defender_reapers_lost: u64,
 }

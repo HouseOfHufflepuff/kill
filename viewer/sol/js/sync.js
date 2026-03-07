@@ -211,7 +211,7 @@ async function syncData() {
                     attacker_units_lost attacker_reaper_lost
                     target_units_lost target_reaper_lost
                     initial_defender_units initial_defender_reaper
-                    attacker_bounty defender_bounty slot
+                    attacker_bounty defender_bounty total_burned slot
                 } }
             }
             spawnedCollection(orderBy: [{ slot: DescNullsLast }], first: 50) {
@@ -332,10 +332,9 @@ async function syncData() {
                 triggerPulse(evt.stack_id, 'spawn');
 
             } else if (evt.type === 'kill') {
-                const atkBounty = parseFloat(evt.attacker_bounty || 0) / 1_000_000;
-                const defBounty = parseFloat(evt.defender_bounty || 0) / 1_000_000;
-                // NOTE: Solana KillEvent doesn't emit per-unit combat stats;
-                // attacker_units_sent etc. are stored as 0. Bounty is the real value.
+                const atkBounty  = parseFloat(evt.attacker_bounty || 0) / 1_000_000;
+                const defBounty  = parseFloat(evt.defender_bounty || 0) / 1_000_000;
+                const totalBurned = parseFloat(evt.total_burned   || 0) / 1_000_000;
                 const offPow  = parseInt(evt.attacker_units_sent  || 0) + parseInt(evt.attacker_reaper_sent  || 0) * 666;
                 const defPow  = parseInt(evt.initial_defender_units || 0) + parseInt(evt.initial_defender_reaper || 0) * 666;
                 const offLost = parseInt(evt.attacker_units_lost   || 0) + parseInt(evt.attacker_reaper_lost  || 0) * 666;
@@ -346,6 +345,7 @@ async function syncData() {
                     `<div class="kill-row"><span>BATTLE</span><span>${formatValue(offPow)}</span><span>${formatValue(defPow)}</span></div>` +
                     `<div class="kill-row"><span>OUTCOME</span><span>${formatValue(offLost)}</span><span>${formatValue(defLost)}</span></div>` +
                     `<div class="kill-row"><span>KILL WON</span><span>${formatValue(atkBounty)}</span><span>${formatValue(defBounty)}</span></div>` +
+                    `<div class="kill-row"><span>BURNED</span><span>${formatValue(totalBurned)}</span><span></span></div>` +
                     `</div>`;
                 addLog(slot, logMsg, 'log-kill', subMsg, evt.target);
                 triggerPulse(evt.stack_id, 'kill');

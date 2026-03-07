@@ -1,0 +1,41 @@
+{
+  "agent-identity": {
+    "name": "Agent K",
+    "build": "1.0.0",
+    "description": "Solana devnet KILL agent"
+  },
+  "network": {
+    "network_name": "devnet",
+    "rpc_url": "https://api.devnet.solana.com",
+    "programs": {
+      "kill_game":   "2FbeFxvFH2b4KyAcwNToFr3pHzYK4ybYQWriXjjKEr5D",
+      "kill_faucet": "761RUKWGgStRshdz3HJcS7dPodFSckDAcudLtU1CZ1b6"
+    },
+    "kill_mint":      "BQoMXQyRWmDgczz4pLs5wugPsywUaeFrQrCiXEMgWoH6",
+    "block_explorer": "https://explorer.solana.com/tx"
+  },
+  "settings": {
+    "SUPABASE_URL":  "https://jclsklriyozveiykzead.supabase.co",
+    "SUPABASE_KEY":  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbHNrbHJpeW96dmVpeWt6ZWFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NDQzOTUsImV4cCI6MjA4ODMyMDM5NX0.ka7UCBzLiZNvU5WKPWmpB7x7xM99thukFwtBGRvr-I8",
+    "MIN_SPAWN":     666,
+    "HUB_STACK":     22,
+    "TOTAL_SUPPLY":  666000000000,
+    "SLOT_DELTA":    50,
+    "KILL_MULTIPLIER": 3,
+    "seed": {
+      "SEED_AMOUNT": 666,
+      "BATCH_SEED":  5
+    },
+    "fortress": {
+      "TARGET_UNITS":   66600,
+      "REPLENISH_AMT":  6660,
+      "HUB_PERIMETER":  1
+    },
+    "sniper": {
+      "SPAWN_PROFITABILITY_THRESHOLD": 0.15
+    },
+    "aftershock": {
+      "MAX_KILL": 1000000
+    }
+  }
+}

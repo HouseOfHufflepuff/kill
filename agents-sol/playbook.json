@@ -1,0 +1,7 @@
+{
+  "runs": {
+    "run1": ["seed", "sniper", "fortress", "aftershock"],
+    "run2": ["seed", "fortress"]
+  },
+  "strategy": ["run1", "run2"]
+}

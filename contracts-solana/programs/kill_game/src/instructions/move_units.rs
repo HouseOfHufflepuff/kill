@@ -7,12 +7,13 @@ use crate::state::{AgentStack, GameConfig, StackMoved};
 
 use super::is_adjacent;
 
-/// Move all units from one stack to an adjacent stack.
+/// Move a specified number of units/reapers from one stack to an adjacent stack.
 ///
-/// Equivalent to the EVM `move()` function.  Costs MOVE_COST KILL tokens.
-/// The source stack is completely emptied; units merge with any existing
-/// friendly forces at the destination.  Only adjacent moves are allowed
+/// Equivalent to the EVM `move(fromStack, toStack, units, reaper)` function.
+/// Costs MOVE_COST KILL tokens.  Only the specified amounts are moved — partial
+/// moves are supported (EVM parity).  Only adjacent moves are allowed
 /// (Manhattan distance = 1 in the 6×6×6 grid).
+/// If the destination was empty, spawn_slot is reset to the current slot (1× multiplier).
 #[derive(Accounts)]
 #[instruction(from_stack_id: u16, to_stack_id: u16)]
 pub struct MoveUnits<'info> {
@@ -67,10 +68,22 @@ pub struct MoveUnits<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<MoveUnits>, from_stack_id: u16, to_stack_id: u16) -> Result<()> {
+pub fn handler(
+    ctx: Context<MoveUnits>,
+    from_stack_id: u16,
+    to_stack_id: u16,
+    units: u64,
+    reapers: u64,
+) -> Result<()> {
     require!(from_stack_id <= MAX_STACK_ID, KillError::InvalidStackId);
     require!(to_stack_id <= MAX_STACK_ID, KillError::InvalidStackId);
     require!(is_adjacent(from_stack_id, to_stack_id), KillError::NotAdjacent);
+    require!(units > 0 || reapers > 0, KillError::EmptyAttacker);
+    require!(
+        units <= ctx.accounts.from_stack.units
+            && reapers <= ctx.accounts.from_stack.reapers,
+        KillError::InsufficientBalance
+    );
 
     // Pay move cost
     token::transfer(
@@ -87,14 +100,10 @@ pub fn handler(ctx: Context<MoveUnits>, from_stack_id: u16, to_stack_id: u16) ->
 
     let current_slot = Clock::get()?.slot;
 
-    // Capture source values before mutably borrowing destination
-    let units = ctx.accounts.from_stack.units;
-    let reapers = ctx.accounts.from_stack.reapers;
-
-    // Clear source stack
+    // Deduct from source (partial move — source may retain units)
     let from = &mut ctx.accounts.from_stack;
-    from.units = 0;
-    from.reapers = 0;
+    from.units = from.units.saturating_sub(units);
+    from.reapers = from.reapers.saturating_sub(reapers);
 
     // Merge into destination — initialize metadata on first occupation
     let to = &mut ctx.accounts.to_stack;
