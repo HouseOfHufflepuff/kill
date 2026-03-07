@@ -152,7 +152,7 @@ function updateNodeParticles(id, units, reaperCount) {
         node.style.boxShadow = "0 0 10px var(--cyan)";
         node.style.borderColor = "var(--cyan)";
     } else if (activeFilterAgent) {
-        node.style.opacity = '1';
+        node.style.opacity = '0.05';
         node.style.boxShadow = "none";
         node.style.borderColor = "#111";
     } else {

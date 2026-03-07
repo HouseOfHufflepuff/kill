@@ -7,21 +7,21 @@ AGENTS="sniper fortress aftershock seed"
 # 1. Scaffold directories
 echo "[1/5] Scaffolding directories..."
 for ROLE in $AGENTS; do
-  mkdir -p "agents-sol/$ROLE"
+  mkdir -p "agents/$ROLE"
 done
 mkdir -p "contracts-solana/target/idl"
 
 # 2. Pull agent files from GitHub
 echo "[2/5] Fetching agent files from GitHub..."
 for ROLE in $AGENTS; do
-  curl -f -s "$BASE_URL/agents-sol/$ROLE/capability.js" -o "agents-sol/$ROLE/capability.js" || echo "  WARN: agents-sol/$ROLE/capability.js not on main yet"
-  curl -f -s "$BASE_URL/agents-sol/$ROLE/config.json"   -o "agents-sol/$ROLE/config.json"   || echo "  WARN: agents-sol/$ROLE/config.json not on main yet"
+  curl -f -s "$BASE_URL/agents-sol/$ROLE/capability.js" -o "agents/$ROLE/capability.js" || echo "  WARN: agents-sol/$ROLE/capability.js not on main yet"
+  curl -f -s "$BASE_URL/agents-sol/$ROLE/config.json"   -o "agents/$ROLE/config.json"   || echo "  WARN: agents-sol/$ROLE/config.json not on main yet"
 done
-curl -f -s "$BASE_URL/agents-sol/agent.js"      -o "agents-sol/agent.js"      || echo "  WARN: agent.js"
-curl -f -s "$BASE_URL/agents-sol/common.js"     -o "agents-sol/common.js"     || echo "  WARN: common.js"
-curl -f -s "$BASE_URL/agents-sol/playbook.json" -o "agents-sol/playbook.json" || echo "  WARN: playbook.json"
-curl -f -s "$BASE_URL/agents-sol/config.json"   -o "agents-sol/config.json"   || echo "  WARN: config.json"
-curl -f -s "$BASE_URL/agents-sol/KillGame.json" -o "agents-sol/KillGame.json" || echo "  WARN: KillGame.json"
+curl -f -s "$BASE_URL/agents-sol/agent.js"      -o "agents/agent.js"      || echo "  WARN: agent.js"
+curl -f -s "$BASE_URL/agents-sol/common.js"     -o "agents/common.js"     || echo "  WARN: common.js"
+curl -f -s "$BASE_URL/agents-sol/playbook.json" -o "agents/playbook.json" || echo "  WARN: playbook.json"
+curl -f -s "$BASE_URL/agents-sol/config.json"   -o "agents/config.json"   || echo "  WARN: config.json"
+curl -f -s "$BASE_URL/agents-sol/KillGame.json" -o "agents/KillGame.json" || echo "  WARN: KillGame.json"
 cat <<'IDLEOF' > contracts-solana/target/idl/kill_game.json
 {
   "address": "2FbeFxvFH2b4KyAcwNToFr3pHzYK4ybYQWriXjjKEr5D",
@@ -367,7 +367,7 @@ function saveKey(keyArray) {
 
 async function airdrop(pubkey) {
   const { Connection, PublicKey, LAMPORTS_PER_SOL } = require("@solana/web3.js");
-  const cfgPath = path.join(ROOT, "agents-sol", "config.json");
+  const cfgPath = path.join(ROOT, "agents", "config.json");
   const rpc = fs.existsSync(cfgPath)
     ? JSON.parse(fs.readFileSync(cfgPath, "utf8")).network.rpc_url
     : "https://api.devnet.solana.com";
@@ -447,16 +447,16 @@ if (cmd === "setup") {
 
 // ── agent ─────────────────────────────────────────────────────────────────────
 } else if (cmd === "agent") {
-  const agentPath = path.join(ROOT, "agents-sol", "agent.js");
+  const agentPath = path.join(ROOT, "agents", "agent.js");
   if (!fs.existsSync(agentPath)) {
-    console.error("agents-sol/agent.js not found. Run the installer first.");
+    console.error("agents/agent.js not found. Run the installer first.");
     process.exit(1);
   }
   if (!process.env.AGENT_PK) {
     console.error("AGENT_PK not set. Run `killsol setup` first.");
     process.exit(1);
   }
-  spawn("node", ["agents-sol/agent.js"], {
+  spawn("node", ["agents/agent.js"], {
     cwd: ROOT, stdio: "inherit",
     env: { ...process.env, FORCE_COLOR: "1" }
   });
@@ -494,10 +494,10 @@ echo ""
 echo "STEP 2 — Configure your agents"
 echo ""
 echo "  Playbook  (which agents run and in what order):"
-echo "  nano agents-sol/playbook.json"
+echo "  nano agents/playbook.json"
 echo ""
 echo "  Parameters  (settings, RPC, strategy):"
-echo "  nano agents-sol/config.json"
+echo "  nano agents/config.json"
 echo ""
 echo "------------------------------------------------"
 echo ""

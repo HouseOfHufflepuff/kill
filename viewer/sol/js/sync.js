@@ -312,6 +312,8 @@ async function syncData() {
             if (reaperKilledEl) reaperKilledEl.innerText = formatValue(parseInt(globalStat.total_reaper_killed));
             const burned = parseFloat(globalStat.kill_burned || 0) / 1_000_000;
             if (killBurnedEl) killBurnedEl.innerText = `${formatValue(burned)} KILL`;
+            const circulatingEl = document.getElementById('stat-kill-circulating');
+            if (circulatingEl) circulatingEl.innerText = formatValue(666_000_000_000 - burned);
         }
 
         // Process events oldest → newest so triggerPulse fires in order

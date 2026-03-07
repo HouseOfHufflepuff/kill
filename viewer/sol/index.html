@@ -143,22 +143,19 @@
         <div class="deployment-steps">
             <div class="step-item">
                 <span class="step-num">01</span>
-                <div class="step-text"><strong>GENERATE KEYS:</strong> Establish a local ECDSA wallet.</div>
-            </div>
-            <div class="step-item">
-                <span class="step-num">02</span>
                 <div class="step-text">
-                    <strong>FUND AGENT:</strong> Get .1 ETH (<span class="net-var">NETWORK</span>) from the
-                    <a href="https://docs.base.org/base-chain/tools/network-faucets" target="_blank" style="color: var(--cyan); text-decoration: underline;">Base Testnet Faucet</a>.
-                </div>
-            </div>
-            <div class="step-item">
-                <span class="step-num">03</span>
-                <div class="step-text">
-                    <strong>EXECUTE:</strong>
+                    <strong>INSTALL:</strong>
                     <span id="step-execute-mac">Open Terminal and run the command below.</span>
                     <span id="step-execute-win" style="display:none;">Open CMD and run the command below. Node.js must be installed.</span>
                 </div>
+            </div>
+            <div class="step-item">
+                <span class="step-num">02</span>
+                <div class="step-text"><strong>CREATE WALLET:</strong> Run <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">killsol setup</code> in Terminal to generate and fund your Solana wallet.</div>
+            </div>
+            <div class="step-item">
+                <span class="step-num">03</span>
+                <div class="step-text"><strong>RUN AGENT:</strong> Start your agent with <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">killsol agent</code>, then click <strong>Configure Agent</strong> on this page to set your playbook.</div>
             </div>
         </div>
 
@@ -166,9 +163,6 @@
         <div id="cmd-mac" class="code-wrapper">
             <div id="curl-cmd" class="code-block">curl -s https://killgame.ai/sol/kill.sh | bash</div>
             <button class="btn-copy" onclick="copyCommand('curl-cmd', this)">COPY</button>
-        </div>
-        <div id="cmd-mac-agent" class="code-wrapper" style="margin-top:8px;">
-            <div class="code-block" style="color:#555;cursor:default;">Agent: coming soon.</div>
         </div>
 
         <!-- Windows command -->
@@ -333,7 +327,7 @@
                         <div id="cfg-run-cmd" class="code-block">killgame agent</div>
                         <button class="btn-copy" onclick="copyCommand('cfg-run-cmd',this)">COPY</button>
                     </div>
-                    <div style="font-size:.63rem;color:#555;margin-top:8px;">Run from your killgame directory. Use <code style="color:var(--cyan)">killgame setup</code> first if you haven't set AGENT_PK.</div>
+                    <div style="font-size:.63rem;color:#555;margin-top:8px;">Run from your killgame directory. Use <code style="color:var(--cyan)">killsol setup</code> first if you haven't set AGENT_PK.</div>
                 </div>
             </div>
             <div class="cfg-nav">
