@@ -1,6 +1,6 @@
 {
   "runs": {
-    "run1": ["sniper", "sniper", "fortress"]
+    "run1": ["aftershock", "sniper", "aftershock", "aftershock"]
   },
   "strategy": ["run1"]
 }
