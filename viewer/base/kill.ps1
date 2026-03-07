@@ -1,5 +1,5 @@
 # KILLGame Agentic Installer v1.1.4 — Windows PowerShell
-# Run from CMD: powershell -ExecutionPolicy Bypass -Command "irm https://killgame.ai/kill.ps1 | iex"
+# Run from CMD: powershell -ExecutionPolicy Bypass -Command "irm https://killgame.ai/base/kill.ps1 | iex"
 
 $ErrorActionPreference = "Stop"
 

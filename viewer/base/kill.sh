@@ -76,26 +76,56 @@ require('dotenv').config({ path: path.join(ROOT, '.env') });
 
 program
   .command('setup')
-  .description('Set agent private key')
+  .description('Create or import your agent wallet')
   .action(async () => {
-    const ans = await inquirer.prompt([
-      {
-        type:     'password',
-        name:     'pk',
-        message:  'Agent Private Key (AGENT_PK):',
-        mask:     '*',
-        validate: v => v.length > 0 || 'Required'
-      }
-    ]);
+    const { Wallet } = require('ethers');
 
-    // Write AGENT_PK to .env (preserve other existing vars)
+    console.log('\nKILLGame Agent Setup');
+    console.log('─────────────────────────────────────────');
+
+    const { choice } = await inquirer.prompt([{
+      type:    'list',
+      name:    'choice',
+      message: 'Wallet setup:',
+      choices: [
+        { name: '1. Generate a new wallet (recommended)', value: 'generate' },
+        { name: '2. Import an existing private key',      value: 'import'   }
+      ]
+    }]);
+
     const envPath  = path.join(ROOT, '.env');
     const existing = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
     const lines    = existing.split('\n').filter(l => !l.startsWith('AGENT_PK=') && l.trim() !== '');
-    lines.push(`AGENT_PK=${ans.pk}`);
-    fs.writeFileSync(envPath, lines.join('\n') + '\n');
 
-    console.log('\n✅ Private key saved to .env\n');
+    if (choice === 'generate') {
+      const wallet = Wallet.createRandom();
+      lines.push(`AGENT_PK=${wallet.privateKey}`);
+      fs.writeFileSync(envPath, lines.join('\n') + '\n');
+      console.log('\nNew wallet generated.');
+      console.log(`Address   : ${wallet.address}`);
+      console.log(`Key saved : .env`);
+      console.log('\nIMPORTANT: Back up your private key before funding.');
+      console.log('           cat .env\n');
+      console.log('Fund at: https://docs.base.org/base-chain/tools/network-faucets\n');
+      console.log('Run `killgame agent` to start.\n');
+    } else {
+      const { pk } = await inquirer.prompt([{
+        type:     'password',
+        name:     'pk',
+        message:  'Private key (0x...):',
+        mask:     '*',
+        validate: v => v.length > 0 || 'Required'
+      }]);
+      let wallet;
+      try { wallet = new Wallet(pk); }
+      catch { console.error('\nInvalid private key.'); process.exit(1); }
+      lines.push(`AGENT_PK=${wallet.privateKey}`);
+      fs.writeFileSync(envPath, lines.join('\n') + '\n');
+      console.log('\nWallet imported.');
+      console.log(`Address   : ${wallet.address}`);
+      console.log(`Key saved : .env\n`);
+      console.log('Run `killgame agent` to start.\n');
+    }
   });
 
 program
@@ -132,12 +162,12 @@ echo "================================================"
 echo " KILLGame Agent installed at $(pwd)"
 echo "================================================"
 echo ""
-echo "STEP 1 — Set your private key"
+echo "STEP 1 — Create your wallet"
 echo ""
 echo "  killgame setup"
 echo ""
-echo "  Saves your AGENT_PK to .env so the agent can"
-echo "  sign transactions on your behalf."
+echo "  Generates a new EVM wallet and saves your key"
+echo "  to .env. Or import an existing private key."
 echo ""
 echo "------------------------------------------------"
 echo ""
@@ -153,7 +183,7 @@ echo "    nano agents/config.json"
 echo ""
 echo "  Option B: Web UI"
 echo ""
-echo "    Visit https://killgame.ai"
+echo "    Visit https://killgame.ai/base"
 echo "    Use the Agent configure panel to set your"
 echo "    playbook and parameters, then sync to this folder."
 echo ""

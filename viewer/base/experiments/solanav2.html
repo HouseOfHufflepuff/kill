@@ -675,7 +675,7 @@ body.help-mode .p { display:none; }
         </div>
       </div>
       <div class="code-wrap">
-        <span class="code-cmd" id="cmd-text">curl -s https://killgame.ai/kill-sol.sh | bash</span>
+        <span class="code-cmd" id="cmd-text">curl -s https://killgame.ai/sol/kill-sol.sh | bash</span>
         <button class="btn-copy" id="btn-copy" onclick="copyCmd()">COPY</button>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
@@ -1113,7 +1113,7 @@ const AGENTS=[
     gDesc:'The berserker. Goes straight for the biggest targets. Highest rewards but burns credits fast. For experienced players.',
     speed:90, aggro:95, profit:75, def:20, color:'#9945FF',
     tags:['⚠ HIGH RISK','HIGH REWARD','STACK HUNTER'],
-    cmd:'curl -s https://killgame.ai/kill-sol.sh | bash -s reaper'
+    cmd:'curl -s https://killgame.ai/sol/kill-sol.sh | bash -s reaper'
   },
   {
     id:'ghost', name:'GHOST', tier:'TIER A — STEALTH', cls:'HIGH-FREQUENCY OPERATOR',
@@ -1121,7 +1121,7 @@ const AGENTS=[
     gDesc:'The rogue. Fast attacks on weak targets. Low cost per move, steady income. Great for beginners.',
     speed:95, aggro:35, profit:70, def:65, color:'#14F195',
     tags:['LOW GAS','HIGH FREQ','BEGINNER FRIENDLY'],
-    cmd:'curl -s https://killgame.ai/kill-sol.sh | bash -s ghost'
+    cmd:'curl -s https://killgame.ai/sol/kill-sol.sh | bash -s ghost'
   },
   {
     id:'warlord', name:'WARLORD', tier:'TIER S — APEX', cls:'MAXIMUM STAKE HUNTER',
@@ -1129,7 +1129,7 @@ const AGENTS=[
     gDesc:'The paladin. Waits for the perfect moment, unleashes everything on one massive target. Slow but devastating.',
     speed:25, aggro:80, profit:90, def:50, color:'#ffd44a',
     tags:['LETHAL STATES','BIG SWINGS','PATIENCE REQUIRED'],
-    cmd:'curl -s https://killgame.ai/kill-sol.sh | bash -s warlord'
+    cmd:'curl -s https://killgame.ai/sol/kill-sol.sh | bash -s warlord'
   },
   {
     id:'stalker', name:'STALKER', tier:'TIER A — COUNTER', cls:'REAPER HUNTER',
@@ -1137,7 +1137,7 @@ const AGENTS=[
     gDesc:'The hunter. Specializes in taking out Reaper bosses for huge bonuses. Precision targeting.',
     speed:55, aggro:60, profit:80, def:40, color:'#a855f7',
     tags:['ANTI-REAPER','BOUNTY MULT','TACTICAL'],
-    cmd:'curl -s https://killgame.ai/kill-sol.sh | bash -s stalker'
+    cmd:'curl -s https://killgame.ai/sol/kill-sol.sh | bash -s stalker'
   },
   {
     id:'scout', name:'SCOUT', tier:'TIER B — ANALYST', cls:'DRY RUN SPECIALIST',
@@ -1145,7 +1145,7 @@ const AGENTS=[
     gDesc:'The ranger — perfect for newcomers. Trains longer, analyzes everything. Your training wheels, done right.',
     speed:60, aggro:20, profit:55, def:90, color:'#22c55e',
     tags:['SAFEST OPTION','5 CYCLES','BEGINNER'],
-    cmd:'curl -s https://killgame.ai/kill-sol.sh | bash -s scout'
+    cmd:'curl -s https://killgame.ai/sol/kill-sol.sh | bash -s scout'
   }
 ];
 
