@@ -181,15 +181,10 @@ function selectAgent(addr) {
 async function syncData() {
     await updateHeartbeat();
 
-    const agentStackQuery = activeFilterAgents.size > 0 ? `
-        agentStackCollection(filter: { agent: { in: ${JSON.stringify([...activeFilterAgents])} } }) {
-            edges { node { stack_id units reaper } }
-        }
-    ` : '';
-
     try {
-        // Fetch global_stat via REST — pg_graphql may not expose this table by name
+        // Fetch global_stat and agent_stack data via REST (reliable — no GraphQL naming ambiguity)
         let globalStat = null;
+        let agentStacks = [];
         try {
             const statResp = await fetch(
                 `${SUPABASE_URL}/rest/v1/global_stat?id=eq.current&select=*`,
@@ -199,11 +194,22 @@ async function syncData() {
             globalStat = Array.isArray(statRows) ? (statRows[0] || null) : null;
         } catch (_) {}
 
+        if (activeFilterAgents.size > 0) {
+            try {
+                const addrs = [...activeFilterAgents].join(',');
+                const asResp = await fetch(
+                    `${SUPABASE_URL}/rest/v1/agent_stack?agent=in.(${addrs})&select=stack_id,units,reaper`,
+                    { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+                );
+                agentStacks = await asResp.json();
+                if (!Array.isArray(agentStacks)) agentStacks = [];
+            } catch (_) {}
+        }
+
         const query = `{
             stackCollection(orderBy: [{ total_standard_units: DescNullsLast }], first: 216) {
                 edges { node { id total_standard_units total_boosted_units birth_slot current_bounty } }
             }
-            ${agentStackQuery}
             killedCollection(orderBy: [{ slot: DescNullsLast }], first: 50) {
                 edges { node {
                     id attacker target stack_id
@@ -238,27 +244,25 @@ async function syncData() {
         if (!result || !result.data) return;
 
         const raw = result.data;
-        const killeds     = raw.killedCollection?.edges?.map(e => e.node)  || [];
-        const spawneds    = raw.spawnedCollection?.edges?.map(e => e.node) || [];
-        const moveds      = raw.movedCollection?.edges?.map(e => e.node)   || [];
-        const stacks      = raw.stackCollection?.edges?.map(e => e.node)   || [];
-        const agents      = raw.agentCollection?.edges?.map(e => e.node)   || [];
-        const agentStacks = activeFilterAgents.size > 0
-            ? (raw.agentStackCollection?.edges?.map(e => e.node) || [])
-            : [];
+        const killeds = raw.killedCollection?.edges?.map(e => e.node)  || [];
+        const spawneds = raw.spawnedCollection?.edges?.map(e => e.node) || [];
+        const moveds  = raw.movedCollection?.edges?.map(e => e.node)   || [];
+        const stacks  = raw.stackCollection?.edges?.map(e => e.node)   || [];
+        const agents  = raw.agentCollection?.edges?.map(e => e.node)   || [];
 
-        // If filtering by agents, replace global stack counts with summed agent-specific totals
+        // If filtering by agents, replace global stack counts with agent-specific totals (from REST)
         if (activeFilterAgents.size > 0) {
             const agentLookup = {};
             agentStacks.forEach(as => {
-                const prev = agentLookup[as.stack_id] || { units: 0, reaper: 0 };
-                agentLookup[as.stack_id] = {
+                const key = String(as.stack_id);
+                const prev = agentLookup[key] || { units: 0, reaper: 0 };
+                agentLookup[key] = {
                     units:  prev.units  + parseInt(as.units  || 0),
                     reaper: prev.reaper + parseInt(as.reaper || 0)
                 };
             });
             stacks.forEach(s => {
-                const userOwnership = agentLookup[s.id] || { units: 0, reaper: 0 };
+                const userOwnership = agentLookup[String(s.id)] || { units: 0, reaper: 0 };
                 s.total_standard_units = String(userOwnership.units);
                 s.total_boosted_units  = String(userOwnership.reaper);
             });
