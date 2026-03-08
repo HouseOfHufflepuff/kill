@@ -387,10 +387,7 @@ function renderPnL(agents) {
         const isFiltered = activeFilterAgents.has(a.id);
 
         return `
-            <div class="stack-row"
-                 onclick="selectAgent('${a.id}')"
-                 onmouseover="showLeaderboardTooltip(event, '${a.id}', ${earned}, ${spent}, ${net})"
-                 onmouseout="if(tooltip) tooltip.style.opacity=0"
+            <div class="stack-row" data-agent="${a.id}"
                  style="display: flex; justify-content: space-between; padding: 2px 0; cursor: pointer; background: ${isFiltered ? 'rgba(20,241,149,0.1)' : 'transparent'};">
                 <span style="width:25%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">
                     ${a.id.substring(0, 8)}
@@ -401,6 +398,10 @@ function renderPnL(agents) {
             </div>
         `;
     }).join('');
+
+    pnlEl.querySelectorAll('.stack-row[data-agent]').forEach(row => {
+        row.addEventListener('click', () => selectAgent(row.dataset.agent));
+    });
 }
 
 /**
