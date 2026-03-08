@@ -108,18 +108,18 @@ module.exports = {
             );
             actionRows.push({ Action: 'SPAWN', Detail: `${REPLENISH_AMT} → Hub ${HUB_STACK}`, Result: `${YEL}PENDING${RES}`, Tx: '' });
 
-            // Retreat one stranded stack toward hub
-            const stranded = myStacks.find(s => s.id !== HUB_STACK);
-            if (stranded) {
-                const ALL_IDS = Array.from({ length: 216 }, (_, i) => i);
-                const step = ALL_IDS.filter(id => isAdjacent(stranded.id, id))
+            // Retreat ALL stranded stacks toward hub (bundled in same tx)
+            const ALL_IDS  = Array.from({ length: 216 }, (_, i) => i);
+            const stranded = myStacks.filter(s => s.id !== HUB_STACK);
+            for (const s of stranded) {
+                const step = ALL_IDS.filter(id => isAdjacent(s.id, id))
                     .sort((a, b) => getManhattanDist(a, HUB_STACK) - getManhattanDist(b, HUB_STACK))[0];
                 if (step !== undefined) {
                     actionIxs.push(await killGame.methods
-                        .moveUnits(stranded.id, step, new anchor.BN(stranded.units.toString()), new anchor.BN(stranded.reapers.toString()))
+                        .moveUnits(s.id, step, new anchor.BN(s.units.toString()), new anchor.BN(s.reapers.toString()))
                         .accounts({
                             gameConfig:        gameConfigAddr,
-                            fromStack:         agentStackPDA(wallet.publicKey, stranded.id, GAME_ID),
+                            fromStack:         agentStackPDA(wallet.publicKey, s.id, GAME_ID),
                             toStack:           agentStackPDA(wallet.publicKey, step, GAME_ID),
                             agentTokenAccount: agentAta.address,
                             gameVault,
@@ -128,7 +128,7 @@ module.exports = {
                         })
                         .instruction()
                     );
-                    actionRows.push({ Action: 'RETREAT', Detail: `Stack ${stranded.id} → ${step}`, Result: `${YEL}PENDING${RES}`, Tx: '' });
+                    actionRows.push({ Action: 'RETREAT', Detail: `Stack ${s.id} → ${step}`, Result: `${YEL}PENDING${RES}`, Tx: '' });
                 }
             }
         } else {
