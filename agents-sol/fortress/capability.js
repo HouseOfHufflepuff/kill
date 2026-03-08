@@ -2,7 +2,7 @@
 const anchor = require("@coral-xyz/anchor");
 const web3   = anchor.web3;
 const { getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync } = require("@solana/spl-token");
-const { GRN, YEL, RED, RES, getManhattanDist, isAdjacent, calcPower,
+const { GRN, YEL, RED, RES, getManhattanDist, calcPower,
         agentStackPDA, gameConfigPDA, txLink } = require('../common');
 
 function fmtPow(n) {
@@ -11,6 +11,25 @@ function fmtPow(n) {
     if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
     if (v >= 1e3) return Math.round(v / 1e3) + 'K';
     return String(Math.round(v));
+}
+
+// BFS: returns the first step from start toward goal (or null if already there)
+function bfsNextStep(start, goal) {
+    if (start === goal) return null;
+    const queue = [[start, start]]; // [current, firstStep]
+    const visited = new Set([start]);
+    while (queue.length > 0) {
+        const [cur, firstStep] = queue.shift();
+        for (let next = 0; next < 216; next++) {
+            if (getManhattanDist(cur, next) !== 1) continue;
+            if (next === goal) return firstStep === start ? next : firstStep;
+            if (!visited.has(next)) {
+                visited.add(next);
+                queue.push([next, firstStep === start ? next : firstStep]);
+            }
+        }
+    }
+    return null;
 }
 
 function topEnemy(enemies) {
@@ -91,6 +110,35 @@ module.exports = {
         const actionIxs  = [];
         const actionRows = [];
 
+        // Retreat ONE stranded stack per run — BFS path to hub
+        const stranded = myStacks
+            .filter(s => s.id !== HUB_STACK)
+            .sort((a, b) => a.dist - b.dist || Number(b.units - a.units)); // closest first, then biggest
+        if (stranded.length > 0) {
+            const s    = stranded[0];
+            const step = bfsNextStep(s.id, HUB_STACK);
+            if (step !== null) {
+                try {
+                    const ix = await killGame.methods
+                        .moveUnits(s.id, step, new anchor.BN(s.units.toString()), new anchor.BN(s.reapers.toString()))
+                        .accounts({
+                            gameConfig:        gameConfigAddr,
+                            fromStack:         agentStackPDA(wallet.publicKey, s.id, GAME_ID),
+                            toStack:           agentStackPDA(wallet.publicKey, step, GAME_ID),
+                            agentTokenAccount: agentAta.address,
+                            gameVault,
+                            killMint:          KILL_MINT,
+                            agent:             wallet.publicKey,
+                        })
+                        .instruction();
+                    const sig = await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(ix), [wallet]);
+                    actionRows.push({ Action: 'RETREAT', Detail: `Stack ${s.id} → ${step} (dist ${s.dist}→hub) | ${fmtPow(s.units)} units`, Result: `${GRN}OK${RES}`, Tx: txLink(sig) });
+                } catch (e) {
+                    actionRows.push({ Action: 'RETREAT', Detail: `${s.id}→${step}: ${e.message?.slice(0, 40)}`, Result: `${RED}FAIL${RES}`, Tx: '' });
+                }
+            }
+        }
+
         if (!hasReachedTarget) {
             // Spawn at hub to build power
             const hubStack = agentStackPDA(wallet.publicKey, HUB_STACK, GAME_ID);
@@ -107,30 +155,6 @@ module.exports = {
                 .instruction()
             );
             actionRows.push({ Action: 'SPAWN', Detail: `${REPLENISH_AMT} → Hub ${HUB_STACK}`, Result: `${YEL}PENDING${RES}`, Tx: '' });
-
-            // Retreat ALL stranded stacks toward hub (bundled in same tx)
-            const ALL_IDS  = Array.from({ length: 216 }, (_, i) => i);
-            const stranded = myStacks.filter(s => s.id !== HUB_STACK);
-            for (const s of stranded) {
-                const step = ALL_IDS.filter(id => isAdjacent(s.id, id))
-                    .sort((a, b) => getManhattanDist(a, HUB_STACK) - getManhattanDist(b, HUB_STACK))[0];
-                if (step !== undefined) {
-                    actionIxs.push(await killGame.methods
-                        .moveUnits(s.id, step, new anchor.BN(s.units.toString()), new anchor.BN(s.reapers.toString()))
-                        .accounts({
-                            gameConfig:        gameConfigAddr,
-                            fromStack:         agentStackPDA(wallet.publicKey, s.id, GAME_ID),
-                            toStack:           agentStackPDA(wallet.publicKey, step, GAME_ID),
-                            agentTokenAccount: agentAta.address,
-                            gameVault,
-                            killMint:          KILL_MINT,
-                            agent:             wallet.publicKey,
-                        })
-                        .instruction()
-                    );
-                    actionRows.push({ Action: 'RETREAT', Detail: `Stack ${s.id} → ${step}`, Result: `${YEL}PENDING${RES}`, Tx: '' });
-                }
-            }
         } else {
             // Combat mode
             if (hubState.enemies.length > 0 && hubState.mine) {
@@ -185,10 +209,8 @@ module.exports = {
                         );
                         actionRows.push({ Action: 'KILL', Detail: `${raid.target.agent.toBase58().slice(0, 10)} @ ${raid.id}`, Result: `${RED}PENDING${RES}`, Tx: '' });
                     } else {
-                        const ALL_IDS = Array.from({ length: 216 }, (_, i) => i);
-                        const step = ALL_IDS.filter(id => isAdjacent(army.id, id))
-                            .sort((a, b) => getManhattanDist(a, raid.id) - getManhattanDist(b, raid.id))[0];
-                        if (step !== undefined) {
+                        const step = bfsNextStep(army.id, raid.id);
+                        if (step !== null) {
                             actionIxs.push(await killGame.methods
                                 .moveUnits(army.id, step,
                                            new anchor.BN(army.units.toString()),
@@ -222,12 +244,28 @@ module.exports = {
             }
         }
 
-        const sections = [{ title: `TACTICAL VIEW (Perimeter <= ${HUB_PERIMETER})`, rows: tacticalRows, color: YEL }];
-        sections.push({
-            title: `FORTRESS | Power: ${fmtPow(totalPower)} / ${TARGET_UNITS} | ${hasReachedTarget ? `${GRN}COMBAT READY${RES}` : `${YEL}BUILDING${RES}`}`,
-            rows:  actionRows,
-            color: GRN
-        });
+        // Build stranded display (all non-hub stacks with units, sorted by dist)
+        const strandedRows = myStacks
+            .filter(s => s.id !== HUB_STACK)
+            .sort((a, b) => a.dist - b.dist || Number(b.units - a.units))
+            .map(s => ({
+                'ID':     String(s.id),
+                'Dist':   String(s.dist),
+                'Units':  fmtPow(s.units),
+                'Reapers': fmtPow(s.reapers),
+                'Power':  fmtPow(s.power),
+            }));
+        if (strandedRows.length === 0) strandedRows.push({ ID: '—', Dist: '—', Units: '0', Reapers: '0', Power: '0' });
+
+        const sections = [
+            { title: `TACTICAL VIEW (Perimeter <= ${HUB_PERIMETER})`, rows: tacticalRows, color: YEL },
+            { title: `STRANDED STACKS (${strandedRows.length === 1 && strandedRows[0].ID === '—' ? 0 : strandedRows.length} outside hub)`, rows: strandedRows, color: YEL },
+            {
+                title: `FORTRESS | Power: ${fmtPow(totalPower)} / ${TARGET_UNITS} | ${hasReachedTarget ? `${GRN}COMBAT READY${RES}` : `${YEL}BUILDING${RES}`}`,
+                rows:  actionRows.length > 0 ? actionRows : [{ Action: 'IDLE', Detail: 'No stranded stacks, no enemies in perimeter', Result: `${GRN}OK${RES}`, Tx: '' }],
+                color: GRN
+            }
+        ];
         return sections;
     }
 };
