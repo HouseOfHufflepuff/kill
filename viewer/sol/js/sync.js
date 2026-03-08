@@ -57,12 +57,23 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
     if (!tooltip) return;
 
     const basePower = units + (reapers * 666);
+    const agents = (stackRegistry[String(id)] || {}).agents || [];
+    const agentRows = agents
+        .sort((a, b) => (b.units + b.reaper * 666) - (a.units + a.reaper * 666))
+        .map(a => `
+            <div style="display:flex; justify-content:space-between; font-size:0.6rem; color:#aaa; margin-top:2px; gap:4px;">
+                <span style="color:#888; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1">${a.agent.substring(0, 10)}…</span>
+                <span style="flex-shrink:0; text-align:right;">${formatValue(a.units)}</span>
+                <span style="flex-shrink:0; text-align:right; color:var(--cyan);">${formatValue(a.reaper)}</span>
+            </div>`
+        ).join('');
+
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
 
     tooltip.innerHTML = `
-        <div style="padding: 5px; min-width: 180px; font-family: 'Courier New', monospace;">
+        <div style="padding: 5px; min-width: 220px; font-family: 'Courier New', monospace;">
             <strong style="color:var(--pink); font-size: 0.7rem;">STACK_IDENTITY: ${id}</strong>
             <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem;">
@@ -81,6 +92,12 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
             <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--pink); font-size:0.75rem;">
                 <span>VALUE:</span> <span>${formatValue(totalKill)} KILL</span>
             </div>
+            ${agents.length > 0 ? `
+            <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.6rem; color:#555; margin-bottom:2px;">
+                <span style="flex:1">WALLET</span><span>UNITS</span><span style="margin-left:8px;">REAPER</span>
+            </div>
+            ${agentRows}` : ''}
         </div>
     `;
 }
@@ -116,12 +133,14 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
         globalBountyKill += totalKillValue;
 
         // Keep birthBlock key to stay compatible with engine.js tooltip
+        const stackAgents = s.agents || [];
         stackRegistry[s.id] = {
             units: u,
             reaper: r,
             birthBlock: bSlot,
             bounty: displayBounty,
-            totalKill: totalKillValue
+            totalKill: totalKillValue,
+            agents: stackAgents
         };
 
         updateNodeParticles(s.id, u, r);
@@ -182,9 +201,8 @@ async function syncData() {
     await updateHeartbeat();
 
     try {
-        // Fetch global_stat and agent_stack data via REST (reliable — no GraphQL naming ambiguity)
+        // Fetch global_stat via REST
         let globalStat = null;
-        let agentStacks = [];
         try {
             const statResp = await fetch(
                 `${SUPABASE_URL}/rest/v1/global_stat?id=eq.current&select=*`,
@@ -194,21 +212,14 @@ async function syncData() {
             globalStat = Array.isArray(statRows) ? (statRows[0] || null) : null;
         } catch (_) {}
 
-        if (activeFilterAgents.size > 0) {
-            try {
-                const addrs = [...activeFilterAgents].join(',');
-                const asResp = await fetch(
-                    `${SUPABASE_URL}/rest/v1/agent_stack?agent=in.(${addrs})&select=stack_id,units,reaper`,
-                    { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
-                );
-                agentStacks = await asResp.json();
-                if (!Array.isArray(agentStacks)) agentStacks = [];
-            } catch (_) {}
-        }
-
         const query = `{
             stackCollection(orderBy: [{ total_standard_units: DescNullsLast }], first: 216) {
-                edges { node { id total_standard_units total_boosted_units birth_slot current_bounty } }
+                edges { node {
+                    id total_standard_units total_boosted_units birth_slot current_bounty
+                    agent_stackCollection {
+                        edges { node { agent units reaper } }
+                    }
+                } }
             }
             killedCollection(orderBy: [{ slot: DescNullsLast }], first: 50) {
                 edges { node {
@@ -247,24 +258,23 @@ async function syncData() {
         const killeds = raw.killedCollection?.edges?.map(e => e.node)  || [];
         const spawneds = raw.spawnedCollection?.edges?.map(e => e.node) || [];
         const moveds  = raw.movedCollection?.edges?.map(e => e.node)   || [];
-        const stacks  = raw.stackCollection?.edges?.map(e => e.node)   || [];
         const agents  = raw.agentCollection?.edges?.map(e => e.node)   || [];
 
-        // If filtering by agents, replace global stack counts with agent-specific totals (from REST)
+        const stacks = (raw.stackCollection?.edges || []).map(e => {
+            const node = e.node;
+            node.agents = (node.agent_stackCollection?.edges || [])
+                .map(ae => ae.node)
+                .map(a => ({ agent: a.agent, units: parseInt(a.units || 0), reaper: parseInt(a.reaper || 0) }))
+                .filter(a => a.units > 0 || a.reaper > 0);
+            return node;
+        });
+
+        // If filtering by agents, replace aggregate counts with the filtered wallet's totals
         if (activeFilterAgents.size > 0) {
-            const agentLookup = {};
-            agentStacks.forEach(as => {
-                const key = String(as.stack_id);
-                const prev = agentLookup[key] || { units: 0, reaper: 0 };
-                agentLookup[key] = {
-                    units:  prev.units  + parseInt(as.units  || 0),
-                    reaper: prev.reaper + parseInt(as.reaper || 0)
-                };
-            });
             stacks.forEach(s => {
-                const userOwnership = agentLookup[String(s.id)] || { units: 0, reaper: 0 };
-                s.total_standard_units = String(userOwnership.units);
-                s.total_boosted_units  = String(userOwnership.reaper);
+                const filtered = (s.agents || []).filter(a => activeFilterAgents.has(a.agent));
+                s.total_standard_units = String(filtered.reduce((sum, a) => sum + a.units, 0));
+                s.total_boosted_units  = String(filtered.reduce((sum, a) => sum + a.reaper, 0));
             });
         }
 
