@@ -4,8 +4,12 @@ const web3   = anchor.web3;
 const { getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } = require("@solana/spl-token");
 const { CYA, YEL, GRN, RED, PNK, RES, claimFaucet, agentStackPDA, calcPower, txLink } = require('../common');
 
-const SPAWN_COST_RAW  = 20n * 1_000_000n; // 20 KILL per unit (6 decimals)
-const REAPER_BOUNTY   = 3330n;            // KILL (human) per reaper bounty
+const SPAWN_COST_RAW    = 20n * 1_000_000n; // 20 KILL per unit (6 decimals)
+const THERMAL_PARITY    = 666n;             // reaper power multiplier
+const SLOTS_PER_MULT    = 13_224n;          // slots per bounty multiplier step
+const MAX_MULT          = 50n;              // bounty multiplier cap
+const BURN_BPS          = 666n;             // 6.66% burn on payout
+const BPS_DENOM         = 10_000n;
 const ORG = "\x1b[38;5;214m";
 
 module.exports = {
@@ -22,6 +26,8 @@ module.exports = {
         );
         const killBal = BigInt(agentAta.amount.toString());
 
+        const currentSlot = BigInt(await connection.getSlot());
+
         // Fetch all on-chain stacks
         const allStacks = await killGame.account.agentStack.all([]);
 
@@ -33,22 +39,33 @@ module.exports = {
             const reapers = BigInt(s.reapers.toString());
             if (units === 0n && reapers === 0n) continue;
 
+            // Age-based bounty multiplier (mirrors get_pending_bounty in kill.rs)
+            const spawnSlot = BigInt(s.spawnSlot.toString());
+            const age       = currentSlot > spawnSlot ? currentSlot - spawnSlot : 0n;
+            const mult      = (1n + age / SLOTS_PER_MULT) < MAX_MULT
+                ? (1n + age / SLOTS_PER_MULT) : MAX_MULT;
+
+            // Expected bounty (before vault cap): power × SPAWN_COST × mult, after burn
+            const power       = units + reapers * THERMAL_PARITY;
+            const rawBounty   = power * SPAWN_COST_RAW * mult;
+            const netBounty   = rawBounty - (rawBounty * BURN_BPS / BPS_DENOM); // human after burn
+            const bountyHuman = netBounty / 1_000_000n; // convert to human KILL
+
             const enemyPower = calcPower(units, reapers);
-            const bountyVal  = units * 20n + reapers * REAPER_BOUNTY; // KILL human units
             let   spawnAmt   = enemyPower * BigInt(KILL_MULTIPLIER);
             if (spawnAmt < BigInt(MIN_SPAWN)) spawnAmt = BigInt(MIN_SPAWN);
-            const spawnReaper  = spawnAmt / 666n;
-            const totalPower   = spawnAmt + spawnReaper * 666n;
+            const spawnReaper   = spawnAmt / THERMAL_PARITY;
+            const totalPower    = spawnAmt + spawnReaper * THERMAL_PARITY;
             const attackCostRaw = totalPower * SPAWN_COST_RAW;
             const ratio = attackCostRaw > 0n
-                ? parseFloat((bountyVal * 1_000_000n / (attackCostRaw / 1_000_000n)).toString()) / 1_000_000
+                ? parseFloat((bountyHuman * 1_000_000n / (attackCostRaw / 1_000_000n)).toString()) / 1_000_000
                 : 0;
 
             targets.push({
                 stackId:    s.stackId,
                 defender:   s.agent,
-                units, reapers,
-                ratio, spawnAmt, spawnReaper, bountyVal, attackCostRaw
+                units, reapers, mult,
+                ratio, spawnAmt, spawnReaper, bountyHuman, attackCostRaw
             });
         }
 
@@ -62,6 +79,7 @@ module.exports = {
                 'ID':     String(t.stackId),
                 'Enemy':  t.defender.toBase58().slice(0, 10),
                 'Units':  t.units.toString(),
+                'Mult':   `${t.mult}x`,
                 'Ratio':  `${ratioColor}${t.ratio.toFixed(2)}x${RES}`,
                 'Status': `${scolor}${status}${RES}`,
             };
