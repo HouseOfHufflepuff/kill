@@ -12,7 +12,7 @@ var currentGlobalKillStacked = 0;
 var isDragging = false, startX, startY, rotateX = 60, rotateZ = -45;
 
 // Filtering State
-var activeFilterAgent = null;
+var activeFilterAgents = new Set();
 var isLogPaused = false;
 var selectedStacks = new Set();
 

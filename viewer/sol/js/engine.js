@@ -147,11 +147,11 @@ function updateNodeParticles(id, units, reaperCount) {
         node.style.opacity = isSelected ? '1' : '0.05';
         node.style.borderColor = isSelected ? 'var(--pink)' : '#111';
         node.style.boxShadow = isSelected ? '0 0 12px rgba(255,45,117,0.5)' : 'none';
-    } else if (activeFilterAgent && (units > 0 || reaperCount > 0)) {
+    } else if (activeFilterAgents.size > 0 && (units > 0 || reaperCount > 0)) {
         node.style.opacity = '1';
         node.style.boxShadow = "0 0 10px var(--cyan)";
         node.style.borderColor = "var(--cyan)";
-    } else if (activeFilterAgent) {
+    } else if (activeFilterAgents.size > 0) {
         node.style.opacity = '0.05';
         node.style.boxShadow = "none";
         node.style.borderColor = "#111";
@@ -220,7 +220,7 @@ function showTooltip(e, id) {
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
     
-    const filterHeader = activeFilterAgent ? `<div style="color:var(--cyan); font-weight:bold; margin-bottom:4px;">AGENT: ${activeFilterAgent.substring(0,8)}</div>` : '';
+    const filterHeader = activeFilterAgents.size > 0 ? `<div style="color:var(--cyan); font-weight:bold; margin-bottom:4px;">AGENTS: ${[...activeFilterAgents].map(a => a.substring(0,8)).join(', ')}</div>` : '';
 
     tooltip.innerHTML = `
         <div style="padding: 2px; font-family: monospace; font-size: 0.75rem; line-height: 1.2;">
@@ -287,8 +287,8 @@ function clearLog() {
 }
 
 function clearAgentFilter() {
-    if (activeFilterAgent) {
-        activeFilterAgent = null;
+    if (activeFilterAgents.size > 0) {
+        activeFilterAgents.clear();
         addLog(lastBlock, "AGENT FILTER CLEARED", "log-network");
         syncData();
     }

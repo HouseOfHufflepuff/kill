@@ -24,7 +24,7 @@
     "KILL_MULTIPLIER": 3,
     "seed": {
       "SEED_AMOUNT": 666,
-      "BATCH_SEED":  5
+      "BATCH_SEED":  10
     },
     "fortress": {
       "TARGET_UNITS":   66600,

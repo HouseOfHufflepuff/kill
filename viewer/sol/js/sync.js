@@ -165,12 +165,12 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
  * UI: Filter Action Trigger
  */
 function selectAgent(addr) {
-    if (activeFilterAgent === addr) {
-        activeFilterAgent = null;
-        addLog(lastBlock, "SYSTEM FILTER: RESET TO GLOBAL", "log-network");
+    if (activeFilterAgents.has(addr)) {
+        activeFilterAgents.delete(addr);
+        addLog(lastBlock, `SYSTEM FILTER: REMOVED ${addr.substring(0, 8)}`, "log-network");
     } else {
-        activeFilterAgent = addr;
-        addLog(lastBlock, `SYSTEM FILTER: AGENT ${addr.substring(0, 8)}`, "log-network");
+        activeFilterAgents.add(addr);
+        addLog(lastBlock, `SYSTEM FILTER: ADDED ${addr.substring(0, 8)}`, "log-network");
     }
     syncData();
 }
@@ -181,8 +181,8 @@ function selectAgent(addr) {
 async function syncData() {
     await updateHeartbeat();
 
-    const agentStackQuery = activeFilterAgent ? `
-        agentStackCollection(filter: { agent: { eq: "${activeFilterAgent}" } }) {
+    const agentStackQuery = activeFilterAgents.size > 0 ? `
+        agentStackCollection(filter: { agent: { in: ${JSON.stringify([...activeFilterAgents])} } }) {
             edges { node { stack_id units reaper } }
         }
     ` : '';
@@ -243,20 +243,24 @@ async function syncData() {
         const moveds      = raw.movedCollection?.edges?.map(e => e.node)   || [];
         const stacks      = raw.stackCollection?.edges?.map(e => e.node)   || [];
         const agents      = raw.agentCollection?.edges?.map(e => e.node)   || [];
-        const agentStacks = activeFilterAgent
+        const agentStacks = activeFilterAgents.size > 0
             ? (raw.agentStackCollection?.edges?.map(e => e.node) || [])
             : [];
 
-        // If filtering by agent, replace global stack counts with agent-specific totals
-        if (activeFilterAgent) {
+        // If filtering by agents, replace global stack counts with summed agent-specific totals
+        if (activeFilterAgents.size > 0) {
             const agentLookup = {};
             agentStacks.forEach(as => {
-                agentLookup[as.stack_id] = { units: as.units, reaper: as.reaper };
+                const prev = agentLookup[as.stack_id] || { units: 0, reaper: 0 };
+                agentLookup[as.stack_id] = {
+                    units:  prev.units  + parseInt(as.units  || 0),
+                    reaper: prev.reaper + parseInt(as.reaper || 0)
+                };
             });
             stacks.forEach(s => {
-                const userOwnership = agentLookup[s.id] || { units: "0", reaper: "0" };
-                s.total_standard_units = userOwnership.units;
-                s.total_boosted_units  = userOwnership.reaper;
+                const userOwnership = agentLookup[s.id] || { units: 0, reaper: 0 };
+                s.total_standard_units = String(userOwnership.units);
+                s.total_boosted_units  = String(userOwnership.reaper);
             });
         }
 
@@ -380,7 +384,7 @@ function renderPnL(agents) {
         const spent  = parseFloat(a.total_spent  || 0) / 1_000_000;
         const earned = parseFloat(a.total_earned || 0) / 1_000_000;
         const net    = earned - spent;
-        const isFiltered = activeFilterAgent === a.id;
+        const isFiltered = activeFilterAgents.has(a.id);
 
         return `
             <div class="stack-row"

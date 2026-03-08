@@ -54,6 +54,7 @@ module.exports = {
         const tacticalRows = [];
         const SAFE_ZONE  = Array.from({ length: 216 }, (_, i) => i).filter(id => getManhattanDist(HUB_STACK, id) <= HUB_PERIMETER);
 
+        // Aggregate my stacks and hub state from on-chain data
         for (const [idStr, { mine, enemies }] of Object.entries(byStack)) {
             const id = parseInt(idStr);
             if (mine && (mine.units > 0n || mine.reapers > 0n)) {
@@ -63,23 +64,25 @@ module.exports = {
                 if (id === HUB_STACK) hubState.mine = mine;
             }
             if (id === HUB_STACK) hubState.enemies = enemies;
+        }
 
-            if (SAFE_ZONE.includes(id)) {
-                const ep   = enemies.reduce((acc, e) => acc + e.power, 0n);
-                const mp   = mine ? mine.power : 0n;
-                const dist = getManhattanDist(HUB_STACK, id);
-                const canOwn = ep > 0n && mp >= ep * BigInt(KILL_MULTIPLIER);
-                tacticalRows.push({
-                    'ID':     String(id),
-                    'Dist':   String(dist),
-                    'Enemy':  fmtPow(ep),
-                    'Mine':   fmtPow(mp),
-                    'Status': enemies.length === 0 ? `${GRN}SECURE${RES}` : canOwn ? `${YEL}READY${RES}` : `${RED}HOSTILE${RES}`
-                });
-                if (enemies.length > 0) {
-                    const top = topEnemy(enemies);
-                    validTargets.push({ id, target: top, dist, enemyPower: top.power });
-                }
+        // Build tactical rows for ALL positions in perimeter (including empty ones)
+        for (const id of SAFE_ZONE) {
+            const { mine, enemies } = byStack[id] || { mine: null, enemies: [] };
+            const ep     = enemies.reduce((acc, e) => acc + e.power, 0n);
+            const mp     = mine ? mine.power : 0n;
+            const dist   = getManhattanDist(HUB_STACK, id);
+            const canOwn = ep > 0n && mp >= ep * BigInt(KILL_MULTIPLIER);
+            tacticalRows.push({
+                'ID':     String(id),
+                'Dist':   String(dist),
+                'Enemy':  fmtPow(ep),
+                'Mine':   fmtPow(mp),
+                'Status': enemies.length === 0 ? `${GRN}SECURE${RES}` : canOwn ? `${YEL}READY${RES}` : `${RED}HOSTILE${RES}`
+            });
+            if (enemies.length > 0) {
+                const top = topEnemy(enemies);
+                validTargets.push({ id, target: top, dist, enemyPower: top.power });
             }
         }
         tacticalRows.sort((a, b) => parseInt(a.Dist) - parseInt(b.Dist) || parseInt(a.ID) - parseInt(b.ID));
