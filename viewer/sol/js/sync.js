@@ -313,7 +313,10 @@ async function syncData() {
             const burned = parseFloat(globalStat.kill_burned || 0) / 1_000_000;
             if (killBurnedEl) killBurnedEl.innerText = `${formatValue(burned)} KILL`;
             const circulatingEl = document.getElementById('stat-kill-circulating');
-            if (circulatingEl) circulatingEl.innerText = formatValue(666_000_000_000 - burned);
+            if (circulatingEl) {
+                const circ = 666_000_000_000 - burned;
+                circulatingEl.innerText = (circ / 1_000_000_000).toFixed(3) + 'B';
+            }
         }
 
         // Process events oldest → newest so triggerPulse fires in order

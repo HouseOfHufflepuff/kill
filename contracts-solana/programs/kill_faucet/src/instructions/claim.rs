@@ -4,19 +4,12 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use crate::errors::FaucetError;
 use crate::state::{ClaimRecord, FaucetConfig};
 
-/// Minimum KILL balance required to claim — 1 KILL at 6 decimal places.
-/// Mirrors the EVM `require(killToken.balanceOf(msg.sender) >= 1 ether)` check
-/// (adjusted for 6-decimal SPL token instead of 18-decimal ERC20).
-const MIN_KILL_BALANCE: u64 = 1_000_000;
-
 /// Percentage of faucet vault to dispense — 10%, matching the EVM contract.
 const CLAIM_PCT: u64 = 10;
 
 /// Claim tokens from the faucet.
 ///
-/// Equivalent to the EVM `pullKill()` function:
 ///   - One-time per wallet (enforced by `init` on ClaimRecord)
-///   - Claimer must hold ≥ 1 KILL already
 ///   - Transfers 10% of current vault balance to the claimer
 #[derive(Accounts)]
 pub struct Claim<'info> {
@@ -46,14 +39,11 @@ pub struct Claim<'info> {
     )]
     pub faucet_vault: Account<'info, TokenAccount>,
 
-    /// Claimer's KILL token account:
-    ///   - Must hold ≥ MIN_KILL_BALANCE (1 KILL) before claiming
-    ///   - Receives the faucet payout
+    /// Claimer's KILL token account — receives the faucet payout.
     #[account(
         mut,
         constraint = claimer_token_account.owner == claimer.key(),
         constraint = claimer_token_account.mint == faucet_config.kill_mint,
-        constraint = claimer_token_account.amount >= MIN_KILL_BALANCE @ FaucetError::InsufficientKillBalance,
     )]
     pub claimer_token_account: Account<'info, TokenAccount>,
 

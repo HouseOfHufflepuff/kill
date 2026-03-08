@@ -256,13 +256,13 @@ cat <<'IDLEOF' > contracts-solana/target/idl/kill_faucet.json
   "instructions": [
     {
       "name": "claim",
-      "docs": ["Claim 10% of the current faucet vault balance.","Callable once per wallet.  Claimer must hold >= 1 KILL already."],
+      "docs": ["Claim 10% of the current faucet vault balance.","Callable once per wallet."],
       "discriminator": [62,198,214,193,213,159,108,210],
       "accounts": [
         {"name":"faucet_config","docs":["Faucet config — provides vault address and signs vault transfers."],"pda":{"seeds":[{"kind":"const","value":[102,97,117,99,101,116,95,99,111,110,102,105,103]}]}},
         {"name":"claim_record","docs":["Claim record — `init` fails if this account already exists, which is","how we enforce the one-claim-per-wallet rule with zero extra code.","Seeds: [b\"claim_record\", claimer.key()]"],"writable":true,"pda":{"seeds":[{"kind":"const","value":[99,108,97,105,109,95,114,101,99,111,114,100]},{"kind":"account","path":"claimer"}]}},
         {"name":"faucet_vault","docs":["Faucet vault — source of the claim transfer."],"writable":true},
-        {"name":"claimer_token_account","docs":["Claimer's KILL token account:","- Must hold >= MIN_KILL_BALANCE (1 KILL) before claiming","- Receives the faucet payout"],"writable":true},
+        {"name":"claimer_token_account","docs":["Claimer's KILL token account — receives the faucet payout."],"writable":true},
         {"name":"kill_mint"},
         {"name":"claimer","writable":true,"signer":true},
         {"name":"token_program","address":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"},
@@ -292,9 +292,8 @@ cat <<'IDLEOF' > contracts-solana/target/idl/kill_faucet.json
   ],
   "errors": [
     {"code":6000,"name":"AlreadyClaimed","msg":"You have already claimed from the faucet"},
-    {"code":6001,"name":"InsufficientKillBalance","msg":"You must hold at least 1 KILL token to use the faucet"},
-    {"code":6002,"name":"FaucetEmpty","msg":"Faucet vault is empty"},
-    {"code":6003,"name":"Unauthorized","msg":"Unauthorized — admin only"}
+    {"code":6001,"name":"FaucetEmpty","msg":"Faucet vault is empty"},
+    {"code":6002,"name":"Unauthorized","msg":"Unauthorized — admin only"}
   ],
   "types": [
     {

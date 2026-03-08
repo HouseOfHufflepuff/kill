@@ -101,6 +101,9 @@ async function main() {
     console.log(`${CYA}[AGENT] Strategy: ${runSummary} = ${slots.length} total slots${RES}`);
     console.log(`${CYA}[AGENT] SLOT_DELTA: ${SLOT_DELTA}${RES}`);
 
+    // Attempt faucet claim at startup (once per wallet — skipped if already claimed or ineligible)
+    await claimFaucet(killFaucet, wallet, connection, KILL_MINT, FAUCET_ID);
+
     onSlot(connection, SLOT_DELTA, async (slot) => {
         const [slotName, capName] = slots[slotIndex % slots.length];
         slotIndex++;
