@@ -9,9 +9,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "helius-sdk": "^2.2.2"
-  },
   "devDependencies": {
     "supabase": "^2.76.17"
   }

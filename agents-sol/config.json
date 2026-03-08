@@ -36,6 +36,9 @@
     },
     "aftershock": {
       "MAX_KILL": 1000000
+    },
+    "dagger": {
+      "DAGGER_STACK": 103
     }
   }
 }

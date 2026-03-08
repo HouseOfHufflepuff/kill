@@ -301,6 +301,11 @@
                         <input class="cfg-input" type="number" id="cfg-max-gas" min="1" value="5">
                         <div class="cfg-field-desc">Hard gas ceiling. TXs skip when the network price exceeds this.</div>
                     </div>
+                    <div class="cfg-field">
+                        <label class="cfg-lbl">Dagger Stack <span class="cfg-lbl-hint">[dagger]</span></label>
+                        <input class="cfg-input" type="number" id="cfg-dagger-stack" min="0" max="215" value="8">
+                        <div class="cfg-field-desc">Stack ID where dagger agent pins and hunts. Must pre-position units here.</div>
+                    </div>
                 </div>
             </div>
             <div class="cfg-nav">
@@ -529,7 +534,7 @@ var AGENT_INFO = {
     'fortress':     { color: 'var(--cyan)', tier: 'TIER I — DEFENSIVE',   desc: 'Builds a defensive hub. Accumulates to TARGET_UNITS then eliminates threats with overwhelming force.' },
     'aftershock':   { color: '#ffd44a',     tier: 'TIER III — PREDATOR',  desc: 'Watches the kill log. Queues attacks on freshly depleted stacks the next block for easy bounties.' },
     'seed':         { color: '#888',        tier: 'UTILITY — SEEDER',     desc: 'Spawns small unit batches across random stacks each cycle to establish broad board presence.' },
-
+    'dagger':       { color: '#ff6b35',     tier: 'TIER II — ASSASSIN',   desc: 'Pins at a fixed stack. Scans for enemies there and kills the strongest viable target using all available force.' },
 };
 
 function openRosterModal() {
@@ -650,6 +655,9 @@ async function loadConfigFromFolder() {
         var sniper = (s.sniper || {});
         if (sniper.SPAWN_PROFITABILITY_THRESHOLD !== undefined)
             document.getElementById('cfg-profit-thresh').value = sniper.SPAWN_PROFITABILITY_THRESHOLD;
+        var dagger = (s.dagger || {});
+        if (dagger.DAGGER_STACK !== undefined)
+            document.getElementById('cfg-dagger-stack').value = dagger.DAGGER_STACK;
     } catch (_) { window._cfgLoaded = null; }
 
     try {
@@ -744,6 +752,7 @@ function buildPreview() {
         ['KILL_MULTIPLIER',    document.getElementById('cfg-kill-mult').value    || 3],
         ['PROFIT_THRESHOLD',   document.getElementById('cfg-profit-thresh').value || 0.15],
         ['MAX_GAS_PRICE_GWEI', document.getElementById('cfg-max-gas').value      || 5],
+        ['DAGGER_STACK',       document.getElementById('cfg-dagger-stack').value  || 8],
     ];
     el.innerHTML = lines.map(function(row) {
         return '<div><span style="color:#555;letter-spacing:1px;">' + row[0] + ':</span>  <span style="color:#aaa">' + row[1] + '</span></div>';
@@ -764,6 +773,7 @@ async function writeConfigFiles() {
     var killMult     = parseInt(document.getElementById('cfg-kill-mult').value)     || 3;
     var profitThresh = parseFloat(document.getElementById('cfg-profit-thresh').value) || 0.15;
     var maxGas       = parseInt(document.getElementById('cfg-max-gas').value)       || 5;
+    var daggerStack  = parseInt(document.getElementById('cfg-dagger-stack').value)  || 8;
 
     var base = window._cfgLoaded || {};
     var updatedCfg = Object.assign({}, base, {
@@ -773,6 +783,9 @@ async function writeConfigFiles() {
             MAX_GAS_PRICE_GWEI: maxGas,
             sniper: Object.assign({}, (base.settings || {}).sniper || {}, {
                 SPAWN_PROFITABILITY_THRESHOLD: profitThresh
+            }),
+            dagger: Object.assign({}, (base.settings || {}).dagger || {}, {
+                DAGGER_STACK: daggerStack
             })
         })
     });

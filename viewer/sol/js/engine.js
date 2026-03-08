@@ -4,7 +4,6 @@
 
 // --- GLOBAL CONFIGURATION ---
 const NETWORK = "Solana Devnet";
-const HELIUS_API_KEY = "fbda4008-03a0-4aad-8f64-c54e7fd9147e";
 const SOLANA_RPC_URL = "https://api.devnet.solana.com"; // public devnet — no key required
 const SUPABASE_URL = "https://jclsklriyozveiykzead.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbHNrbHJpeW96dmVpeWt6ZWFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NDQzOTUsImV4cCI6MjA4ODMyMDM5NX0.ka7UCBzLiZNvU5WKPWmpB7x7xM99thukFwtBGRvr-I8";
@@ -207,7 +206,7 @@ function triggerPulse(id, type) {
 
 function showTooltip(e, id) {
     if (!tooltip) return;
-    const data = stackRegistry[id] || { units: "0", reaper: "0", birthBlock: "0" };
+    const data = stackRegistry[id] || { units: "0", reaper: "0", birthBlock: "0", agents: [] };
     const u = parseInt(data.units);
     const r = parseInt(data.reaper);
     const bBlock = parseInt(data.birthBlock);
@@ -216,15 +215,26 @@ function showTooltip(e, id) {
     const basePower = u + (r * 666);
     const totalKillValue = basePower * bountyMultiplier;
 
+    const agents = data.agents || [];
+    const agentSection = agents.length > 0 ? (() => {
+        const sorted = [...agents].sort((a, b) => (b.units + b.reaper * 666) - (a.units + a.reaper * 666));
+        const rows = sorted.map(a =>
+            `<span style="color:#777;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.agent.substring(0, 10)}…</span>` +
+            `<span style="text-align:right;color:#aaa;">${a.units.toLocaleString()}</span>` +
+            `<span style="text-align:right;color:var(--cyan);">${a.reaper.toLocaleString()}</span>`
+        ).join('');
+        return `<div style="border-top:1px solid #333;margin-top:6px;padding-top:4px;">` +
+            `<div style="display:grid;grid-template-columns:1fr 72px 52px;gap:2px 0;font-size:0.6rem;">` +
+            `<span style="color:#555;">WALLET</span><span style="color:#555;text-align:right;">UNITS</span><span style="color:#555;text-align:right;">REAPER</span>` +
+            rows + `</div></div>`;
+    })() : '';
+
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
-    
-    const filterHeader = activeFilterAgents.size > 0 ? `<div style="color:var(--cyan); font-weight:bold; margin-bottom:4px;">AGENTS: ${[...activeFilterAgents].map(a => a.substring(0,8)).join(', ')}</div>` : '';
 
     tooltip.innerHTML = `
-        <div style="padding: 2px; font-family: monospace; font-size: 0.75rem; line-height: 1.2;">
-            ${filterHeader}
+        <div style="padding: 2px; font-family: monospace; font-size: 0.75rem; line-height: 1.2; min-width: 220px;">
             <strong style="color:var(--cyan); letter-spacing:1px;">STACK_${id}</strong><br>
             <span style="opacity:0.6">BIRTH_BLOCK:</span> ${bBlock > 0 ? bBlock : '---'}<br>
             <hr style="border:0; border-top:1px solid #333; margin:6px 0;">
@@ -235,6 +245,7 @@ function showTooltip(e, id) {
             <div style="border-top:1px solid #333; margin-top:4px; padding-top:4px;">
                 <span style="color:var(--pink); font-weight:bold; font-size:0.85rem;">VALUE: ${Math.floor(totalKillValue).toLocaleString()} KILL</span>
             </div>
+            ${agentSection}
         </div>
     `;
 }

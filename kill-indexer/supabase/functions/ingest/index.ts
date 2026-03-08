@@ -239,6 +239,18 @@ Deno.serve(async (req: Request) => {
 
   for (const txn of txns) {
     const sig  = txn.transaction?.signatures?.[0] ?? txn.signature ?? "unknown";
+
+    // Atomic dedup: INSERT the sig as primary key.
+    // If it already exists (unique violation 23505) another invocation already
+    // processed this tx — skip entirely. This makes it safe to run listener +
+    // ingest + poll-solana concurrently without double-counting.
+    const { error: dedupErr } = await db.from("processed_sigs").insert({ sig });
+    if (dedupErr) {
+      if (dedupErr.code === "23505") continue; // already processed
+      console.error(`processed_sigs insert failed for ${sig}:`, dedupErr.message);
+      // fall through — safer to risk duplicate than to miss an event
+    }
+
     const logs: string[] = txn.meta?.logMessages ?? txn.logs ?? [];
     const events = parseEvents(logs);
 

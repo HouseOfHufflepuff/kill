@@ -2,7 +2,7 @@
 # KILLGame Solana Agent Installer v1.0.0
 
 BASE_URL="https://raw.githubusercontent.com/HouseOfHufflepuff/kill/main"
-AGENTS="sniper fortress aftershock seed"
+AGENTS="sniper fortress aftershock seed dagger"
 
 # 1. Scaffold directories
 echo "[1/5] Scaffolding directories..."

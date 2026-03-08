@@ -58,15 +58,18 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
 
     const basePower = units + (reapers * 666);
     const agents = (stackRegistry[String(id)] || {}).agents || [];
-    const agentRows = agents
-        .sort((a, b) => (b.units + b.reaper * 666) - (a.units + a.reaper * 666))
-        .map(a => `
-            <div style="display:flex; justify-content:space-between; font-size:0.6rem; color:#aaa; margin-top:2px; gap:4px;">
-                <span style="color:#888; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1">${a.agent.substring(0, 10)}…</span>
-                <span style="flex-shrink:0; text-align:right;">${formatValue(a.units)}</span>
-                <span style="flex-shrink:0; text-align:right; color:var(--cyan);">${formatValue(a.reaper)}</span>
-            </div>`
+    const agentSection = agents.length > 0 ? (() => {
+        const sorted = [...agents].sort((a, b) => (b.units + b.reaper * 666) - (a.units + a.reaper * 666));
+        const rows = sorted.map(a =>
+            `<span style="color:#777;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.agent.substring(0, 10)}…</span>` +
+            `<span style="text-align:right;color:#aaa;">${formatValue(a.units)}</span>` +
+            `<span style="text-align:right;color:var(--cyan);">${formatValue(a.reaper)}</span>`
         ).join('');
+        return `<div style="border-bottom:1px solid #333;margin:4px 0;"></div>` +
+            `<div style="display:grid;grid-template-columns:1fr 68px 52px;gap:2px 0;font-size:0.6rem;">` +
+            `<span style="color:#555;">WALLET</span><span style="color:#555;text-align:right;">UNITS</span><span style="color:#555;text-align:right;">REAPER</span>` +
+            rows + `</div>`;
+    })() : '';
 
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
