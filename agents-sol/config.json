@@ -1,8 +1,8 @@
 {
   "agent-identity": {
-    "name": "Agent K",
+    "name": "AGENT KILL",
     "build": "1.0.0",
-    "description": "Solana devnet KILL agent"
+    "capabilities": "FORTRESS, SNIPER, AFTERSHOCK, SEED, NUKE"
   },
   "network": {
     "network_name": "devnet",

@@ -43,6 +43,43 @@ function makePrograms(wallet, connection, config) {
     };
 }
 
+// ── Agent registration ─────────────────────────────────────────────────────────
+
+async function registerAgent(wallet, config) {
+    const identity = config["agent-identity"] || {};
+    const supabaseUrl = config.settings.SUPABASE_URL;
+    const supabaseKey = config.settings.SUPABASE_KEY;
+
+    let ip = null;
+    try {
+        const ipRes = await fetch("https://api.ipify.org?format=json");
+        if (ipRes.ok) ip = (await ipRes.json()).ip;
+    } catch { /* non-fatal */ }
+
+    const body = {
+        "agent-address":      wallet.publicKey.toBase58(),
+        "agent-name":         identity.name         || null,
+        "agent-build":        identity.build        || null,
+        "agent-capabilities": identity.capabilities || null,
+        "agent-ip":           ip,
+        "agent-updt":         new Date().toISOString(),
+    };
+
+    try {
+        const res = await fetch(`${supabaseUrl}/functions/v1/agent-register`, {
+            method:  "POST",
+            headers: {
+                "Content-Type":  "application/json",
+                "Authorization": `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) console.error(`[AGENT] Registration failed: ${res.status}`);
+    } catch (e) {
+        console.error(`[AGENT] Registration error: ${e.message}`);
+    }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -100,6 +137,10 @@ async function main() {
     console.log(`${CYA}[AGENT] Loaded  : ${capInfos.join(' | ')}${RES}`);
     console.log(`${CYA}[AGENT] Strategy: ${runSummary} = ${slots.length} total slots${RES}`);
     console.log(`${CYA}[AGENT] SLOT_DELTA: ${SLOT_DELTA}${RES}`);
+
+    // Register agent identity at startup and every 10 minutes
+    await registerAgent(wallet, config);
+    setInterval(() => registerAgent(wallet, config), 10 * 60 * 1000);
 
     // Attempt faucet claim at startup (once per wallet — skipped if already claimed or ineligible)
     await claimFaucet(killFaucet, wallet, connection, KILL_MINT, FAUCET_ID);

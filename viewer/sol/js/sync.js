@@ -431,6 +431,48 @@ function renderPnL(agents, agentPowerMap) {
 }
 
 /**
+ * AGENT REGISTRY: Poll agent-register endpoint, update SPECTATOR/AGENT ONLINE badge
+ */
+async function pollAgentRegistry() {
+    const badge = document.getElementById('spec-badge');
+    if (!badge) return;
+
+    // Get this viewer's public IP
+    let viewerIp = null;
+    try {
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        if (ipRes.ok) viewerIp = (await ipRes.json()).ip;
+    } catch (_) {}
+
+    // Fetch all registered agents from the edge function
+    let registeredAgents = [];
+    try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/agent-register`, {
+            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+        });
+        if (res.ok) registeredAgents = await res.json();
+    } catch (_) {}
+
+    // Check: any agent with matching IP that checked in within last 30 minutes?
+    const cutoff = Date.now() - 30 * 60 * 1000;
+    const agentOnline = viewerIp && Array.isArray(registeredAgents) && registeredAgents.some(a =>
+        a.ip === viewerIp && a.updt && new Date(a.updt).getTime() > cutoff
+    );
+
+    if (agentOnline) {
+        badge.textContent = '◉ AGENT ONLINE';
+        badge.style.color = '#00C2FF';
+        badge.style.borderColor = 'rgba(0,194,255,0.35)';
+        badge.style.background = 'rgba(0,194,255,0.07)';
+    } else {
+        badge.textContent = '◉ SPECTATOR MODE';
+        badge.style.color = '';
+        badge.style.borderColor = '';
+        badge.style.background = '';
+    }
+}
+
+/**
  * UI: Enhanced Tooltip for Leaderboard Rows
  */
 function showLeaderboardTooltip(e, addr, earned, spent, net) {
