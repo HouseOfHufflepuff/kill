@@ -1,9 +1,14 @@
 "use strict";
 // scripts-solana/stats.js
-// Outputs total transactions and unique wallets for all three contracts.
+// Outputs total tx, unique wallets, and estimated SOL in tx fees for all three contracts.
+// Fees are calculated as totalTx * 5000 lamports (Solana base fee, no priority fees set
+// by these agents). Public devnet RPC rate-limits bulk getTransactions calls too
+// aggressively to fetch real fees without a Helius/private RPC.
 //
 // Usage: node scripts-solana/stats.js
 
+const path = require("path");
+const fs   = require("fs");
 const { setup } = require("./common");
 
 const CONTRACTS = [
@@ -12,69 +17,83 @@ const CONTRACTS = [
   { name: "kill-faucet", id: "761RUKWGgStRshdz3HJcS7dPodFSckDAcudLtU1CZ1b6"  },
 ];
 
-const PAGE_SIZE = 1000;
+const PAGE_SIZE  = 1000;
+const PAGE_DELAY = 600;   // ms between signature pagination calls
+const BASE_FEE   = 5000;  // lamports per tx (Solana base fee, 1 signature)
 
-async function fetchStats(connection, programId) {
-  const { PublicKey } = require("@solana/web3.js");
-  const key = new PublicKey(programId);
+const agentCfg     = JSON.parse(fs.readFileSync(path.join(__dirname, "../agents-sol/config.json"), "utf8"));
+const SUPABASE_URL  = agentCfg.settings.SUPABASE_URL;
+const SUPABASE_KEY  = agentCfg.settings.SUPABASE_KEY;
 
-  let allSigs = [];
-  let before  = undefined;
+// ── Count txs via getSignaturesForAddress (no individual tx fetches) ───────────
+async function fetchTxCount(connection, programId) {
+    const { PublicKey } = require("@solana/web3.js");
+    const key   = new PublicKey(programId);
+    let total   = 0;
+    let before  = undefined;
 
-  while (true) {
-    const opts = { limit: PAGE_SIZE, commitment: "finalized" };
-    if (before) opts.before = before;
+    while (true) {
+        const opts = { limit: PAGE_SIZE, commitment: "finalized" };
+        if (before) opts.before = before;
+        const batch = await connection.getSignaturesForAddress(key, opts);
+        if (!batch || batch.length === 0) break;
+        total += batch.filter(s => !s.err).length;
+        if (batch.length < PAGE_SIZE) break;
+        before = batch[batch.length - 1].signature;
+        await new Promise(r => setTimeout(r, PAGE_DELAY));
+    }
 
-    const batch = await connection.getSignaturesForAddress(key, opts);
-    if (!batch || batch.length === 0) break;
+    return total;
+}
 
-    const valid = batch.filter(s => !s.err);
-    allSigs.push(...valid);
-
-    if (batch.length < PAGE_SIZE) break;
-    before = batch[batch.length - 1].signature;
-
-    await new Promise(r => setTimeout(r, 300)); // avoid rate limit
-  }
-
-  // Unique wallets: each confirmed sig has a memo of signers in the tx.
-  // Fastest approximation without fetching every tx: collect unique feePayers
-  // from getSignaturesForAddress (not available). Instead fetch in batches.
-  const wallets = new Set();
-  const BATCH = 10;
-
-  for (let i = 0; i < allSigs.length; i += BATCH) {
-    const chunk = allSigs.slice(i, i + BATCH);
-    await Promise.all(chunk.map(async ({ signature }) => {
-      try {
-        const tx = await connection.getTransaction(signature, {
-          maxSupportedTransactionVersion: 0,
-          commitment: "finalized",
+// ── Unique wallets from Supabase (zero RPC calls) ─────────────────────────────
+async function fetchUniqueWallets() {
+    const rows = [];
+    let offset = 0;
+    while (true) {
+        const url = `${SUPABASE_URL}/rest/v1/agent_stack?select=agent&limit=1000&offset=${offset}`;
+        const res = await fetch(url, {
+            headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
         });
-        if (!tx) return;
-        const signers = tx.transaction.message.staticAccountKeys
-          ?? tx.transaction.message.accountKeys;
-        if (signers && signers.length > 0) {
-          wallets.add(signers[0].toBase58());
-        }
-      } catch (_) { /* skip */ }
-    }));
-    if (i + BATCH < allSigs.length) await new Promise(r => setTimeout(r, 200));
-  }
+        if (!res.ok) throw new Error(`Supabase ${res.status}`);
+        const batch = await res.json();
+        if (!batch || batch.length === 0) break;
+        rows.push(...batch);
+        if (batch.length < 1000) break;
+        offset += 1000;
+    }
+    return new Set(rows.map(r => r.agent)).size;
+}
 
-  return { totalTx: allSigs.length, uniqueWallets: wallets.size };
+function fmtSol(lamports) {
+    return (lamports / 1e9).toFixed(6);
 }
 
 (async () => {
-  const { connection } = await setup();
+    const { connection } = await setup();
 
-  console.log("\n── Contract Stats (devnet) ──────────────────────");
+    process.stdout.write("  Fetching unique wallets...");
+    const uniqueWallets = await fetchUniqueWallets();
+    process.stdout.write(`\r  Unique wallets: ${uniqueWallets}\n\n`);
 
-  for (const { name, id } of CONTRACTS) {
-    process.stdout.write(`  ${name.padEnd(12)} fetching...`);
-    const { totalTx, uniqueWallets } = await fetchStats(connection, id);
-    process.stdout.write(`\r  ${name.padEnd(12)} total tx: ${String(totalTx).padStart(6)}  |  unique wallets: ${uniqueWallets}\n`);
-  }
+    console.log("── Contract Stats (devnet) ─────────────────────────────────────────");
+    console.log(`  ${"CONTRACT".padEnd(12)}  ${"TX".padStart(6)}  ${"SOL FEES (est)".padStart(16)}`);
+    console.log("  " + "─".repeat(40));
 
-  console.log("─────────────────────────────────────────────────\n");
+    let grandTx = 0, grandLamports = 0;
+    for (const { name, id } of CONTRACTS) {
+        process.stdout.write(`  ${name.padEnd(12)}  counting...`);
+        const totalTx = await fetchTxCount(connection, id);
+        const lamports = totalTx * BASE_FEE;
+        grandTx        += totalTx;
+        grandLamports  += lamports;
+        process.stdout.write(
+            `\r  ${name.padEnd(12)}  ${String(totalTx).padStart(6)}  ${fmtSol(lamports).padStart(16)} SOL\n`
+        );
+    }
+
+    console.log("  " + "─".repeat(40));
+    console.log(`  ${"TOTAL".padEnd(12)}  ${String(grandTx).padStart(6)}  ${fmtSol(grandLamports).padStart(16)} SOL`);
+    console.log("────────────────────────────────────────────────────────────────────");
+    console.log(`  (fees estimated at ${BASE_FEE} lamports/tx base fee × tx count)\n`);
 })();

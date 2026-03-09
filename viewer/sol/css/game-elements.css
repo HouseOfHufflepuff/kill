@@ -130,7 +130,7 @@
     scrollbar-width: thin; scrollbar-color: var(--pink) transparent;
 }
 #log-feed { max-height: 160px; }
-#leaderboard { flex-grow: 1; min-height: 120px; }
+#leaderboard { flex-grow: 1; min-height: 120px; max-height: calc(100vh - 480px); overflow-y: auto; }
 
 #ripe-stacks::-webkit-scrollbar, #leaderboard::-webkit-scrollbar, #log-feed::-webkit-scrollbar { width: 4px; }
 #ripe-stacks::-webkit-scrollbar-thumb, #leaderboard::-webkit-scrollbar-thumb, #log-feed::-webkit-scrollbar-thumb { background: var(--pink); border-radius: 2px; }

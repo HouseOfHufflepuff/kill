@@ -386,7 +386,16 @@ async function syncData() {
             knownIds.add(evt.id);
         });
 
-        renderPnL(agents);
+        // Build per-agent total active power across all stacks (units + reapers*666)
+        const agentPowerMap = {};
+        stacks.forEach(s => {
+            (s.agents || []).forEach(a => {
+                if (!agentPowerMap[a.agent]) agentPowerMap[a.agent] = 0;
+                agentPowerMap[a.agent] += a.units + a.reaper * 666;
+            });
+        });
+
+        renderPnL(agents, agentPowerMap);
 
     } catch (e) { console.error("Sync fail", e); }
 }
@@ -394,24 +403,24 @@ async function syncData() {
 /**
  * UI: Render Agent P&L Leaderboard
  */
-function renderPnL(agents) {
+function renderPnL(agents, agentPowerMap) {
     if (!pnlEl) return;
+    agentPowerMap = agentPowerMap || {};
 
     pnlEl.innerHTML = agents.map(a => {
         const spent  = parseFloat(a.total_spent  || 0) / 1_000_000;
         const earned = parseFloat(a.total_earned || 0) / 1_000_000;
         const net    = earned - spent;
+        const pwr    = agentPowerMap[a.id] || 0;
         const isFiltered = activeFilterAgents.has(a.id);
 
         return `
             <div class="stack-row" data-agent="${a.id}"
                  style="display: flex; justify-content: space-between; padding: 2px 0; cursor: pointer; background: ${isFiltered ? 'rgba(20,241,149,0.1)' : 'transparent'};">
-                <span style="width:25%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">
-                    ${a.id.substring(0, 8)}
-                </span>
-                <span style="width:25%; text-align:right; color:${earned > 0 ? 'var(--cyan)' : '#eee'}; font-weight:bold;">${formatValue(earned)}</span>
-                <span style="width:20%; text-align:right; opacity:0.6;">${formatValue(spent)}</span>
-                <span style="width:30%; text-align:right; color:${net > 0 ? 'var(--cyan)' : 'var(--pink)'}; font-weight:bold;">${net > 0 ? '+' : ''}${formatValue(net)}</span>
+                <span style="width:25%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">${a.id.substring(0, 8)}</span>
+                <span style="width:22%; text-align:right; color:${pwr > 0 ? '#eee' : '#444'};">${formatValue(pwr)}</span>
+                <span style="width:22%; text-align:right; color:${earned > 0 ? 'var(--cyan)' : '#eee'}; font-weight:bold;">${formatValue(earned)}</span>
+                <span style="width:31%; text-align:right; color:${net > 0 ? 'var(--cyan)' : 'var(--pink)'}; font-weight:bold;">${net > 0 ? '+' : ''}${formatValue(net)}</span>
             </div>
         `;
     }).join('');
