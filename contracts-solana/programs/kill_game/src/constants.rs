@@ -31,3 +31,6 @@ pub const MAX_STACK_ID: u16 = 215;
 
 /// Basis-points denominator (10,000 = 100%)
 pub const BPS_DENOM: u64 = 10_000;
+
+/// Minimum combat power a stack retains after full age-decay (5%)
+pub const MIN_DECAY_PCT: u64 = 5;

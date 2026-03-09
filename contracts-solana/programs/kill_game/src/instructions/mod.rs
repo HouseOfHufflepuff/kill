@@ -24,36 +24,64 @@ pub fn is_adjacent(a: u16, b: u16) -> bool {
     (ax - bx).abs() + (ay - by).abs() + (az - bz).abs() == 1
 }
 
-/// Combat resolution matching EVM KillGame.sol `_resolveCombat`.
+/// Power decay percentage for a stack based on its age in slots.
 ///
-/// Reapers count as THERMAL_PARITY (666) units each.  Defender receives a 10%
-/// power bonus: we compare `atkRaw × 10  vs  defRaw × 11` to avoid fractions.
-/// Equivalent to EVM: `atkP > (defU + defR*666) * 110 / 100`.
+/// Mirrors the bounty multiplier in reverse: at mult=1 (fresh) a stack fights at
+/// 100% power; at mult=50 (~3 days) it fights at 5% power (MIN_DECAY_PCT).
+///
+///   mult       = clamp(1 + age_slots / SLOTS_PER_MULTIPLIER, 1, MAX_MULTIPLIER)
+///   decay_pct  = max(MIN_DECAY_PCT, 100 - (mult - 1) × 95 / 49)
+///
+/// Returns a value in [5, 100] inclusive.  Moving to an empty stack resets
+/// spawn_slot (handled in move_units), which restores full combat power.
+pub fn power_decay_pct(spawn_slot: u64, current_slot: u64) -> u64 {
+    let age = current_slot.saturating_sub(spawn_slot);
+    let mult = (1u64 + age / SLOTS_PER_MULTIPLIER).min(MAX_MULTIPLIER);
+    let decay = 100u64.saturating_sub((mult - 1).saturating_mul(95) / 49);
+    decay.max(MIN_DECAY_PCT)
+}
+
+/// Combat resolution matching EVM KillGame.sol `_resolveCombat`, extended with
+/// per-stack power decay.
+///
+/// Reapers count as THERMAL_PARITY (666) units each.  Effective power is scaled
+/// by each stack's `decay_pct` (5–100) before the combat comparison and the
+/// Lanchester ratio, so aged stacks fight weaker.  Actual on-chain unit counts
+/// (not effective counts) are returned for all loss/survivor values.
+///
+/// Defender receives a 10% power bonus: compare `atkEff × 10  vs  defEff × 11`.
 ///
 /// Returns `(attacker_won, rem_atk_units, rem_atk_reapers, atk_units_lost, atk_reapers_lost, def_units_lost, def_reapers_lost)`.
-/// - Win:  attacker keeps ALL sent forces (EVM awards zero casualties to winner).
-///         All defender forces are destroyed.
+/// - Win:  attacker keeps ALL sent forces.  All defender forces destroyed.
 /// - Loss: attacker loses all sent forces.
-///         Defender suffers Lanchester partial loss: defLost = defCount * atkP^2 / defP^2
+///         Defender suffers Lanchester partial loss using effective power ratio
+///         applied to actual unit counts:
+///         defLost = actual_defCount × (atkEff×10)² / (defEff×11)²
 pub fn resolve_combat(
     def_units: u64,
     atk_units: u64,
     def_reapers: u64,
     atk_reapers: u64,
+    atk_decay: u64,
+    def_decay: u64,
 ) -> (bool, u64, u64, u64, u64, u64, u64) {
     let def_raw = def_units.saturating_add(def_reapers.saturating_mul(THERMAL_PARITY));
     let atk_raw = atk_units.saturating_add(atk_reapers.saturating_mul(THERMAL_PARITY));
 
-    // 10% defender bonus: atkRaw×10 must beat defRaw×11
-    if atk_raw.saturating_mul(10) > def_raw.saturating_mul(11) {
-        // Attacker wins — winner suffers zero casualties, all defender forces destroyed
+    // Effective power = raw × decay_pct (kept as ×100 to avoid premature division)
+    // 10% defender bonus: atkEff×10 > defEff×11
+    let atk_eff = (atk_raw as u128).saturating_mul(atk_decay as u128);
+    let def_eff = (def_raw as u128).saturating_mul(def_decay as u128);
+
+    if atk_eff.saturating_mul(10) > def_eff.saturating_mul(11) {
+        // Attacker wins — returns ACTUAL unit counts; winner keeps all sent forces
         (true, atk_units, atk_reapers, 0, 0, def_units, def_reapers)
     } else {
         // Defender wins — attacker loses all sent forces
-        // Lanchester partial defender loss: defLost = defCount * atkP^2 / defP^2
-        // Using scaled integer math: atkP_scaled = atk_raw*10, defP_scaled = def_raw*11
-        let atk_p = (atk_raw as u128).saturating_mul(10);
-        let def_p = (def_raw as u128).saturating_mul(11);
+        // Lanchester partial loss using effective power ratio on ACTUAL def counts:
+        //   defLost = actual_defCount × (atkEff×10)² / (defEff×11)²
+        let atk_p = atk_eff.saturating_mul(10);
+        let def_p = def_eff.saturating_mul(11);
         let p_sq = atk_p.saturating_mul(atk_p);
         let d_sq = def_p.saturating_mul(def_p);
 

@@ -5,7 +5,7 @@ use crate::constants::*;
 use crate::errors::KillError;
 use crate::state::{AgentStack, GameConfig, KillEvent};
 
-use super::{get_pending_bounty, resolve_combat};
+use super::{get_pending_bounty, power_decay_pct, resolve_combat};
 
 /// Attack an enemy stack on the same grid position.
 ///
@@ -114,10 +114,17 @@ pub fn handler(
     let def_units   = ctx.accounts.defender_stack.units;
     let def_reapers = ctx.accounts.defender_stack.reapers;
 
+    // Power decay — older stacks fight at reduced effectiveness (5%–100%).
+    // Inverse of the bounty multiplier: a 3-day-old stack has 50× bounty but 5% power.
+    let atk_decay = power_decay_pct(ctx.accounts.attacker_stack.spawn_slot, current_slot);
+    let def_decay = power_decay_pct(ctx.accounts.defender_stack.spawn_slot, current_slot);
+
     // ── Combat ────────────────────────────────────────────────────────────────
     // Returns: (won, rem_atk_u, rem_atk_r, atk_u_lost, atk_r_lost, def_u_lost, def_r_lost)
+    // Decay percentages scale effective power for win check + Lanchester ratio,
+    // but all returned loss/survivor values are in actual (not decayed) unit counts.
     let (won, rem_units, rem_reapers, atk_u_lost, atk_r_lost, def_u_lost, def_r_lost) =
-        resolve_combat(def_units, sent_units, def_reapers, sent_reapers);
+        resolve_combat(def_units, sent_units, def_reapers, sent_reapers, atk_decay, def_decay);
 
     // ── Bounty calculation (EVM _applyRewards parity) ─────────────────────────
     // Power destroyed by each side
