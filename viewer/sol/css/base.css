@@ -216,8 +216,8 @@ footer {
 
 /* --- SPECTATOR BADGE --- */
 .spec-badge {
-    background: rgba(20,241,149,.07); border: 1px solid rgba(20,241,149,.35);
-    color: var(--cyan); font-size: .5rem; letter-spacing: 2px; padding: 5px 10px;
+    background: rgba(0,194,255,.07); border: 1px solid rgba(0,194,255,.35);
+    color: #00C2FF; font-size: .5rem; letter-spacing: 2px; padding: 5px 10px;
     font-family: 'Oswald', sans-serif; white-space: nowrap;
 }
 

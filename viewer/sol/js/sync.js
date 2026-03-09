@@ -464,9 +464,9 @@ async function pollAgentRegistry() {
     if (badge) {
         if (agentOnline) {
             badge.textContent = '◉ AGENT ONLINE';
-            badge.style.color = '#00C2FF';
-            badge.style.borderColor = 'rgba(0,194,255,0.35)';
-            badge.style.background = 'rgba(0,194,255,0.07)';
+            badge.style.color = 'var(--cyan)';
+            badge.style.borderColor = 'rgba(20,241,149,0.35)';
+            badge.style.background = 'rgba(20,241,149,0.07)';
         } else {
             badge.textContent = '◉ SPECTATOR MODE';
             badge.style.color = '';
