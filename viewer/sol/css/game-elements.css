@@ -164,7 +164,7 @@
 }
 .log-kill { border-left-color: var(--pink); color: var(--pink); } 
 .log-spawn { border-left-color: var(--cyan); color: var(--cyan); } 
-.log-network, .log-block { color: #888; }
+.log-network, .log-block { color: #bbb; }
 
 .lethal-dot {
     display: inline-block; width: 8px; height: 8px;
@@ -240,11 +240,11 @@
     text-align: right;
 }
 .kill-header { background: rgba(0,0,0,0.4); }
-.kill-header span { color: #888; font-size: 0.55rem; letter-spacing: 1px; }
-.kill-row:not(.kill-header) span:first-child { color: #888; }
+.kill-header span { color: #bbb; font-size: 0.55rem; letter-spacing: 1px; }
+.kill-row:not(.kill-header) span:first-child { color: #bbb; }
 .kill-row:not(.kill-header) span:nth-child(2),
 .kill-row:not(.kill-header) span:nth-child(3) {
-    color: var(--pink);
+    color: #ddd;
     font-family: 'JetBrains Mono', monospace;
     font-weight: 400;
     font-size: 0.55rem;

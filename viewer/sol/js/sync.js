@@ -93,6 +93,9 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill, decayPct) {
               `<div style="font-size:0.6rem;color:#555;font-style:italic;">agent breakdown pending</div>`
             : '';
 
+    const decayLost  = 100 - (decayPct || 100);
+    const ageColor   = decayLost <= 20 ? 'var(--pink)' : decayLost <= 50 ? '#aaa' : 'var(--cyan)';
+
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top = (e.pageY + 15) + 'px';
@@ -110,8 +113,8 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill, decayPct) {
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.8;">
                 <span>BASE_POWER:</span> <span>${formatValue(basePower)}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:${(100-(decayPct||100)) <= 20 ? 'var(--pink)' : (100-(decayPct||100)) <= 50 ? '#aaa' : 'var(--cyan)'};">
-                <span>DECAY:</span> <span>${100 - (decayPct || 100)}%</span>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:${ageColor};">
+                <span>DECAY:</span> <span>${decayLost}%</span>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.7;">
                 <span>EFF_POWER:</span> <span>${formatValue(effPower)}</span>
@@ -119,7 +122,7 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill, decayPct) {
             <div style="font-size:0.55rem; color:#555; margin:2px 0 4px;">
                 0% = fresh · 95% = ~3 days old · moves reset decay
             </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:${ageColor}">
                 <span>BOUNTY:</span> <span>${bounty.toFixed(2)}x</span>
             </div>
             <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
@@ -156,6 +159,12 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
     if (!topStacksEl) return;
     let globalUnits = 0, globalReapers = 0, globalBountyKill = 0;
 
+    // Clear stale registry — only current poll data should drive the UI
+    stackRegistry = {};
+
+    // Track which stack IDs appear in this poll
+    const activeStackIds = new Set();
+
     const processed = stacks.map(s => {
         const u      = parseInt(s.total_standard_units || 0);
         const r      = activeReaperMap[s.id] || parseInt(s.total_boosted_units) || 0;
@@ -185,10 +194,18 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
             agents: stackAgents
         };
 
+        activeStackIds.add(String(s.id));
         updateNodeParticles(s.id, u, r);
 
         return { id: s.id, units: u, reapers: r, power, decayPct, bounty: displayBounty, kill: totalKillValue };
     });
+
+    // Clear particles on stacks not in the current response (moved/killed/empty)
+    for (let i = 0; i < 216; i++) {
+        if (!activeStackIds.has(String(i))) {
+            updateNodeParticles(i, 0, 0);
+        }
+    }
 
     currentGlobalKillStacked = globalBountyKill;
 
@@ -219,7 +236,7 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
             <span style="width:8%; color:${isSelected ? 'var(--pink)' : '#999'};">${item.id}</span>
             <span style="width:20%; text-align:right; color:#ddd;">${formatValue(item.power)}</span>
             <span style="width:13%; text-align:right; color:${decayColor};" title="${decayTitle}">${decayLost}%</span>
-            <span style="width:16%; text-align:right; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
+            <span style="width:16%; text-align:right; color:${decayColor}; opacity:0.8;">${item.bounty.toFixed(2)}x</span>
             <span style="width:43%; text-align:right; color:var(--pink); font-weight:bold;">${formatValue(Math.floor(item.kill))}</span>
         </div>
     `;
