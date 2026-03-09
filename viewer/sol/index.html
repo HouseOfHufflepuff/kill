@@ -57,15 +57,15 @@
 .cfg-agent-tier{font-size:.55rem;letter-spacing:1.5px;color:#666;margin-bottom:8px;text-transform:uppercase;}
 .cfg-agent-desc{font-size:.65rem;color:#888;line-height:1.65;}
 /* Per-agent config overlay */
-.agent-cfg-ov{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:2000;display:flex;align-items:center;justify-content:center;}
+.agent-cfg-ov{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:30000;display:flex;align-items:center;justify-content:center;}
 .agent-cfg-panel{background:#0c0c0c;border:1px solid var(--ac,#333);padding:28px 32px;width:min(440px,90vw);position:relative;max-height:80vh;overflow-y:auto;}
-.agent-cfg-close{position:absolute;top:10px;right:14px;background:none;border:none;color:#555;font-size:1.3rem;cursor:pointer;line-height:1;padding:2px 6px;}
+.agent-cfg-close{position:absolute;top:10px;right:14px;background:none;border:none;color:#888;font-size:1.3rem;cursor:pointer;line-height:1;padding:2px 6px;}
 .agent-cfg-close:hover{color:#eee;}
 .agent-cfg-title{font-size:.9rem;font-weight:bold;letter-spacing:3px;margin-bottom:3px;}
-.agent-cfg-sub{font-size:.55rem;letter-spacing:1.5px;color:#555;margin-bottom:20px;text-transform:uppercase;}
+.agent-cfg-sub{font-size:.55rem;letter-spacing:1.5px;color:#888;margin-bottom:20px;text-transform:uppercase;}
 .agent-cfg-field{margin-bottom:16px;}
-.agent-cfg-lbl{display:block;font-size:.6rem;letter-spacing:2px;color:#666;margin-bottom:5px;text-transform:uppercase;}
-.agent-cfg-desc{font-size:.6rem;color:#444;margin-top:4px;line-height:1.5;}
+.agent-cfg-lbl{display:block;font-size:.6rem;letter-spacing:2px;color:#aaa;margin-bottom:5px;text-transform:uppercase;}
+.agent-cfg-desc{font-size:.6rem;color:#777;margin-top:4px;line-height:1.5;}
 .agent-cfg-save{width:100%;margin-top:20px;background:transparent;border:1px solid var(--ac,#555);color:var(--ac,#888);padding:12px;font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:2px;cursor:pointer;transition:background .15s,color .15s;}
 .agent-cfg-save:hover{background:var(--ac,#333);color:#000;}
 /* Runs */
@@ -203,28 +203,16 @@
 
         <!-- 6-step progress header -->
         <div class="cfg-steps-hdr">
-            <div class="cfg-sdot active" id="cfg-sdot-1"><div class="cfg-sdot-n">1</div><div class="cfg-sdot-lbl">AGENTS</div></div>
-            <div class="cfg-sdot" id="cfg-sdot-2"><div class="cfg-sdot-n">2</div><div class="cfg-sdot-lbl">HOW IT WORKS</div></div>
-            <div class="cfg-sdot" id="cfg-sdot-3"><div class="cfg-sdot-n">3</div><div class="cfg-sdot-lbl">FOLDER</div></div>
+            <div class="cfg-sdot active" id="cfg-sdot-1"><div class="cfg-sdot-n">1</div><div class="cfg-sdot-lbl">HOW IT WORKS</div></div>
+            <div class="cfg-sdot" id="cfg-sdot-2"><div class="cfg-sdot-n">2</div><div class="cfg-sdot-lbl">FOLDER</div></div>
+            <div class="cfg-sdot" id="cfg-sdot-3"><div class="cfg-sdot-n">3</div><div class="cfg-sdot-lbl">AGENTS</div></div>
             <div class="cfg-sdot" id="cfg-sdot-4"><div class="cfg-sdot-n">4</div><div class="cfg-sdot-lbl">PLAYBOOK</div></div>
             <div class="cfg-sdot" id="cfg-sdot-5"><div class="cfg-sdot-n">5</div><div class="cfg-sdot-lbl">SETTINGS</div></div>
             <div class="cfg-sdot" id="cfg-sdot-6"><div class="cfg-sdot-n">6</div><div class="cfg-sdot-lbl">SAVE</div></div>
         </div>
 
-        <!-- ── Step 1: Agent Types ────────────────────────────────────── -->
+        <!-- ── Step 1: How It Works ───────────────────────────────────── -->
         <div class="cfg-pane active" id="cfg-pane-1">
-            <div class="cfg-section" style="position:relative;padding-bottom:48px;">
-                <div class="cfg-sec-hdr">Agent Types</div>
-                <div class="cfg-sec-sub">Each agent uses a different strategy. Mix them in your playbook.</div>
-                <div class="cfg-agent-grid" id="cfg-agent-overview"></div>
-                <div style="position:absolute;bottom:12px;right:16px;">
-                    <button class="cfg-nav-next" onclick="cfgNext(1)">NEXT →</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Step 2: How It Works ───────────────────────────────────── -->
-        <div class="cfg-pane" id="cfg-pane-2">
             <div class="cfg-section cy">
                 <div class="cfg-sec-hdr">How the Agent Works</div>
                 <div class="cfg-carousel">
@@ -232,7 +220,7 @@
                     <div class="cfg-car-inner">
                         <div class="cfg-how-box cfg-how-slide active" id="cfg-how-0">
                             <div class="cfg-how-title">BLOCK LISTENER</div>
-                            <div class="cfg-how-body">The agent runs a continuous <strong>block listener</strong> on Base. Every new block (~2 sec) triggers a cycle. Your agents wake up, scan on-chain state, and acts.</div>
+                            <div class="cfg-how-body">The agent runs a continuous <strong>block listener</strong> on Solana. Every N slots triggers a cycle. Your agents wake up, scan on-chain state, and act.</div>
                         </div>
                         <div class="cfg-how-box cfg-how-slide" id="cfg-how-1">
                             <div class="cfg-how-title">PLAYBOOK CYCLE</div>
@@ -244,7 +232,7 @@
                         </div>
                         <div class="cfg-how-box cfg-how-slide" id="cfg-how-3">
                             <div class="cfg-how-title">DRY RUN MODE</div>
-                            <div class="cfg-how-body">Set <code>DRY_RUN: true</code> in your config to simulate without spending gas. Watch a few cycles, flip live only when you see consistent positive edge.</div>
+                            <div class="cfg-how-body">Set <code>DRY_RUN: true</code> in your config to simulate without spending SOL. Watch a few cycles, flip live only when you see consistent positive edge.</div>
                         </div>
                     </div>
                     <button class="cfg-car-btn" onclick="cfgHowNext()">&#8594;</button>
@@ -252,13 +240,13 @@
                 <div class="cfg-car-counter" id="cfg-how-counter">1 / 4</div>
             </div>
             <div class="cfg-nav">
-                <button class="cfg-nav-back" onclick="cfgBack(2)">← BACK</button>
-                <button class="cfg-nav-next" onclick="cfgNext(2)">NEXT →</button>
+                <span></span>
+                <button class="cfg-nav-next" onclick="cfgNext(1)">NEXT →</button>
             </div>
         </div>
 
-        <!-- ── Step 3: Folder ─────────────────────────────────────────── -->
-        <div class="cfg-pane" id="cfg-pane-3">
+        <!-- ── Step 2: Folder ─────────────────────────────────────────── -->
+        <div class="cfg-pane" id="cfg-pane-2">
             <div class="cfg-section">
                 <div class="cfg-sec-hdr">Select Deploy Folder</div>
                 <div class="cfg-sec-sub">Select the <strong style="color:#ccc">root folder</strong> of your killgame install — the folder that contains the <code style="color:var(--cyan)">agents/</code> subdirectory. Config is read from and written to <code style="color:var(--cyan)">agents/config.json</code> and <code style="color:var(--cyan)">agents/playbook.json</code>.</div>
@@ -270,6 +258,19 @@
                 <div style="font-size:.65rem;color:#666;line-height:1.8;">Expected: <code style="color:#888">killsol/agents/config.json</code> — Don't have killsol yet? Click <span style="color:var(--pink)">AGENT +</span> to deploy.</div>
             </div>
             <div id="cfg-folder-warn" style="display:none;background:#0a0000;border:1px solid #3a0000;padding:12px 16px;font-size:.68rem;color:#ff6666;margin-bottom:16px;line-height:1.7;"></div>
+            <div class="cfg-nav">
+                <button class="cfg-nav-back" onclick="cfgBack(2)">← BACK</button>
+                <button class="cfg-nav-next" onclick="cfgNext(2)">NEXT →</button>
+            </div>
+        </div>
+
+        <!-- ── Step 3: Agent Types ────────────────────────────────────── -->
+        <div class="cfg-pane" id="cfg-pane-3">
+            <div class="cfg-section">
+                <div class="cfg-sec-hdr">Agent Types</div>
+                <div class="cfg-sec-sub">Each agent uses a different strategy. Mix them in your playbook. <strong style="color:#666">Click any agent to configure its settings and save to disk.</strong></div>
+                <div class="cfg-agent-grid" id="cfg-agent-overview"></div>
+            </div>
             <div class="cfg-nav">
                 <button class="cfg-nav-back" onclick="cfgBack(3)">← BACK</button>
                 <button class="cfg-nav-next" onclick="cfgNext(3)">NEXT →</button>
@@ -642,7 +643,7 @@ function goToStep(n) {
 }
 
 function cfgNext(from) {
-    if (from === 3 && !cfgDirHandle) {
+    if (from === 2 && !cfgDirHandle) {
         var warn = document.getElementById('cfg-folder-warn');
         warn.textContent = 'Please select your killsol folder first.';
         warn.style.display = 'block';
