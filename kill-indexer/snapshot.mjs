@@ -49,6 +49,32 @@ TRUNCATE TABLE agent_stack;
 INSERT INTO agent_stack (id, agent, stack_id, units, reaper, birth_slot)
 VALUES
   ${values};
+
+-- Rebuild stack aggregates from agent_stack (keeps stack table in sync with ground truth)
+UPDATE stack s
+SET total_standard_units = 0,
+    total_boosted_units  = 0,
+    active               = false,
+    birth_slot           = 0
+WHERE NOT EXISTS (
+  SELECT 1 FROM agent_stack a
+  WHERE a.stack_id::text = s.id AND (a.units > 0 OR a.reaper > 0)
+);
+
+UPDATE stack s
+SET
+  total_standard_units = agg.total_units,
+  total_boosted_units  = agg.total_reaper,
+  active               = true
+FROM (
+  SELECT stack_id::text        AS sid,
+         SUM(units)::numeric   AS total_units,
+         SUM(reaper)::numeric  AS total_reaper
+  FROM agent_stack
+  WHERE units > 0 OR reaper > 0
+  GROUP BY stack_id
+) agg
+WHERE s.id = agg.sid;
 `;
 
 writeFileSync("snapshot.sql", sql);

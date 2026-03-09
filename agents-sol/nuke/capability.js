@@ -27,6 +27,9 @@ module.exports = {
             connection, wallet, KILL_MINT, wallet.publicKey
         );
 
+        const SPAWN_COST = 20_000_000n; // microKILL per unit (matches contract)
+        let killBalance  = BigInt(agentAta.amount.toString());
+
         // Fetch all on-chain stacks
         const allStacks = await killGame.account.agentStack.all([]);
 
@@ -75,10 +78,13 @@ module.exports = {
 
                 let spawnUnits = 0n;
                 if (currentPower < neededPower) {
-                    spawnUnits = neededPower - currentPower;
+                    const desired    = neededPower - currentPower;
+                    const affordable = killBalance / SPAWN_COST;
+                    spawnUnits = desired < affordable ? desired : affordable;
                 }
 
                 const sendUnits   = myUnits   + spawnUnits;
+                // spawn auto-grants 1 reaper per 666 units spawned (matches contract)
                 const sendReapers = myReapers + spawnUnits / 666n;
                 const defenderAta = getAssociatedTokenAddressSync(KILL_MINT, target.agent);
 
@@ -129,8 +135,9 @@ module.exports = {
                         Tx:     txLink(sig),
                     });
                     // Attacker wins → keeps all units sent; update local tracking for next target
-                    myUnits   = sendUnits;
-                    myReapers = sendReapers;
+                    myUnits      = sendUnits;
+                    myReapers    = sendReapers;
+                    killBalance -= spawnUnits * SPAWN_COST;
                 } catch (e) {
                     actionRows.push({
                         Action: spawnUnits > 0n ? 'SPAWN+KILL' : 'KILL',

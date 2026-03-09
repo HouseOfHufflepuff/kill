@@ -282,10 +282,12 @@ async function poll() {
     }
   }
 
-  // Snapshot agent_stack from chain for ground-truth correctness
+  // Snapshot agent_stack from chain for ground-truth correctness,
+  // then rebuild stack aggregates to match (prevents drift from event delta errors)
   let snapshotCount = 0;
   if (hasEvents) {
     snapshotCount = await snapshotAgentStacks(db);
+    await db.rpc('rebuild_stack_from_agent_stack');
   }
 
   // Advance checkpoint

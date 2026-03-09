@@ -3,6 +3,20 @@
  */
 
 /**
+ * COOKIE UTILS — shared across sync.js and index.html inline scripts
+ */
+function setCookie(name, val, days) {
+    document.cookie = name + '=' + encodeURIComponent(val)
+        + '; max-age=' + (days * 86400) + '; path=/; SameSite=Lax';
+}
+function getCookie(name) {
+    const m = document.cookie.match(
+        new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)')
+    );
+    return m ? decodeURIComponent(m[1]) : null;
+}
+
+/**
  * UTILITY: Format numbers for UI display (K, M, B)
  */
 const formatValue = (val) => {
@@ -61,18 +75,22 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
 
     const basePower = units + (reapers * 666);
     const agents = (stackRegistry[String(id)] || {}).agents || [];
-    const agentSection = agents.length > 0 ? (() => {
-        const sorted = [...agents].sort((a, b) => (b.units + b.reaper * 666) - (a.units + a.reaper * 666));
-        const rows = sorted.map(a =>
-            `<span style="color:#777;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.agent.substring(0, 10)}…</span>` +
-            `<span style="text-align:right;color:#aaa;">${formatValue(a.units)}</span>` +
-            `<span style="text-align:right;color:var(--cyan);">${formatValue(a.reaper)}</span>`
-        ).join('');
-        return `<div style="border-bottom:1px solid #333;margin:4px 0;"></div>` +
-            `<div style="display:grid;grid-template-columns:1fr 68px 52px;gap:2px 0;font-size:0.6rem;">` +
-            `<span style="color:#555;">WALLET</span><span style="color:#555;text-align:right;">UNITS</span><span style="color:#555;text-align:right;">REAPER</span>` +
-            rows + `</div>`;
-    })() : '';
+    const agentSection = agents.length > 0
+        ? (() => {
+            const rows = agents.map(a =>
+                `<span style="color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.agent.substring(0, 10)}…</span>` +
+                `<span style="text-align:right;color:#ddd;">${formatValue(a.units)}</span>` +
+                `<span style="text-align:right;color:var(--cyan);">${formatValue(a.reaper)}</span>`
+            ).join('');
+            return `<div style="border-bottom:1px solid #333;margin:4px 0;"></div>` +
+                `<div style="display:grid;grid-template-columns:1fr 68px 52px;gap:2px 0;font-size:0.6rem;">` +
+                `<span style="color:#888;">WALLET</span><span style="color:#888;text-align:right;">UNITS</span><span style="color:#888;text-align:right;">REAPER</span>` +
+                rows + `</div>`;
+          })()
+        : (units > 0 || reapers > 0)
+            ? `<div style="border-bottom:1px solid #333;margin:4px 0;"></div>` +
+              `<div style="font-size:0.6rem;color:#555;font-style:italic;">agent breakdown pending</div>`
+            : '';
 
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
@@ -98,12 +116,7 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
             <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--pink); font-size:0.75rem;">
                 <span>VALUE:</span> <span>${formatValue(totalKill)} KILL</span>
             </div>
-            ${agents.length > 0 ? `
-            <div style="border-bottom: 1px solid #333; margin: 4px 0;"></div>
-            <div style="display:flex; justify-content:space-between; font-size:0.6rem; color:#555; margin-bottom:2px;">
-                <span style="flex:1">WALLET</span><span>UNITS</span><span style="margin-left:8px;">REAPER</span>
-            </div>
-            ${agentRows}` : ''}
+            ${agentSection}
         </div>
     `;
 }
@@ -271,7 +284,8 @@ async function syncData() {
             node.agents = (node.agent_stackCollection?.edges || [])
                 .map(ae => ae.node)
                 .map(a => ({ agent: a.agent, units: parseInt(a.units || 0), reaper: parseInt(a.reaper || 0) }))
-                .filter(a => a.units > 0 || a.reaper > 0);
+                .filter(a => a.units > 0 || a.reaper > 0)
+                .sort((a, b) => (b.units + b.reaper * 666) - (a.units + a.reaper * 666));
             return node;
         });
 
@@ -390,6 +404,7 @@ async function syncData() {
         });
 
         // Build per-agent total active power across all stacks (units + reapers*666)
+        // Use activeAgents (non-zero only) so power/stack counts reflect real holdings
         const agentPowerMap = {};
         const agentStackCountMap = {};
         stacks.forEach(s => {
@@ -469,6 +484,11 @@ async function pollAgentRegistry() {
         ? registeredAgents.find(a => a.ip === viewerIp && a.updt && new Date(a.updt).getTime() > cutoff)
         : null;
     const agentOnline = !!matchedAgent;
+
+    // ── Cookie: persist agent address whenever online ─────────────────────────
+    if (agentOnline) {
+        setCookie('kill_agent', matchedAgent.address, 365);
+    }
 
     // ── Header badge ─────────────────────────────────────────────────────────
     const badge = document.getElementById('spec-badge');

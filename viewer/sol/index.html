@@ -17,13 +17,13 @@
 /* ── Configure Agent Wizard ──────────────────────────────────────────────── */
 .cfg-steps-hdr{display:flex;gap:0;margin-bottom:28px;border-bottom:1px solid #1e1e1e;padding-bottom:18px;}
 .cfg-sdot{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;cursor:pointer;}
-.cfg-sdot::after{content:'';position:absolute;top:15px;left:60%;width:80%;height:1px;background:#222;}
+.cfg-sdot::after{content:'';position:absolute;top:15px;left:60%;width:80%;height:1px;background:#444;}
 .cfg-sdot:last-child::after{display:none;}
-.cfg-sdot-n{width:30px;height:30px;border-radius:50%;border:1px solid #3a3a3a;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:bold;color:#555;background:#000;position:relative;z-index:1;transition:.2s;}
+.cfg-sdot-n{width:30px;height:30px;border-radius:50%;border:1px solid #666;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:bold;color:#999;background:#000;position:relative;z-index:1;transition:.2s;}
 .cfg-sdot.active .cfg-sdot-n{border-color:var(--pink);color:var(--pink);}
-.cfg-sdot.done .cfg-sdot-n{border-color:#555;color:#555;background:#080808;}
-.cfg-sdot-lbl{font-size:.52rem;letter-spacing:2px;color:#444;text-align:center;text-transform:uppercase;}
-.cfg-sdot.active .cfg-sdot-lbl,.cfg-sdot.done .cfg-sdot-lbl{color:#777;}
+.cfg-sdot.done .cfg-sdot-n{border-color:#888;color:#888;background:#080808;}
+.cfg-sdot-lbl{font-size:.52rem;letter-spacing:2px;color:#777;text-align:center;text-transform:uppercase;}
+.cfg-sdot.active .cfg-sdot-lbl,.cfg-sdot.done .cfg-sdot-lbl{color:#aaa;}
 .cfg-pane{display:none;}.cfg-pane.active{display:block;}
 .cfg-section{border-left:3px solid var(--pink);padding:16px 20px;margin-bottom:20px;background:rgba(255,45,117,.02);}
 .cfg-section.cy{border-color:var(--cyan);background:rgba(0,240,255,.02);}
@@ -255,6 +255,7 @@
                     <span class="cfg-folder-name" id="cfg-folder-name">No folder selected</span>
                     <span class="cfg-folder-status" id="cfg-folder-status"></span>
                 </div>
+                <div id="cfg-folder-hint" style="display:none;font-size:.62rem;color:var(--cyan);margin-top:6px;line-height:1.7;"></div>
                 <div style="font-size:.65rem;color:#666;line-height:1.8;">Expected: <code style="color:#888">killsol/agents/config.json</code> — Don't have killsol yet? Click <span style="color:var(--pink)">AGENT +</span> to deploy.</div>
             </div>
             <div id="cfg-folder-warn" style="display:none;background:#0a0000;border:1px solid #3a0000;padding:12px 16px;font-size:.68rem;color:#ff6666;margin-bottom:16px;line-height:1.7;"></div>
@@ -269,11 +270,13 @@
             <div class="cfg-section">
                 <div class="cfg-sec-hdr">Agent Types</div>
                 <div class="cfg-sec-sub">Each agent uses a different strategy. Mix them in your playbook. <strong style="color:#666">Click any agent to configure its settings and save to disk.</strong></div>
-                <div class="cfg-agent-grid" id="cfg-agent-overview"></div>
-            </div>
-            <div class="cfg-nav">
-                <button class="cfg-nav-back" onclick="cfgBack(3)">← BACK</button>
-                <button class="cfg-nav-next" onclick="cfgNext(3)">NEXT →</button>
+                <div style="position:relative;">
+                    <div class="cfg-agent-grid" id="cfg-agent-overview"></div>
+                    <div style="position:absolute;bottom:0;right:0;display:flex;gap:8px;">
+                        <button class="cfg-nav-back" onclick="cfgBack(3)">← BACK</button>
+                        <button class="cfg-nav-next" onclick="cfgNext(3)">NEXT →</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -609,6 +612,19 @@ function openRosterModal() {
     goToStep(1);
     renderAgentOverview();
     renderRuns();
+
+    // Show last-used folder hint from cookie
+    var agentAddr  = getCookie('kill_agent');
+    var savedName  = agentAddr ? getCookie('kill_folder_' + agentAddr) : null;
+    var hintEl     = document.getElementById('cfg-folder-hint');
+    if (hintEl) {
+        if (savedName) {
+            hintEl.innerHTML = '↩ Last used: <strong>' + savedName + '/</strong> — select this folder again to restore your settings.';
+            hintEl.style.display = 'block';
+        } else {
+            hintEl.style.display = 'none';
+        }
+    }
 }
 
 function cfgHowNext() { cfgHowIdx = (cfgHowIdx + 1) % CFG_HOW_COUNT; updateHowCarousel(); }
@@ -698,6 +714,11 @@ async function pickAgentFolder() {
         cfgAgentsDir = agentsDir;
         document.getElementById('cfg-folder-status').textContent = '✓ Loaded';
         document.getElementById('cfg-folder-status').className = 'cfg-folder-status ok';
+
+        // Persist folder name to cookie, keyed by agent address
+        var agentAddr = getCookie('kill_agent');
+        if (agentAddr) setCookie('kill_folder_' + agentAddr, rootHandle.name, 365);
+
         await loadConfigFromFolder();
     } catch (e) {
         if (e.name !== 'AbortError') {
