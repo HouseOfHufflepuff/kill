@@ -2,7 +2,7 @@
 const anchor = require("@coral-xyz/anchor");
 const web3   = anchor.web3;
 const { getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync } = require("@solana/spl-token");
-const { GRN, YEL, RED, RES, calcPower, agentStackPDA, txLink } = require('../common');
+const { GRN, YEL, RED, RES, calcPower, calcEffectivePower, agentStackPDA, txLink } = require('../common');
 
 function fmtPow(n) {
     const v = Number(n);
@@ -29,6 +29,7 @@ module.exports = {
 
         const SPAWN_COST = 20_000_000n; // microKILL per unit (matches contract)
         let killBalance  = BigInt(agentAta.amount.toString());
+        const currentSlot = BigInt(await connection.getSlot());
 
         // Fetch all on-chain stacks
         const allStacks = await killGame.account.agentStack.all([]);
@@ -41,10 +42,11 @@ module.exports = {
             if (!byStack[id]) byStack[id] = { mine: null, enemies: [] };
             const units   = BigInt(s.units.toString());
             const reapers = BigInt(s.reapers.toString());
+            const spawnSlot = BigInt(s.spawnSlot.toString());
             if (s.agent.toBase58() === myKey) {
                 byStack[id].mine = { units, reapers, power: calcPower(units, reapers) };
             } else if (units > 0n || reapers > 0n) {
-                byStack[id].enemies.push({ agent: s.agent, units, reapers, power: calcPower(units, reapers) });
+                byStack[id].enemies.push({ agent: s.agent, units, reapers, power: calcEffectivePower(units, reapers, spawnSlot, currentSlot) });
             }
         }
 

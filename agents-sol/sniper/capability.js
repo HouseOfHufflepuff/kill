@@ -2,7 +2,7 @@
 const anchor = require("@coral-xyz/anchor");
 const web3   = anchor.web3;
 const { getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } = require("@solana/spl-token");
-const { CYA, YEL, GRN, RED, PNK, RES, claimFaucet, agentStackPDA, calcPower, txLink } = require('../common');
+const { CYA, YEL, GRN, RED, PNK, RES, claimFaucet, agentStackPDA, calcPower, calcEffectivePower, txLink } = require('../common');
 
 const SPAWN_COST_RAW    = 20n * 1_000_000n; // 20 KILL per unit (6 decimals)
 const THERMAL_PARITY    = 666n;             // reaper power multiplier
@@ -51,8 +51,9 @@ module.exports = {
             const netBounty   = rawBounty - (rawBounty * BURN_BPS / BPS_DENOM); // human after burn
             const bountyHuman = netBounty / 1_000_000n; // convert to human KILL
 
-            const enemyPower = calcPower(units, reapers);
-            let   spawnAmt   = enemyPower * BigInt(KILL_MULTIPLIER);
+            // Use effective (decayed) power for spawn sizing — fresh attacker vs decayed defender
+            const enemyEffPower = calcEffectivePower(units, reapers, spawnSlot, currentSlot);
+            let   spawnAmt   = enemyEffPower * BigInt(KILL_MULTIPLIER);
             if (spawnAmt < BigInt(MIN_SPAWN)) spawnAmt = BigInt(MIN_SPAWN);
             const spawnReaper   = spawnAmt / THERMAL_PARITY;
             const totalPower    = spawnAmt + spawnReaper * THERMAL_PARITY;

@@ -38,6 +38,28 @@ function calcPower(units, reapers) {
     return BigInt(units.toString()) + BigInt(reapers.toString()) * 666n;
 }
 
+// Power decay — mirrors Rust power_decay_pct() in the contract.
+// Returns BigInt in [5, 100]: 100 = fresh, 5 = ~3 days old.
+const SLOTS_PER_MULTIPLIER = 13_224n;
+const MAX_MULTIPLIER       = 50n;
+
+function powerDecayPct(spawnSlot, currentSlot) {
+    const ss = BigInt(spawnSlot.toString());
+    const cs = BigInt(currentSlot.toString());
+    if (ss <= 0n || cs <= ss) return 100n;
+    const age  = cs - ss;
+    const mult = (1n + age / SLOTS_PER_MULTIPLIER) < MAX_MULTIPLIER
+        ? (1n + age / SLOTS_PER_MULTIPLIER) : MAX_MULTIPLIER;
+    const decay = 100n - (mult - 1n) * 95n / 49n;
+    return decay < 5n ? 5n : decay;
+}
+
+function calcEffectivePower(units, reapers, spawnSlot, currentSlot) {
+    const raw   = calcPower(units, reapers);
+    const decay = powerDecayPct(spawnSlot, currentSlot);
+    return raw * decay / 100n;
+}
+
 // ── Countdown ─────────────────────────────────────────────────────────────────
 
 async function countdown(seconds, label = 'WAIT') {
@@ -223,7 +245,7 @@ function agentStackPDA(agentPubkey, stackId, gameId) {
 
 module.exports = {
     YEL, CYA, PNK, GRN, RED, RES, BRIGHT,
-    getCoords, getId, getManhattanDist, isAdjacent, calcPower,
+    getCoords, getId, getManhattanDist, isAdjacent, calcPower, powerDecayPct, calcEffectivePower,
     countdown, onSlot, supabaseQuery, claimFaucet,
     displayHeader, displayActivity,
     txLink, addrLink, loadConfig, gameConfigPDA, agentStackPDA,

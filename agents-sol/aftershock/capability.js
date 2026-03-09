@@ -2,7 +2,7 @@
 const anchor = require("@coral-xyz/anchor");
 const web3   = anchor.web3;
 const { getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync } = require("@solana/spl-token");
-const { CYA, YEL, PNK, RED, RES, calcPower, supabaseQuery, agentStackPDA, txLink } = require('../common');
+const { CYA, YEL, PNK, RED, RES, calcPower, calcEffectivePower, supabaseQuery, agentStackPDA, txLink } = require('../common');
 
 // Module-level state — persists across slot cycles
 let processedKills = new Set();
@@ -18,6 +18,7 @@ module.exports = {
             connection, wallet, KILL_MINT, wallet.publicKey
         );
         const killBal = BigInt(agentAta.amount.toString());
+        const currentSlot = BigInt(await connection.getSlot());
         const rows    = [];
 
         // ── Phase 1: EXECUTION (pending attack from prior cycle) ──────────────
@@ -36,10 +37,11 @@ module.exports = {
             } else {
                 const units   = BigInt(targetStack.units.toString());
                 const reapers = BigInt(targetStack.reapers.toString());
-                const ep      = calcPower(units, reapers);
+                const spawnSlot = BigInt(targetStack.spawnSlot.toString());
+                const ep      = calcEffectivePower(units, reapers, spawnSlot, currentSlot);
 
                 if (ep > BigInt(MAX_KILL)) {
-                    rows.push({ Phase: 'EXECUTE', Target: attack.target.slice(0, 10), Stack: String(attack.stackId), Detail: `Power ${ep} > MAX`, Result: `${YEL}SKIP${RES}`, Tx: '' });
+                    rows.push({ Phase: 'EXECUTE', Target: attack.target.slice(0, 10), Stack: String(attack.stackId), Detail: `EffPwr ${ep} > MAX`, Result: `${YEL}SKIP${RES}`, Tx: '' });
                 } else {
                     let spawnAmt  = ep * BigInt(KILL_MULTIPLIER);
                     if (spawnAmt < BigInt(MIN_SPAWN)) spawnAmt = BigInt(MIN_SPAWN);
@@ -129,12 +131,13 @@ module.exports = {
                 if (targetStack) {
                     const units   = BigInt(targetStack.units.toString());
                     const reapers = BigInt(targetStack.reapers.toString());
-                    const ep      = calcPower(units, reapers);
+                    const dSpawnSlot = BigInt(targetStack.spawnSlot.toString());
+                    const ep      = calcEffectivePower(units, reapers, dSpawnSlot, currentSlot);
                     if (ep > BigInt(MAX_KILL)) {
-                        rows.push({ Phase: 'DETECT', Target: k.defender.slice(0, 10), Stack: String(stackId), Detail: `Power ${ep} > MAX`, Result: `${YEL}SKIP${RES}`, Tx: '' });
+                        rows.push({ Phase: 'DETECT', Target: k.defender.slice(0, 10), Stack: String(stackId), Detail: `EffPwr ${ep} > MAX`, Result: `${YEL}SKIP${RES}`, Tx: '' });
                     } else if (ep > 0n) {
                         pendingAttacks.push({ stackId, target: k.defender });
-                        rows.push({ Phase: 'DETECT', Target: k.defender.slice(0, 10), Stack: String(stackId), Detail: `Power ${ep}`, Result: `${PNK}QUEUED${RES}`, Tx: '' });
+                        rows.push({ Phase: 'DETECT', Target: k.defender.slice(0, 10), Stack: String(stackId), Detail: `EffPwr ${ep}`, Result: `${PNK}QUEUED${RES}`, Tx: '' });
                     }
                 }
             }
