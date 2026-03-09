@@ -121,10 +121,18 @@ async function claimFaucet(killFaucet, wallet, connection, KILL_MINT, faucetId) 
     }
 }
 
-// ── TX link ───────────────────────────────────────────────────────────────────
+// ── TX / explorer links ──────────────────────────────────────────────────────
+// Uses ANSI OSC 8 hyperlinks — clickable in modern terminals (iTerm2, etc.)
 
 function txLink(sig, cluster = 'devnet') {
-    return `https://explorer.solana.com/tx/${sig}?cluster=${cluster}`;
+    const url = `https://explorer.solana.com/tx/${sig}?cluster=${cluster}`;
+    return `\x1b]8;;${url}\x1b\\${CYA}[ tx ]${RES}\x1b]8;;\x1b\\`;
+}
+
+function addrLink(pubkey, cluster = 'devnet') {
+    const addr = typeof pubkey === 'string' ? pubkey : pubkey.toBase58();
+    const url  = `https://explorer.solana.com/address/${addr}?cluster=${cluster}`;
+    return `\x1b]8;;${url}\x1b\\${CYA}${addr}${RES}\x1b]8;;\x1b\\`;
 }
 
 // ── Display utilities ─────────────────────────────────────────────────────────
@@ -151,6 +159,10 @@ async function displayHeader({ title, slot, wallet, connection, killMint, extra 
         const acct = await getAccount(connection, ata);
         killStr = Math.round(Number(acct.amount) / 1e6).toLocaleString();
     } catch (_) {}
+
+    // Show wallet address with clickable explorer link
+    const addr = wallet.publicKey.toBase58();
+    console.log(`${CYA}   Agent: ${addrLink(addr)}${RES}`);
 
     const baseCols = [
         { label: 'Slot', value: String(slot), width: 12 },
@@ -214,5 +226,5 @@ module.exports = {
     getCoords, getId, getManhattanDist, isAdjacent, calcPower,
     countdown, onSlot, supabaseQuery, claimFaucet,
     displayHeader, displayActivity,
-    txLink, loadConfig, gameConfigPDA, agentStackPDA,
+    txLink, addrLink, loadConfig, gameConfigPDA, agentStackPDA,
 };

@@ -110,14 +110,14 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill, decayPct) {
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.8;">
                 <span>BASE_POWER:</span> <span>${formatValue(basePower)}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:${(decayPct||100) >= 80 ? 'var(--cyan)' : (decayPct||100) >= 50 ? '#aaa' : 'var(--pink)'};">
-                <span>DECAY:</span> <span>${decayPct || 100}%</span>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:${(100-(decayPct||100)) <= 20 ? 'var(--pink)' : (100-(decayPct||100)) <= 50 ? '#aaa' : 'var(--cyan)'};">
+                <span>DECAY:</span> <span>${100 - (decayPct || 100)}%</span>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.7;">
                 <span>EFF_POWER:</span> <span>${formatValue(effPower)}</span>
             </div>
             <div style="font-size:0.55rem; color:#555; margin:2px 0 4px;">
-                max(5, 100−(mult−1)×95/49) · mult=clamp(1+age/13224, 1, 50)
+                0% = fresh · 95% = ~3 days old · moves reset decay
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
                 <span>BOUNTY:</span> <span>${bounty.toFixed(2)}x</span>
@@ -205,8 +205,10 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
 
     topStacksEl.innerHTML = sorted.map(item => {
         const isSelected  = selectedStacks.has(String(item.id));
-        const decayColor  = item.decayPct >= 80 ? 'var(--cyan)' : item.decayPct >= 50 ? '#aaa' : 'var(--pink)';
-        const decayTitle  = `POWER DECAY: ${item.decayPct}%\nFormula: max(5, 100\u2212(mult\u22121)\u00d795/49)\nmult = clamp(1+age/13224, 1, 50)\n100% = fresh  \u2192  5% = ~3 days old`;
+        // Display decay as power LOST: 0% = fresh, 95% = fully aged (~3 days)
+        const decayLost   = 100 - item.decayPct;
+        const decayColor  = decayLost <= 20 ? 'var(--pink)' : decayLost <= 50 ? '#aaa' : 'var(--cyan)';
+        const decayTitle  = `POWER DECAY: ${decayLost}% lost (${item.decayPct}% effective)\n0% = fresh stack, 95% = ~3 days old\nFormula: 100 \u2212 max(5, 100\u2212(mult\u22121)\u00d795/49)\nmult = clamp(1+age/13224, 1, 50)`;
         return `
         <div class="stack-row${isSelected ? ' stack-row-selected' : ''}"
              id="stack-filter-row-${item.id}"
@@ -216,7 +218,7 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
              style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; cursor: pointer;">
             <span style="width:8%; color:${isSelected ? 'var(--pink)' : '#999'};">${item.id}</span>
             <span style="width:20%; text-align:right; color:#ddd;">${formatValue(item.power)}</span>
-            <span style="width:13%; text-align:right; color:${decayColor};" title="${decayTitle}">${item.decayPct}%</span>
+            <span style="width:13%; text-align:right; color:${decayColor};" title="${decayTitle}">${decayLost}%</span>
             <span style="width:16%; text-align:right; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
             <span style="width:43%; text-align:right; color:var(--pink); font-weight:bold;">${formatValue(Math.floor(item.kill))}</span>
         </div>
@@ -471,24 +473,26 @@ function renderPnL(agents, agentPowerMap, agentStackCountMap, agentDecayMap) {
         const isFiltered = activeFilterAgents.has(a.id);
 
         // Weighted-average decay across all stacks this agent holds
+        // Display as power LOST: 0% = fresh, 95% = fully aged
         const dm       = agentDecayMap[a.id];
         const decayPct = dm && dm.totalPwr > 0
             ? Math.round(dm.totalEffPwr / dm.totalPwr * 100)
             : (pwr > 0 ? 100 : null);
-        const decayColor = decayPct === null ? '#333'
-            : decayPct >= 80 ? 'var(--cyan)'
-            : decayPct >= 50 ? '#aaa'
-            : 'var(--pink)';
-        const decayTitle = `POWER DECAY: ${decayPct ?? '—'}%\nWeighted avg across all active stacks.\nFormula: max(5, 100\u2212(mult\u22121)\u00d795/49)\n100% = fresh  \u2192  5% = ~3 days old`;
+        const decayLost  = decayPct !== null ? 100 - decayPct : null;
+        const decayColor = decayLost === null ? '#333'
+            : decayLost <= 20 ? 'var(--pink)'
+            : decayLost <= 50 ? '#aaa'
+            : 'var(--cyan)';
+        const decayTitle = `POWER DECAY: ${decayLost ?? '—'}% lost (${decayPct ?? '—'}% effective)\nWeighted avg across all active stacks.\n0% = fresh · 95% = ~3 days old · moves reset decay`;
 
         return `
             <div class="stack-row" data-agent="${a.id}"
-                 onmouseover="showLeaderboardTooltip(event,'${a.id}',${earned},${spent},${net},${pwr},${stacks},${decayPct ?? 100})"
+                 onmouseover="showLeaderboardTooltip(event,'${a.id}',${earned},${spent},${net},${pwr},${stacks},${decayLost ?? 0})"
                  onmouseout="if(tooltip) tooltip.style.opacity=0"
                  style="display: flex; justify-content: space-between; padding: 2px 0; cursor: pointer; background: ${isFiltered ? 'rgba(20,241,149,0.1)' : 'transparent'};">
                 <span style="width:20%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">${a.id.substring(0, 8)}</span>
                 <span style="width:12%; text-align:right; color:${pwr > 0 ? '#eee' : '#444'};">${formatValue(pwr)}</span>
-                <span style="width:11%; text-align:right; color:${decayColor};" title="${decayTitle}">${decayPct !== null ? decayPct + '%' : '—'}</span>
+                <span style="width:11%; text-align:right; color:${decayColor};" title="${decayTitle}">${decayLost !== null ? decayLost + '%' : '—'}</span>
                 <span style="width:15%; text-align:right; color:${earned > 0 ? 'var(--cyan)' : '#eee'}; font-weight:bold;">${formatValue(earned)}</span>
                 <span style="width:14%; text-align:right; color:${spent > 0 ? '#aaa' : '#444'};">${formatValue(spent)}</span>
                 <span style="width:28%; text-align:right; color:${net > 0 ? 'var(--cyan)' : 'var(--pink)'}; font-weight:bold;">${net > 0 ? '+' : ''}${formatValue(net)}</span>
@@ -647,7 +651,7 @@ function showLeaderboardTooltip(e, addr, earned, spent, net, power, stacks, deca
             <table style="width:100%;border-collapse:collapse;">
                 <tr><td colspan="2" style="padding-bottom:2px;color:#555;font-size:0.6rem;letter-spacing:2px;">GAME STATS</td></tr>
                 ${row('POWER',  formatValue(power), power > 0 ? '#eee' : '#444')}
-                ${row('DECAY',  decayPct != null ? decayPct + '%' : '—', decayPct >= 80 ? 'var(--cyan)' : decayPct >= 50 ? '#aaa' : 'var(--pink)')}
+                ${row('DECAY',  decayPct != null ? decayPct + '%' : '—', decayPct <= 20 ? 'var(--pink)' : decayPct <= 50 ? '#aaa' : 'var(--cyan)')}
                 ${row('STACKS', stacks > 0 ? stacks : '—', stacks > 0 ? '#eee' : '#444')}
                 ${row('EARNED', formatValue(earned), earned > 0 ? 'var(--cyan)' : '#eee')}
                 ${row('SPENT',  formatValue(spent))}
