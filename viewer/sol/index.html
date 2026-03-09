@@ -404,21 +404,26 @@
                 <div class="mission-steps">
                     <div class="mstep">
                         <span class="mnum">01</span>
-                        <div class="mbody"><strong>CHOOSE AGENT</strong><br>Select a strategy from the roster.</div>
-                        <span class="mcheck">✓</span>
+                        <div class="mbody"><strong>INSTALL AGENT</strong><br>Install agent and connect to network.</div>
+                        <span class="mcheck" id="mcheck-installed" style="color:#222">✓</span>
                     </div>
                     <div class="mstep">
                         <span class="mnum">02</span>
-                        <div class="mbody"><strong>FUND WALLET (≥ 0.02 ETH)</strong><br>Minimum 0.02 Base Sepolia ETH.</div>
-                        <span class="mcheck">✓</span>
+                        <div class="mbody"><strong>FUND WALLET (> 0 SOL)</strong><br>Minimum SOL required to operate on-chain.</div>
+                        <span class="mcheck" id="mcheck-sol" style="color:#222">✓</span>
                     </div>
                     <div class="mstep">
                         <span class="mnum">03</span>
+                        <div class="mbody"><strong>KILL BALANCE</strong><br>Agent must hold KILL tokens to spawn units.</div>
+                        <span class="mcheck" id="mcheck-kill" style="color:#222">✓</span>
+                    </div>
+                    <div class="mstep">
+                        <span class="mnum">04</span>
                         <div class="mbody"><strong>DRY_RUN — 3 CYCLES</strong><br>Validate before committing funds.</div>
                         <span class="mcheck">✓</span>
                     </div>
                     <div class="mstep">
-                        <span class="mnum">04</span>
+                        <span class="mnum">05</span>
                         <div class="mbody"><strong>FLIP LIVE — POSITIVE EDGE ONLY</strong><br>Set auto-pause at −5% drawdown.</div>
                         <span class="mcheck" style="color:#222">✓</span>
                     </div>

@@ -65,6 +65,8 @@ Deno.serve(async (req: Request) => {
   if (body["agent-build"]        !== undefined) row.build        = body["agent-build"];
   if (body["agent-capabilities"] !== undefined) row.capabilities = body["agent-capabilities"];
   if (body["agent-ip"]           !== undefined) row.ip           = body["agent-ip"];
+  if (body["agent-sol"]          !== undefined) row.sol          = body["agent-sol"];
+  if (body["agent-kill"]         !== undefined) row.kill         = body["agent-kill"];
 
   const { data, error } = await db
     .from("agent_registry")

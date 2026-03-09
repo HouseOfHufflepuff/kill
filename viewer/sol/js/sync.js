@@ -431,18 +431,17 @@ function renderPnL(agents, agentPowerMap) {
 }
 
 /**
- * AGENT REGISTRY: Poll agent-register endpoint, update SPECTATOR/AGENT ONLINE badge
+ * AGENT REGISTRY: Poll agent-register endpoint, update badge + mission checklist
  */
 async function pollAgentRegistry() {
-    const badge = document.getElementById('spec-badge');
-    if (!badge) return;
-
-    // Get this viewer's public IP
-    let viewerIp = null;
-    try {
-        const ipRes = await fetch('https://api.ipify.org?format=json');
-        if (ipRes.ok) viewerIp = (await ipRes.json()).ip;
-    } catch (_) {}
+    // Get this viewer's public IP (cached after first successful fetch)
+    if (!pollAgentRegistry._ip) {
+        try {
+            const ipRes = await fetch('https://api.ipify.org?format=json');
+            if (ipRes.ok) pollAgentRegistry._ip = (await ipRes.json()).ip;
+        } catch (_) {}
+    }
+    const viewerIp = pollAgentRegistry._ip || null;
 
     // Fetch all registered agents from the edge function
     let registeredAgents = [];
@@ -455,20 +454,51 @@ async function pollAgentRegistry() {
 
     // Check: any agent with matching IP that checked in within last 30 minutes?
     const cutoff = Date.now() - 30 * 60 * 1000;
-    const agentOnline = viewerIp && Array.isArray(registeredAgents) && registeredAgents.some(a =>
-        a.ip === viewerIp && a.updt && new Date(a.updt).getTime() > cutoff
-    );
+    const matchedAgent = viewerIp && Array.isArray(registeredAgents)
+        ? registeredAgents.find(a => a.ip === viewerIp && a.updt && new Date(a.updt).getTime() > cutoff)
+        : null;
+    const agentOnline = !!matchedAgent;
 
-    if (agentOnline) {
-        badge.textContent = '◉ AGENT ONLINE';
-        badge.style.color = '#00C2FF';
-        badge.style.borderColor = 'rgba(0,194,255,0.35)';
-        badge.style.background = 'rgba(0,194,255,0.07)';
-    } else {
-        badge.textContent = '◉ SPECTATOR MODE';
-        badge.style.color = '';
-        badge.style.borderColor = '';
-        badge.style.background = '';
+    // ── Header badge ─────────────────────────────────────────────────────────
+    const badge = document.getElementById('spec-badge');
+    if (badge) {
+        if (agentOnline) {
+            badge.textContent = '◉ AGENT ONLINE';
+            badge.style.color = '#00C2FF';
+            badge.style.borderColor = 'rgba(0,194,255,0.35)';
+            badge.style.background = 'rgba(0,194,255,0.07)';
+        } else {
+            badge.textContent = '◉ SPECTATOR MODE';
+            badge.style.color = '';
+            badge.style.borderColor = '';
+            badge.style.background = '';
+        }
+    }
+
+    // ── Mission checklist ─────────────────────────────────────────────────────
+    function setCheck(id, on) {
+        const el = document.getElementById(id);
+        if (el) el.style.color = on ? 'var(--cyan)' : '#222';
+    }
+
+    setCheck('mcheck-installed', agentOnline);
+    setCheck('mcheck-sol',  agentOnline && parseFloat(matchedAgent.sol  || 0) > 0);
+    setCheck('mcheck-kill', agentOnline && parseFloat(matchedAgent.kill || 0) > 0);
+
+    // ── Auto-select on first online detection (once per page load) ────────────
+    // _autoSelected latches permanently on first trigger so subsequent polls
+    // and any manual filter changes by the user are never overridden.
+    if (agentOnline && !pollAgentRegistry._autoSelected) {
+        pollAgentRegistry._autoSelected = true;
+        const addr = matchedAgent.address;
+        if (!activeFilterAgents.has(addr)) {
+            selectAgent(addr); // adds to filter + calls syncData() to re-render
+        }
+        // Scroll the leaderboard row into view after re-render settles
+        setTimeout(() => {
+            const row = document.querySelector(`#leaderboard .stack-row[data-agent="${addr}"]`);
+            if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 600);
     }
 }
 

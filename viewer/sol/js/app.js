@@ -58,9 +58,9 @@ function startGame() {
         if (syncCounter < 0) { syncCounter = 2; syncData(); }
     }, 1000);
 
-    // Agent registry: check on load then every 5 minutes
+    // Agent registry: check on load then every 30 seconds
     pollAgentRegistry();
-    setInterval(pollAgentRegistry, 5 * 60 * 1000);
+    setInterval(pollAgentRegistry, 30 * 1000);
 }
 
 // --- INITIALIZATION ---

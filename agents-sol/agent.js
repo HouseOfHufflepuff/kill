@@ -45,7 +45,7 @@ function makePrograms(wallet, connection, config) {
 
 // ── Agent registration ─────────────────────────────────────────────────────────
 
-async function registerAgent(wallet, config) {
+async function registerAgent(wallet, config, connection, KILL_MINT) {
     const identity = config["agent-identity"] || {};
     const supabaseUrl = config.settings.SUPABASE_URL;
     const supabaseKey = config.settings.SUPABASE_KEY;
@@ -56,6 +56,24 @@ async function registerAgent(wallet, config) {
         if (ipRes.ok) ip = (await ipRes.json()).ip;
     } catch { /* non-fatal */ }
 
+    let sol = 0;
+    let kill = 0;
+    if (connection) {
+        try {
+            const lamports = await connection.getBalance(wallet.publicKey);
+            sol = lamports / 1e9;
+        } catch { /* non-fatal */ }
+
+        if (KILL_MINT) {
+            try {
+                const { getAssociatedTokenAddressSync } = require("@solana/spl-token");
+                const ata = getAssociatedTokenAddressSync(KILL_MINT, wallet.publicKey);
+                const tokenBal = await connection.getTokenAccountBalance(ata);
+                kill = parseFloat(tokenBal.value.uiAmount || 0);
+            } catch { /* ATA may not exist yet */ }
+        }
+    }
+
     const body = {
         "agent-address":      wallet.publicKey.toBase58(),
         "agent-name":         identity.name         || null,
@@ -63,6 +81,8 @@ async function registerAgent(wallet, config) {
         "agent-capabilities": identity.capabilities || null,
         "agent-ip":           ip,
         "agent-updt":         new Date().toISOString(),
+        "agent-sol":          sol,
+        "agent-kill":         kill,
     };
 
     try {
@@ -139,8 +159,8 @@ async function main() {
     console.log(`${CYA}[AGENT] SLOT_DELTA: ${SLOT_DELTA}${RES}`);
 
     // Register agent identity at startup and every 10 minutes
-    await registerAgent(wallet, config);
-    setInterval(() => registerAgent(wallet, config), 10 * 60 * 1000);
+    await registerAgent(wallet, config, connection, KILL_MINT);
+    setInterval(() => registerAgent(wallet, config, connection, KILL_MINT), 10 * 60 * 1000);
 
     // Attempt faucet claim at startup (once per wallet — skipped if already claimed or ineligible)
     await claimFaucet(killFaucet, wallet, connection, KILL_MINT, FAUCET_ID);
