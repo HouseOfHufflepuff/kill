@@ -177,6 +177,7 @@ async function handleStackMoved(db: any, sig: string, idx: number, e: Extract<An
   await upsertAgentStack(db, e.agent, e.fromStack, -e.units, -e.reapers, e.slot);
   await upsertAgentStack(db, e.agent, e.toStack,    e.units,  e.reapers, e.slot);
   await upsertAgent(db, e.agent, MOVE_COST, 0n, e.slot);
+  await updateGlobalStat(db, { kill_added: MOVE_COST });
 }
 
 // deno-lint-ignore no-explicit-any

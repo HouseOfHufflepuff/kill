@@ -13,10 +13,10 @@ function fmtPow(n) {
     return String(Math.round(v));
 }
 
-// BFS: returns the first step from start toward goal (or null if already there)
+// BFS: single next step from start toward goal
 function bfsNextStep(start, goal) {
     if (start === goal) return null;
-    const queue = [[start, start]]; // [current, firstStep]
+    const queue = [[start, start]];
     const visited = new Set([start]);
     while (queue.length > 0) {
         const [cur, firstStep] = queue.shift();
@@ -30,6 +30,26 @@ function bfsNextStep(start, goal) {
         }
     }
     return null;
+}
+
+// BFS: full path from start to goal as array of stack IDs
+function bfsPath(start, goal) {
+    if (start === goal) return [start];
+    const queue = [[start, [start]]];
+    const visited = new Set([start]);
+    while (queue.length > 0) {
+        const [cur, path] = queue.shift();
+        for (let next = 0; next < 216; next++) {
+            if (getManhattanDist(cur, next) !== 1) continue;
+            const newPath = [...path, next];
+            if (next === goal) return newPath;
+            if (!visited.has(next)) {
+                visited.add(next);
+                queue.push([next, newPath]);
+            }
+        }
+    }
+    return [start];
 }
 
 function topEnemy(enemies) {
@@ -47,7 +67,7 @@ module.exports = {
             connection, wallet, KILL_MINT, wallet.publicKey
         );
 
-        // Fetch all on-chain stacks for all agents
+        // Fetch all on-chain stacks
         const allStacks = await killGame.account.agentStack.all([]);
 
         // Group by stack_id
@@ -55,37 +75,32 @@ module.exports = {
         for (const { account: s } of allStacks) {
             const id = s.stackId;
             if (!byStack[id]) byStack[id] = { mine: null, enemies: [] };
-            const isMe = s.agent.toBase58() === myKey;
             const units   = BigInt(s.units.toString());
             const reapers = BigInt(s.reapers.toString());
-            if (isMe) {
+            if (s.agent.toBase58() === myKey) {
                 byStack[id].mine = { agent: s.agent, stackId: id, units, reapers, power: calcPower(units, reapers) };
             } else if (units > 0n || reapers > 0n) {
                 byStack[id].enemies.push({ agent: s.agent, stackId: id, units, reapers, power: calcPower(units, reapers) });
             }
         }
 
-        // Aggregate totals
-        let totalPower   = 0n;
-        let myStacks     = [];
-        let hubState     = { mine: null, enemies: [] };
-        let validTargets = [];
-        const tacticalRows = [];
-        const SAFE_ZONE  = Array.from({ length: 216 }, (_, i) => i).filter(id => getManhattanDist(HUB_STACK, id) <= HUB_PERIMETER);
-
-        // Aggregate my stacks and hub state from on-chain data
-        for (const [idStr, { mine, enemies }] of Object.entries(byStack)) {
-            const id = parseInt(idStr);
+        // Aggregate my stacks
+        let totalPower = 0n;
+        let myStacks   = [];
+        for (const [idStr, { mine }] of Object.entries(byStack)) {
             if (mine && (mine.units > 0n || mine.reapers > 0n)) {
                 totalPower += mine.power;
-                const dist = getManhattanDist(HUB_STACK, id);
-                myStacks.push({ ...mine, id, dist });
-                if (id === HUB_STACK) hubState.mine = mine;
+                const id = parseInt(idStr);
+                myStacks.push({ ...mine, id, dist: getManhattanDist(HUB_STACK, id) });
             }
-            if (id === HUB_STACK) hubState.enemies = enemies;
         }
 
-        // Build tactical rows for ALL positions in perimeter (including empty ones)
+        const SAFE_ZONE = Array.from({ length: 216 }, (_, i) => i)
+            .filter(id => getManhattanDist(HUB_STACK, id) <= HUB_PERIMETER);
+
+        // Build tactical view and collect perimeter targets
+        const validTargets = [];
+        const tacticalRows = [];
         for (const id of SAFE_ZONE) {
             const { mine, enemies } = byStack[id] || { mine: null, enemies: [] };
             const ep     = enemies.reduce((acc, e) => acc + e.power, 0n);
@@ -106,21 +121,90 @@ module.exports = {
         }
         tacticalRows.sort((a, b) => parseInt(a.Dist) - parseInt(b.Dist) || parseInt(a.ID) - parseInt(b.ID));
 
-        const hasReachedTarget = totalPower >= BigInt(TARGET_UNITS);
         const actionIxs  = [];
         const actionRows = [];
+        let actionTaken  = false;
 
-        // Retreat ONE stranded stack per run — BFS path to hub
-        const stranded = myStacks
-            .filter(s => s.id !== HUB_STACK)
-            .sort((a, b) => a.dist - b.dist || Number(b.units - a.units)); // closest first, then biggest
-        if (stranded.length > 0) {
-            const s    = stranded[0];
-            const step = bfsNextStep(s.id, HUB_STACK);
-            if (step !== null) {
-                try {
-                    const ix = await killGame.methods
-                        .moveUnits(s.id, step, new anchor.BN(s.units.toString()), new anchor.BN(s.reapers.toString()))
+        // ── Priority 1: KILL — enemy on same stack, overwhelming force ─────────
+        if (!actionTaken) {
+            const killable = myStacks
+                .filter(s => {
+                    const { enemies } = byStack[s.id] || { enemies: [] };
+                    if (enemies.length === 0) return false;
+                    const top = topEnemy(enemies);
+                    return s.power >= top.power * BigInt(KILL_MULTIPLIER);
+                })
+                .sort((a, b) => Number(b.power - a.power));
+
+            if (killable.length > 0) {
+                const myStack     = killable[0];
+                const top         = topEnemy(byStack[myStack.id].enemies);
+                const defenderAta = getAssociatedTokenAddressSync(KILL_MINT, top.agent);
+                actionIxs.push(await killGame.methods
+                    .kill(myStack.id, myStack.id,
+                          new anchor.BN(myStack.units.toString()),
+                          new anchor.BN(myStack.reapers.toString()))
+                    .accounts({
+                        gameConfig:           gameConfigAddr,
+                        attackerStack:        agentStackPDA(wallet.publicKey, myStack.id, GAME_ID),
+                        defenderStack:        agentStackPDA(top.agent, myStack.id, GAME_ID),
+                        attackerTokenAccount: agentAta.address,
+                        defenderTokenAccount: defenderAta,
+                        gameVault,
+                        killMint:             KILL_MINT,
+                        attacker:             wallet.publicKey,
+                        defender:             top.agent,
+                    })
+                    .instruction()
+                );
+                actionRows.push({ Action: 'KILL', Detail: `${top.agent.toBase58().slice(0, 10)} @ ${myStack.id} | sent:${fmtPow(myStack.power)} def:${fmtPow(top.power)}`, Result: `${RED}PENDING${RES}`, Tx: '' });
+                actionTaken = true;
+            }
+        }
+
+        // ── Priority 2: MOVE — enemies in perimeter, multi-hop in one tx ──────
+        if (!actionTaken && validTargets.length > 0) {
+            const raid = validTargets.sort((a, b) => a.dist - b.dist)[0];
+            const army = myStacks.sort((a, b) => Number(b.power - a.power))[0];
+            if (army && army.id !== raid.id) {
+                const path = bfsPath(army.id, raid.id);
+                for (let i = 0; i < path.length - 1; i++) {
+                    const from = path[i];
+                    const to   = path[i + 1];
+                    actionIxs.push(await killGame.methods
+                        .moveUnits(from, to,
+                                   new anchor.BN(army.units.toString()),
+                                   new anchor.BN(army.reapers.toString()))
+                        .accounts({
+                            gameConfig:        gameConfigAddr,
+                            fromStack:         agentStackPDA(wallet.publicKey, from, GAME_ID),
+                            toStack:           agentStackPDA(wallet.publicKey, to, GAME_ID),
+                            agentTokenAccount: agentAta.address,
+                            gameVault,
+                            killMint:          KILL_MINT,
+                            agent:             wallet.publicKey,
+                        })
+                        .instruction()
+                    );
+                    actionRows.push({ Action: 'MOVE', Detail: `Stack ${from} → ${to}`, Result: `${YEL}PENDING${RES}`, Tx: '' });
+                }
+                actionTaken = true;
+            }
+        }
+
+        // ── Priority 3: RETREAT — no enemies in perimeter ─────────────────────
+        if (!actionTaken) {
+            const stranded = myStacks
+                .filter(s => s.id !== HUB_STACK)
+                .sort((a, b) => a.dist - b.dist || Number(b.units - a.units));
+            if (stranded.length > 0) {
+                const s    = stranded[0];
+                const step = bfsNextStep(s.id, HUB_STACK);
+                if (step !== null) {
+                    actionIxs.push(await killGame.methods
+                        .moveUnits(s.id, step,
+                                   new anchor.BN(s.units.toString()),
+                                   new anchor.BN(s.reapers.toString()))
                         .accounts({
                             gameConfig:        gameConfigAddr,
                             fromStack:         agentStackPDA(wallet.publicKey, s.id, GAME_ID),
@@ -130,17 +214,16 @@ module.exports = {
                             killMint:          KILL_MINT,
                             agent:             wallet.publicKey,
                         })
-                        .instruction();
-                    const sig = await web3.sendAndConfirmTransaction(connection, new web3.Transaction().add(ix), [wallet]);
-                    actionRows.push({ Action: 'RETREAT', Detail: `Stack ${s.id} → ${step} (dist ${s.dist}→hub) | ${fmtPow(s.units)} units`, Result: `${GRN}OK${RES}`, Tx: txLink(sig) });
-                } catch (e) {
-                    actionRows.push({ Action: 'RETREAT', Detail: `${s.id}→${step}: ${e.message?.slice(0, 40)}`, Result: `${RED}FAIL${RES}`, Tx: '' });
+                        .instruction()
+                    );
+                    actionRows.push({ Action: 'RETREAT', Detail: `Stack ${s.id} → ${step} (dist ${s.dist}→hub) | ${fmtPow(s.units)} units`, Result: `${YEL}PENDING${RES}`, Tx: '' });
+                    actionTaken = true;
                 }
             }
         }
 
-        if (!hasReachedTarget) {
-            // Spawn at hub to build power
+        // ── Priority 4: SPAWN — below target units ────────────────────────────
+        if (!actionTaken && totalPower < BigInt(TARGET_UNITS)) {
             const hubStack = agentStackPDA(wallet.publicKey, HUB_STACK, GAME_ID);
             actionIxs.push(await killGame.methods
                 .spawn(HUB_STACK, new anchor.BN(REPLENISH_AMT))
@@ -155,84 +238,9 @@ module.exports = {
                 .instruction()
             );
             actionRows.push({ Action: 'SPAWN', Detail: `${REPLENISH_AMT} → Hub ${HUB_STACK}`, Result: `${YEL}PENDING${RES}`, Tx: '' });
-        } else {
-            // Combat mode
-            if (hubState.enemies.length > 0 && hubState.mine) {
-                const top      = topEnemy(hubState.enemies);
-                const myPow    = hubState.mine.power;
-                const needed   = top.power * BigInt(KILL_MULTIPLIER);
-                if (myPow >= needed) {
-                    const defenderAta = getAssociatedTokenAddressSync(KILL_MINT, top.agent);
-                    actionIxs.push(await killGame.methods
-                        .kill(HUB_STACK, HUB_STACK,
-                              new anchor.BN(hubState.mine.units.toString()),
-                              new anchor.BN(hubState.mine.reapers.toString()))
-                        .accounts({
-                            gameConfig:           gameConfigAddr,
-                            attackerStack:        agentStackPDA(wallet.publicKey, HUB_STACK, GAME_ID),
-                            defenderStack:        agentStackPDA(top.agent, HUB_STACK, GAME_ID),
-                            attackerTokenAccount: agentAta.address,
-                            defenderTokenAccount: defenderAta,
-                            gameVault,
-                            killMint:             KILL_MINT,
-                            attacker:             wallet.publicKey,
-                            defender:             top.agent,
-                        })
-                        .instruction()
-                    );
-                    actionRows.push({ Action: 'KILL', Detail: `${top.agent.toBase58().slice(0, 10)} @ HUB | sent:${fmtPow(myPow)} def:${fmtPow(top.power)}`, Result: `${RED}PENDING${RES}`, Tx: '' });
-                } else {
-                    actionRows.push({ Action: 'HUB', Detail: `Outgunned ${fmtPow(myPow)}/${fmtPow(top.power)} (need ${KILL_MULTIPLIER}x)`, Result: `${YEL}WAIT${RES}`, Tx: '' });
-                }
-            } else if (validTargets.length > 0 && myStacks.length > 0) {
-                const raid = validTargets.sort((a, b) => a.dist - b.dist)[0];
-                const army = myStacks.sort((a, b) => Number(b.power - a.power))[0];
-                if (army.power >= raid.enemyPower * BigInt(KILL_MULTIPLIER)) {
-                    if (army.id === raid.id) {
-                        const defenderAta = getAssociatedTokenAddressSync(KILL_MINT, raid.target.agent);
-                        actionIxs.push(await killGame.methods
-                            .kill(raid.id, raid.id,
-                                  new anchor.BN(army.units.toString()),
-                                  new anchor.BN(army.reapers.toString()))
-                            .accounts({
-                                gameConfig:           gameConfigAddr,
-                                attackerStack:        agentStackPDA(wallet.publicKey, raid.id, GAME_ID),
-                                defenderStack:        agentStackPDA(raid.target.agent, raid.id, GAME_ID),
-                                attackerTokenAccount: agentAta.address,
-                                defenderTokenAccount: defenderAta,
-                                gameVault,
-                                killMint:             KILL_MINT,
-                                attacker:             wallet.publicKey,
-                                defender:             raid.target.agent,
-                            })
-                            .instruction()
-                        );
-                        actionRows.push({ Action: 'KILL', Detail: `${raid.target.agent.toBase58().slice(0, 10)} @ ${raid.id}`, Result: `${RED}PENDING${RES}`, Tx: '' });
-                    } else {
-                        const step = bfsNextStep(army.id, raid.id);
-                        if (step !== null) {
-                            actionIxs.push(await killGame.methods
-                                .moveUnits(army.id, step,
-                                           new anchor.BN(army.units.toString()),
-                                           new anchor.BN(army.reapers.toString()))
-                                .accounts({
-                                    gameConfig:        gameConfigAddr,
-                                    fromStack:         agentStackPDA(wallet.publicKey, army.id, GAME_ID),
-                                    toStack:           agentStackPDA(wallet.publicKey, step, GAME_ID),
-                                    agentTokenAccount: agentAta.address,
-                                    gameVault,
-                                    killMint:          KILL_MINT,
-                                    agent:             wallet.publicKey,
-                                })
-                                .instruction()
-                            );
-                            actionRows.push({ Action: 'MOVE', Detail: `Stack ${army.id} → ${step} (→ ${raid.id})`, Result: `${YEL}PENDING${RES}`, Tx: '' });
-                        }
-                    }
-                }
-            }
         }
 
+        // ── Send all instructions in one tx ───────────────────────────────────
         if (actionIxs.length > 0) {
             const tx = new web3.Transaction();
             actionIxs.forEach(ix => tx.add(ix));
@@ -244,16 +252,16 @@ module.exports = {
             }
         }
 
-        // Build stranded display (all non-hub stacks with units, sorted by dist)
+        // ── Display ───────────────────────────────────────────────────────────
         const strandedRows = myStacks
             .filter(s => s.id !== HUB_STACK)
             .sort((a, b) => a.dist - b.dist || Number(b.units - a.units))
             .map(s => ({
-                'ID':     String(s.id),
-                'Dist':   String(s.dist),
-                'Units':  fmtPow(s.units),
+                'ID':      String(s.id),
+                'Dist':    String(s.dist),
+                'Units':   fmtPow(s.units),
                 'Reapers': fmtPow(s.reapers),
-                'Power':  fmtPow(s.power),
+                'Power':   fmtPow(s.power),
             }));
         if (strandedRows.length === 0) strandedRows.push({ ID: '—', Dist: '—', Units: '0', Reapers: '0', Power: '0' });
 
@@ -261,8 +269,8 @@ module.exports = {
             { title: `TACTICAL VIEW (Perimeter <= ${HUB_PERIMETER})`, rows: tacticalRows, color: YEL },
             { title: `STRANDED STACKS (${strandedRows.length === 1 && strandedRows[0].ID === '—' ? 0 : strandedRows.length} outside hub)`, rows: strandedRows, color: YEL },
             {
-                title: `FORTRESS | Power: ${fmtPow(totalPower)} / ${TARGET_UNITS} | ${hasReachedTarget ? `${GRN}COMBAT READY${RES}` : `${YEL}BUILDING${RES}`}`,
-                rows:  actionRows.length > 0 ? actionRows : [{ Action: 'IDLE', Detail: 'No stranded stacks, no enemies in perimeter', Result: `${GRN}OK${RES}`, Tx: '' }],
+                title: `FORTRESS | Power: ${fmtPow(totalPower)} / ${TARGET_UNITS} | ${totalPower >= BigInt(TARGET_UNITS) ? `${GRN}COMBAT READY${RES}` : `${YEL}BUILDING${RES}`}`,
+                rows:  actionRows.length > 0 ? actionRows : [{ Action: 'IDLE', Detail: 'No action required', Result: `${GRN}OK${RES}`, Tx: '' }],
                 color: GRN
             }
         ];

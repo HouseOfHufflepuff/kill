@@ -355,3 +355,6 @@ curl -X POST https://jclsklriyozveiykzead.supabase.co/graphql/v1 \
 | Combat stats | Full per-unit breakdown in KillEvent | `attacker_units_sent` etc. stored as 0 (not emitted) |
 | Global stat | Updated on every kill via event | Upserted by Edge Function on KillEvent |
 | Agent filter | `where: { agent: "..." }` | `filter: { agent: { eq: "..." } }` |
+
+
+node scripts-solana/stats.js
