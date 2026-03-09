@@ -146,7 +146,7 @@
 .stack-row.header { color: #bbb; border-bottom: 1px solid #444; font-weight: bold; position: sticky; top: 0; background: var(--panel-bg); z-index: 5; margin-bottom: 4px; }
 
 /* --- BUTTONS & ACTIONS --- */
-.btn-clear { background: none; border: 1px solid #444; color: #666; font-size: 0.55rem; padding: 2px 6px; cursor: pointer; font-family: 'JetBrains Mono'; }
+.btn-clear { background: none; border: 1px solid #444; color: #bbb; font-size: 0.55rem; padding: 2px 6px; cursor: pointer; font-family: 'JetBrains Mono'; }
 .btn-clear:hover { border-color: var(--pink); color: var(--pink); }
 
 .stack-row-selected { background: rgba(255, 45, 117, 0.1) !important; }

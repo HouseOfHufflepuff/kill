@@ -70,10 +70,11 @@ async function updateHeartbeat() {
 /**
  * UI: Tooltip for Top Stacks list
  */
-function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
+function showStackTooltip(e, id, units, reapers, bounty, totalKill, decayPct) {
     if (!tooltip) return;
 
     const basePower = units + (reapers * 666);
+    const effPower  = Math.floor(basePower * (decayPct || 100) / 100);
     const agents = (stackRegistry[String(id)] || {}).agents || [];
     const agentSection = agents.length > 0
         ? (() => {
@@ -109,6 +110,15 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.8;">
                 <span>BASE_POWER:</span> <span>${formatValue(basePower)}</span>
             </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:${(decayPct||100) >= 80 ? 'var(--cyan)' : (decayPct||100) >= 50 ? '#aaa' : 'var(--pink)'};">
+                <span>DECAY:</span> <span>${decayPct || 100}%</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; opacity:0.7;">
+                <span>EFF_POWER:</span> <span>${formatValue(effPower)}</span>
+            </div>
+            <div style="font-size:0.55rem; color:#555; margin:2px 0 4px;">
+                max(5, 100−(mult−1)×95/49) · mult=clamp(1+age/13224, 1, 50)
+            </div>
             <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--cyan)">
                 <span>BOUNTY:</span> <span>${bounty.toFixed(2)}x</span>
             </div>
@@ -124,11 +134,23 @@ function showStackTooltip(e, id, units, reapers, bounty, totalKill) {
 /**
  * UI: Render the Top Stacks leaderboard rows
  */
-// Bounty constants — mirrors Solana contract (50x over 3 days)
+// Bounty / decay constants — mirrors Solana contract (50x / 5% over ~3 days)
 const SLOTS_PER_MULT = 13_224;  // ~3 days / 49 steps ≈ 13,224 slots/step
 const MAX_MULT       = 50;
 const SPAWN_COST_KILL = 20;     // KILL per unit (display units, 6-decimal)
 const GLOBAL_CAP_BPS  = 0.25;  // 25% of treasury
+
+/**
+ * Mirrors the Rust power_decay_pct() helper.
+ * Returns a value in [5, 100]: 100% for fresh stacks, 5% after ~3 days.
+ * Formula: max(5, 100 - (mult-1)×95/49)  where mult = clamp(1+age/13224, 1, 50)
+ */
+function powerDecayPct(spawnSlot, currentSlot) {
+    if (!spawnSlot || !currentSlot || spawnSlot <= 0) return 100;
+    const age  = Math.max(0, currentSlot - spawnSlot);
+    const mult = Math.min(MAX_MULT, 1 + Math.floor(age / SLOTS_PER_MULT));
+    return Math.max(5, 100 - Math.floor((mult - 1) * 95 / 49));
+}
 
 function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
     if (!topStacksEl) return;
@@ -139,13 +161,14 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
         const r      = activeReaperMap[s.id] || parseInt(s.total_boosted_units) || 0;
         const bSlot  = parseInt(s.birth_slot || 0);
 
-        const age    = (lastBlock > 0 && bSlot > 0) ? Math.max(0, lastBlock - bSlot) : 0;
-        const mult   = Math.min(MAX_MULT, Math.max(1, 1 + Math.floor(age / SLOTS_PER_MULT)));
-        const power  = u + (r * 666);
-        const rawKill = power * SPAWN_COST_KILL * mult;
-        const cap    = (treasuryKill > 0) ? treasuryKill * GLOBAL_CAP_BPS : Infinity;
+        const age       = (lastBlock > 0 && bSlot > 0) ? Math.max(0, lastBlock - bSlot) : 0;
+        const mult      = Math.min(MAX_MULT, Math.max(1, 1 + Math.floor(age / SLOTS_PER_MULT)));
+        const decayPct  = powerDecayPct(bSlot, lastBlock);
+        const power     = u + (r * 666);
+        const rawKill   = power * SPAWN_COST_KILL * mult;
+        const cap       = (treasuryKill > 0) ? treasuryKill * GLOBAL_CAP_BPS : Infinity;
         const totalKillValue = Math.min(rawKill, cap);
-        const displayBounty = mult;
+        const displayBounty  = mult;
 
         globalUnits    += u;
         globalReapers  += r;
@@ -164,7 +187,7 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
 
         updateNodeParticles(s.id, u, r);
 
-        return { id: s.id, units: u, reapers: r, bounty: displayBounty, kill: totalKillValue };
+        return { id: s.id, units: u, reapers: r, power, decayPct, bounty: displayBounty, kill: totalKillValue };
     });
 
     currentGlobalKillStacked = globalBountyKill;
@@ -181,19 +204,21 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
     }
 
     topStacksEl.innerHTML = sorted.map(item => {
-        const isSelected = selectedStacks.has(String(item.id));
+        const isSelected  = selectedStacks.has(String(item.id));
+        const decayColor  = item.decayPct >= 80 ? 'var(--cyan)' : item.decayPct >= 50 ? '#aaa' : 'var(--pink)';
+        const decayTitle  = `POWER DECAY: ${item.decayPct}%\nFormula: max(5, 100\u2212(mult\u22121)\u00d795/49)\nmult = clamp(1+age/13224, 1, 50)\n100% = fresh  \u2192  5% = ~3 days old`;
         return `
         <div class="stack-row${isSelected ? ' stack-row-selected' : ''}"
              id="stack-filter-row-${item.id}"
              onclick="toggleStackFilter('${item.id}')"
-             onmouseover="showStackTooltip(event, '${item.id}', ${item.units}, ${item.reapers}, ${item.bounty}, ${item.kill})"
+             onmouseover="showStackTooltip(event, '${item.id}', ${item.units}, ${item.reapers}, ${item.bounty}, ${item.kill}, ${item.decayPct})"
              onmouseout="if(tooltip) tooltip.style.opacity=0"
              style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; cursor: pointer;">
-            <span style="width:10%; color:${isSelected ? 'var(--pink)' : '#999'};">${item.id}</span>
-            <span style="width:20%">${formatValue(item.units)}</span>
-            <span style="width:14%; color:var(--cyan)">${formatValue(item.reapers)}</span>
-            <span style="width:25%; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
-            <span style="width:31%; text-align:right; color:var(--pink); font-weight:bold;">${formatValue(Math.floor(item.kill))}</span>
+            <span style="width:8%; color:${isSelected ? 'var(--pink)' : '#999'};">${item.id}</span>
+            <span style="width:20%; text-align:right; color:#ddd;">${formatValue(item.power)}</span>
+            <span style="width:13%; text-align:right; color:${decayColor};" title="${decayTitle}">${item.decayPct}%</span>
+            <span style="width:16%; text-align:right; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
+            <span style="width:43%; text-align:right; color:var(--pink); font-weight:bold;">${formatValue(Math.floor(item.kill))}</span>
         </div>
     `;
     }).join('');
@@ -404,19 +429,26 @@ async function syncData() {
         });
 
         // Build per-agent total active power across all stacks (units + reapers*666)
-        // Use activeAgents (non-zero only) so power/stack counts reflect real holdings
-        const agentPowerMap = {};
+        // Also compute weighted-average decay so the leaderboard can show effective power %.
+        const agentPowerMap      = {};
         const agentStackCountMap = {};
+        const agentDecayMap      = {}; // agent -> { totalPwr, totalEffPwr }
         stacks.forEach(s => {
+            const bSlot    = parseInt(s.birth_slot || 0);
+            const decay    = powerDecayPct(bSlot, lastBlock);
             (s.agents || []).forEach(a => {
-                if (!agentPowerMap[a.agent]) agentPowerMap[a.agent] = 0;
-                agentPowerMap[a.agent] += a.units + a.reaper * 666;
+                const rawPwr = a.units + a.reaper * 666;
+                if (!agentPowerMap[a.agent])      agentPowerMap[a.agent]      = 0;
                 if (!agentStackCountMap[a.agent]) agentStackCountMap[a.agent] = 0;
+                if (!agentDecayMap[a.agent])      agentDecayMap[a.agent]      = { totalPwr: 0, totalEffPwr: 0 };
+                agentPowerMap[a.agent]                += rawPwr;
                 agentStackCountMap[a.agent]++;
+                agentDecayMap[a.agent].totalPwr       += rawPwr;
+                agentDecayMap[a.agent].totalEffPwr    += Math.floor(rawPwr * decay / 100);
             });
         });
 
-        renderPnL(agents, agentPowerMap, agentStackCountMap);
+        renderPnL(agents, agentPowerMap, agentStackCountMap, agentDecayMap);
 
     } catch (e) { console.error("Sync fail", e); }
 }
@@ -424,10 +456,11 @@ async function syncData() {
 /**
  * UI: Render Agent P&L Leaderboard
  */
-function renderPnL(agents, agentPowerMap, agentStackCountMap) {
+function renderPnL(agents, agentPowerMap, agentStackCountMap, agentDecayMap) {
     if (!pnlEl) return;
     agentPowerMap      = agentPowerMap      || {};
     agentStackCountMap = agentStackCountMap || {};
+    agentDecayMap      = agentDecayMap      || {};
 
     pnlEl.innerHTML = agents.map(a => {
         const spent  = parseFloat(a.total_spent  || 0) / 1_000_000;
@@ -437,16 +470,28 @@ function renderPnL(agents, agentPowerMap, agentStackCountMap) {
         const stacks = agentStackCountMap[a.id] || 0;
         const isFiltered = activeFilterAgents.has(a.id);
 
+        // Weighted-average decay across all stacks this agent holds
+        const dm       = agentDecayMap[a.id];
+        const decayPct = dm && dm.totalPwr > 0
+            ? Math.round(dm.totalEffPwr / dm.totalPwr * 100)
+            : (pwr > 0 ? 100 : null);
+        const decayColor = decayPct === null ? '#333'
+            : decayPct >= 80 ? 'var(--cyan)'
+            : decayPct >= 50 ? '#aaa'
+            : 'var(--pink)';
+        const decayTitle = `POWER DECAY: ${decayPct ?? '—'}%\nWeighted avg across all active stacks.\nFormula: max(5, 100\u2212(mult\u22121)\u00d795/49)\n100% = fresh  \u2192  5% = ~3 days old`;
+
         return `
             <div class="stack-row" data-agent="${a.id}"
-                 onmouseover="showLeaderboardTooltip(event,'${a.id}',${earned},${spent},${net},${pwr},${stacks})"
+                 onmouseover="showLeaderboardTooltip(event,'${a.id}',${earned},${spent},${net},${pwr},${stacks},${decayPct ?? 100})"
                  onmouseout="if(tooltip) tooltip.style.opacity=0"
                  style="display: flex; justify-content: space-between; padding: 2px 0; cursor: pointer; background: ${isFiltered ? 'rgba(20,241,149,0.1)' : 'transparent'};">
-                <span style="width:22%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">${a.id.substring(0, 8)}</span>
-                <span style="width:14%; text-align:right; color:${pwr > 0 ? '#eee' : '#444'};">${formatValue(pwr)}</span>
-                <span style="width:16%; text-align:right; color:${earned > 0 ? 'var(--cyan)' : '#eee'}; font-weight:bold;">${formatValue(earned)}</span>
-                <span style="width:16%; text-align:right; color:${spent > 0 ? '#aaa' : '#444'};">${formatValue(spent)}</span>
-                <span style="width:32%; text-align:right; color:${net > 0 ? 'var(--cyan)' : 'var(--pink)'}; font-weight:bold;">${net > 0 ? '+' : ''}${formatValue(net)}</span>
+                <span style="width:20%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">${a.id.substring(0, 8)}</span>
+                <span style="width:12%; text-align:right; color:${pwr > 0 ? '#eee' : '#444'};">${formatValue(pwr)}</span>
+                <span style="width:11%; text-align:right; color:${decayColor};" title="${decayTitle}">${decayPct !== null ? decayPct + '%' : '—'}</span>
+                <span style="width:15%; text-align:right; color:${earned > 0 ? 'var(--cyan)' : '#eee'}; font-weight:bold;">${formatValue(earned)}</span>
+                <span style="width:14%; text-align:right; color:${spent > 0 ? '#aaa' : '#444'};">${formatValue(spent)}</span>
+                <span style="width:28%; text-align:right; color:${net > 0 ? 'var(--cyan)' : 'var(--pink)'}; font-weight:bold;">${net > 0 ? '+' : ''}${formatValue(net)}</span>
             </div>
         `;
     }).join('');
@@ -551,7 +596,7 @@ async function pollAgentRegistry() {
 /**
  * UI: Enhanced Tooltip for Leaderboard Rows
  */
-function showLeaderboardTooltip(e, addr, earned, spent, net, power, stacks) {
+function showLeaderboardTooltip(e, addr, earned, spent, net, power, stacks, decayPct) {
     if (!tooltip) return;
     const reg      = registeredAgentsCache.find(a => a.address === addr) || null;
     const pnlColor = net > 0 ? 'var(--cyan)' : 'var(--pink)';
@@ -602,6 +647,7 @@ function showLeaderboardTooltip(e, addr, earned, spent, net, power, stacks) {
             <table style="width:100%;border-collapse:collapse;">
                 <tr><td colspan="2" style="padding-bottom:2px;color:#555;font-size:0.6rem;letter-spacing:2px;">GAME STATS</td></tr>
                 ${row('POWER',  formatValue(power), power > 0 ? '#eee' : '#444')}
+                ${row('DECAY',  decayPct != null ? decayPct + '%' : '—', decayPct >= 80 ? 'var(--cyan)' : decayPct >= 50 ? '#aaa' : 'var(--pink)')}
                 ${row('STACKS', stacks > 0 ? stacks : '—', stacks > 0 ? '#eee' : '#444')}
                 ${row('EARNED', formatValue(earned), earned > 0 ? 'var(--cyan)' : '#eee')}
                 ${row('SPENT',  formatValue(spent))}
