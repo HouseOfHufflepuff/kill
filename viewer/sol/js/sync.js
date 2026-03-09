@@ -18,6 +18,9 @@ const formatValue = (val) => {
     return Math.floor(num).toLocaleString();
 };
 
+// Cached registered agents (updated every 30s by pollAgentRegistry)
+let registeredAgentsCache = [];
+
 /**
  * HEARTBEAT: Fetch current Solana devnet block height via public RPC.
  * Uses getBlockHeight (confirmed commitment) — increments slower than slot
@@ -388,14 +391,17 @@ async function syncData() {
 
         // Build per-agent total active power across all stacks (units + reapers*666)
         const agentPowerMap = {};
+        const agentStackCountMap = {};
         stacks.forEach(s => {
             (s.agents || []).forEach(a => {
                 if (!agentPowerMap[a.agent]) agentPowerMap[a.agent] = 0;
                 agentPowerMap[a.agent] += a.units + a.reaper * 666;
+                if (!agentStackCountMap[a.agent]) agentStackCountMap[a.agent] = 0;
+                agentStackCountMap[a.agent]++;
             });
         });
 
-        renderPnL(agents, agentPowerMap);
+        renderPnL(agents, agentPowerMap, agentStackCountMap);
 
     } catch (e) { console.error("Sync fail", e); }
 }
@@ -403,19 +409,23 @@ async function syncData() {
 /**
  * UI: Render Agent P&L Leaderboard
  */
-function renderPnL(agents, agentPowerMap) {
+function renderPnL(agents, agentPowerMap, agentStackCountMap) {
     if (!pnlEl) return;
-    agentPowerMap = agentPowerMap || {};
+    agentPowerMap      = agentPowerMap      || {};
+    agentStackCountMap = agentStackCountMap || {};
 
     pnlEl.innerHTML = agents.map(a => {
         const spent  = parseFloat(a.total_spent  || 0) / 1_000_000;
         const earned = parseFloat(a.total_earned || 0) / 1_000_000;
         const net    = earned - spent;
         const pwr    = agentPowerMap[a.id] || 0;
+        const stacks = agentStackCountMap[a.id] || 0;
         const isFiltered = activeFilterAgents.has(a.id);
 
         return `
             <div class="stack-row" data-agent="${a.id}"
+                 onmouseover="showLeaderboardTooltip(event,'${a.id}',${earned},${spent},${net},${pwr},${stacks})"
+                 onmouseout="if(tooltip) tooltip.style.opacity=0"
                  style="display: flex; justify-content: space-between; padding: 2px 0; cursor: pointer; background: ${isFiltered ? 'rgba(20,241,149,0.1)' : 'transparent'};">
                 <span style="width:25%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">${a.id.substring(0, 8)}</span>
                 <span style="width:22%; text-align:right; color:${pwr > 0 ? '#eee' : '#444'};">${formatValue(pwr)}</span>
@@ -451,9 +461,10 @@ async function pollAgentRegistry() {
         });
         if (res.ok) registeredAgents = await res.json();
     } catch (_) {}
+    registeredAgentsCache = Array.isArray(registeredAgents) ? registeredAgents : [];
 
-    // Check: any agent with matching IP that checked in within last 30 minutes?
-    const cutoff = Date.now() - 30 * 60 * 1000;
+    // Check: any agent with matching IP that checked in within last 10 minutes?
+    const cutoff = Date.now() - 10 * 60 * 1000;
     const matchedAgent = viewerIp && Array.isArray(registeredAgents)
         ? registeredAgents.find(a => a.ip === viewerIp && a.updt && new Date(a.updt).getTime() > cutoff)
         : null;
@@ -475,6 +486,18 @@ async function pollAgentRegistry() {
         }
     }
 
+    // ── Configure button ──────────────────────────────────────────────────────
+    const cfgBtn = document.getElementById('cfg-agent-btn');
+    if (cfgBtn) {
+        if (agentOnline) {
+            cfgBtn.style.color = 'var(--cyan)';
+            cfgBtn.style.borderColor = 'rgba(20,241,149,0.35)';
+        } else {
+            cfgBtn.style.color = '';
+            cfgBtn.style.borderColor = '';
+        }
+    }
+
     // ── Mission checklist ─────────────────────────────────────────────────────
     function setCheck(id, on) {
         const el = document.getElementById(id);
@@ -482,8 +505,10 @@ async function pollAgentRegistry() {
     }
 
     setCheck('mcheck-installed', agentOnline);
-    setCheck('mcheck-sol',  agentOnline && parseFloat(matchedAgent.sol  || 0) > 0);
-    setCheck('mcheck-kill', agentOnline && parseFloat(matchedAgent.kill || 0) > 0);
+    setCheck('mcheck-sol',     agentOnline && parseFloat(matchedAgent.sol  || 0) > 0);
+    setCheck('mcheck-kill',    agentOnline && parseFloat(matchedAgent.kill || 0) > 0);
+    setCheck('mcheck-dryrun',  agentOnline);
+    setCheck('mcheck-live',    agentOnline);
 
     // ── Auto-select on first online detection (once per page load) ────────────
     // _autoSelected latches permanently on first trigger so subsequent polls
@@ -505,23 +530,64 @@ async function pollAgentRegistry() {
 /**
  * UI: Enhanced Tooltip for Leaderboard Rows
  */
-function showLeaderboardTooltip(e, addr, earned, spent, net) {
+function showLeaderboardTooltip(e, addr, earned, spent, net, power, stacks) {
     if (!tooltip) return;
+    const reg      = registeredAgentsCache.find(a => a.address === addr) || null;
     const pnlColor = net > 0 ? 'var(--cyan)' : 'var(--pink)';
+
+    const row = (label, val, color) =>
+        `<tr><td style="color:#555;padding-right:12px;white-space:nowrap;">${label}</td><td style="color:${color||'#ccc'};word-break:break-all;">${val}</td></tr>`;
+
+    // Format capabilities (may be array or object)
+    let capsStr = '—';
+    if (reg && reg.capabilities != null) {
+        try {
+            const c = typeof reg.capabilities === 'string' ? JSON.parse(reg.capabilities) : reg.capabilities;
+            capsStr = Array.isArray(c) ? c.join(', ') : JSON.stringify(c);
+        } catch { capsStr = String(reg.capabilities); }
+    }
+
+    const fmtDate = (iso) => {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        const mins = Math.floor((Date.now() - d) / 60000);
+        if (mins < 1)   return 'just now';
+        if (mins < 60)  return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24)   return `${hrs}h ago`;
+        return `${Math.floor(hrs/24)}d ago`;
+    };
+
+    const registeredSection = reg ? `
+        <tr><td colspan="2" style="padding-top:8px;padding-bottom:2px;color:var(--cyan);font-size:0.6rem;letter-spacing:2px;">REGISTRY</td></tr>
+        ${row('NAME',    reg.name  || '—')}
+        ${row('BUILD',   reg.build || '—')}
+        ${row('CAPS',    capsStr)}
+        ${row('SOL',     reg.sol  != null ? parseFloat(reg.sol).toFixed(4)  + ' SOL'  : '—', parseFloat(reg.sol||0)  > 0 ? 'var(--cyan)' : '#666')}
+        ${row('KILL',    reg.kill != null ? formatValue(parseFloat(reg.kill)) + ' KILL' : '—', parseFloat(reg.kill||0) > 0 ? 'var(--cyan)' : '#666')}
+        ${row('LAST SEEN', fmtDate(reg.updt), '#888')}
+    ` : `
+        <tr><td colspan="2" style="padding-top:8px;padding-bottom:2px;color:#444;font-size:0.6rem;letter-spacing:2px;">REGISTRY</td></tr>
+        <tr><td colspan="2" style="color:#444;font-style:italic;font-size:0.65rem;">NOT REGISTERED</td></tr>
+    `;
+
     tooltip.style.opacity = 1;
     tooltip.style.left = (e.pageX + 15) + 'px';
     tooltip.style.top  = (e.pageY + 15) + 'px';
     tooltip.innerHTML = `
-        <div style="padding: 2px; min-width: 200px; font-family: 'Courier New', monospace;">
-            <strong style="color:var(--pink); font-size: 0.65rem;">AGENT_IDENTITY</strong><br>
-            <span style="font-size:0.7rem; color:var(--cyan); word-break:break-all;">${addr}</span>
-            <hr style="border:0; border-top:1px solid #333; margin:8px 0;">
-            <div style="display:flex; justify-content:space-between; font-size:0.7rem;"><span>EARNED:</span> <span>${formatValue(earned)}</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:0.7rem;"><span>SPENT:</span>  <span>${formatValue(spent)}</span></div>
-            <div style="display:flex; justify-content:space-between; margin-top:4px; font-weight:bold; color:${pnlColor}; font-size:0.75rem;">
-                <span>NET P/L:</span> <span>${net > 0 ? '+' : ''}${formatValue(net)}</span>
-            </div>
-            <div style="font-size: 0.6rem; opacity: 0.5; margin-top: 4px; text-align:center;">CLICK TO FILTER STACKS</div>
+        <div style="padding:4px 2px; min-width:240px; font-family:'Courier New',monospace; font-size:0.7rem;">
+            <div style="color:var(--pink);font-size:0.6rem;letter-spacing:2px;margin-bottom:4px;">AGENT_IDENTITY</div>
+            <div style="color:var(--cyan);word-break:break-all;margin-bottom:6px;font-size:0.65rem;">${addr}</div>
+            <table style="width:100%;border-collapse:collapse;">
+                <tr><td colspan="2" style="padding-bottom:2px;color:#555;font-size:0.6rem;letter-spacing:2px;">GAME STATS</td></tr>
+                ${row('POWER',  formatValue(power), power > 0 ? '#eee' : '#444')}
+                ${row('STACKS', stacks > 0 ? stacks : '—', stacks > 0 ? '#eee' : '#444')}
+                ${row('EARNED', formatValue(earned), earned > 0 ? 'var(--cyan)' : '#eee')}
+                ${row('SPENT',  formatValue(spent))}
+                ${row('NET P/L', (net > 0 ? '+' : '') + formatValue(net), pnlColor)}
+                ${registeredSection}
+            </table>
+            <div style="font-size:0.55rem;opacity:0.35;margin-top:6px;text-align:center;">CLICK TO FILTER STACKS</div>
         </div>
     `;
 }
