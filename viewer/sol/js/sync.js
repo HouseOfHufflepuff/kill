@@ -189,7 +189,7 @@ function updateTopStacks(stacks, activeReaperMap, treasuryKill) {
              onmouseover="showStackTooltip(event, '${item.id}', ${item.units}, ${item.reapers}, ${item.bounty}, ${item.kill})"
              onmouseout="if(tooltip) tooltip.style.opacity=0"
              style="display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 2px 0; cursor: pointer;">
-            <span style="width:10%; color:${isSelected ? 'var(--pink)' : '#555'};">${item.id}</span>
+            <span style="width:10%; color:${isSelected ? 'var(--pink)' : '#999'};">${item.id}</span>
             <span style="width:20%">${formatValue(item.units)}</span>
             <span style="width:14%; color:var(--cyan)">${formatValue(item.reapers)}</span>
             <span style="width:25%; color:var(--cyan); opacity:0.8;">${item.bounty.toFixed(2)}x</span>
@@ -442,10 +442,11 @@ function renderPnL(agents, agentPowerMap, agentStackCountMap) {
                  onmouseover="showLeaderboardTooltip(event,'${a.id}',${earned},${spent},${net},${pwr},${stacks})"
                  onmouseout="if(tooltip) tooltip.style.opacity=0"
                  style="display: flex; justify-content: space-between; padding: 2px 0; cursor: pointer; background: ${isFiltered ? 'rgba(20,241,149,0.1)' : 'transparent'};">
-                <span style="width:25%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">${a.id.substring(0, 8)}</span>
-                <span style="width:22%; text-align:right; color:${pwr > 0 ? '#eee' : '#444'};">${formatValue(pwr)}</span>
-                <span style="width:22%; text-align:right; color:${earned > 0 ? 'var(--cyan)' : '#eee'}; font-weight:bold;">${formatValue(earned)}</span>
-                <span style="width:31%; text-align:right; color:${net > 0 ? 'var(--cyan)' : 'var(--pink)'}; font-weight:bold;">${net > 0 ? '+' : ''}${formatValue(net)}</span>
+                <span style="width:22%; font-family:monospace; color:${isFiltered ? 'var(--cyan)' : '#888'};">${a.id.substring(0, 8)}</span>
+                <span style="width:14%; text-align:right; color:${pwr > 0 ? '#eee' : '#444'};">${formatValue(pwr)}</span>
+                <span style="width:16%; text-align:right; color:${earned > 0 ? 'var(--cyan)' : '#eee'}; font-weight:bold;">${formatValue(earned)}</span>
+                <span style="width:16%; text-align:right; color:${spent > 0 ? '#aaa' : '#444'};">${formatValue(spent)}</span>
+                <span style="width:32%; text-align:right; color:${net > 0 ? 'var(--cyan)' : 'var(--pink)'}; font-weight:bold;">${net > 0 ? '+' : ''}${formatValue(net)}</span>
             </div>
         `;
     }).join('');
