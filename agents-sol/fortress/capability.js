@@ -128,6 +128,7 @@ module.exports = {
         let actionTaken  = false;
 
         // ── Priority 1: KILL — enemy on same stack, overwhelming force ─────────
+        //    Batch ALL killable stacks into one tx
         if (!actionTaken) {
             const killable = myStacks
                 .filter(s => {
@@ -138,8 +139,7 @@ module.exports = {
                 })
                 .sort((a, b) => Number(b.power - a.power));
 
-            if (killable.length > 0) {
-                const myStack     = killable[0];
+            for (const myStack of killable) {
                 const top         = topEnemy(byStack[myStack.id].enemies);
                 const defenderAta = getAssociatedTokenAddressSync(KILL_MINT, top.agent);
                 actionIxs.push(await killGame.methods
@@ -160,8 +160,8 @@ module.exports = {
                     .instruction()
                 );
                 actionRows.push({ Action: 'KILL', Detail: `${top.agent.toBase58().slice(0, 10)} @ ${myStack.id} | sent:${fmtPow(myStack.power)} def:${fmtPow(top.power)}`, Result: `${RED}PENDING${RES}`, Tx: '' });
-                actionTaken = true;
             }
+            if (killable.length > 0) actionTaken = true;
         }
 
         // ── Priority 2: MOVE — enemies in perimeter, multi-hop in one tx ──────
