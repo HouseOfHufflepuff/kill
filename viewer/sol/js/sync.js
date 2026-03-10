@@ -536,7 +536,7 @@ async function pollAgentRegistry() {
     const badge = document.getElementById('spec-badge');
     if (badge) {
         if (agentOnline) {
-            badge.textContent = '◉ AGENT ONLINE';
+            badge.textContent = '◉ ' + (matchedAgent.name || 'AGENT') + ' ONLINE';
             badge.style.color = 'var(--cyan)';
             badge.style.borderColor = 'rgba(20,241,149,0.35)';
             badge.style.background = 'rgba(20,241,149,0.07)';
