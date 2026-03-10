@@ -190,7 +190,7 @@ async function main() {
         console.clear();
         await displayHeader({
             title: `AGENT — ${capName}`, slot,
-            wallet: slotWallet, connection, killMint: KILL_MINT,
+            wallet: slotWallet, connection, killMint: KILL_MINT, killGame: kg,
             extra: { Run: slotName, Next: slots[slotIndex % slots.length][1] }
         });
 

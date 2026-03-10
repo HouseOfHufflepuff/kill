@@ -270,13 +270,11 @@
             <div class="cfg-section">
                 <div class="cfg-sec-hdr">Agent Types</div>
                 <div class="cfg-sec-sub">Each agent uses a different strategy. Mix them in your playbook. <strong style="color:#666">Click any agent to configure its settings and save to disk.</strong></div>
-                <div style="position:relative;">
-                    <div class="cfg-agent-grid" id="cfg-agent-overview"></div>
-                    <div style="position:absolute;bottom:0;right:0;display:flex;gap:8px;">
-                        <button class="cfg-nav-back" onclick="cfgBack(3)">← BACK</button>
-                        <button class="cfg-nav-next" onclick="cfgNext(3)">NEXT →</button>
-                    </div>
-                </div>
+                <div class="cfg-agent-grid" id="cfg-agent-overview"></div>
+            </div>
+            <div class="cfg-nav">
+                <button class="cfg-nav-back" onclick="cfgBack(3)">← BACK</button>
+                <button class="cfg-nav-next" onclick="cfgNext(3)">NEXT →</button>
             </div>
         </div>
 
@@ -300,30 +298,44 @@
                 <div class="cfg-sec-hdr">Key Settings</div>
                 <div class="cfg-sec-sub">Written to <code style="color:var(--cyan)">agents/config.json</code>. Edit the file directly for advanced settings.</div>
                 <div class="cfg-fields">
+                    <div class="cfg-sec-hdr" style="margin-top:0;">Agent Identity</div>
+                    <div class="cfg-sec-sub">Visible to other players in the agent registry.</div>
                     <div class="cfg-field">
-                        <label class="cfg-lbl">Hub Stack <span class="cfg-lbl-hint">[1–216]</span></label>
-                        <input class="cfg-input" type="number" id="cfg-hub-stack" min="1" max="216" value="22">
+                        <label class="cfg-lbl">Agent Name</label>
+                        <input class="cfg-input" type="text" id="cfg-agent-id-name" value="AGENT KILL" maxlength="32">
+                        <div class="cfg-field-desc">Display name for your agent in the registry.</div>
+                    </div>
+                    <div class="cfg-field">
+                        <label class="cfg-lbl">Build Version</label>
+                        <input class="cfg-input" type="text" id="cfg-agent-id-build" value="1.0.0" maxlength="16">
+                        <div class="cfg-field-desc">Version tag for your agent build.</div>
+                    </div>
+                    <div class="cfg-field">
+                        <label class="cfg-lbl">Capabilities</label>
+                        <input class="cfg-input" type="text" id="cfg-agent-id-caps" value="FORTRESS, SNIPER, AFTERSHOCK, SEED">
+                        <div class="cfg-field-desc">Comma-separated list of active capabilities (e.g. FORTRESS, SNIPER, SEED).</div>
+                    </div>
+
+                    <div class="cfg-sec-hdr" style="margin-top:16px;">Game Settings</div>
+                    <div class="cfg-field">
+                        <label class="cfg-lbl">Hub Stack <span class="cfg-lbl-hint">[0–215]</span></label>
+                        <input class="cfg-input" type="number" id="cfg-hub-stack" min="0" max="215" value="35">
                         <div class="cfg-field-desc">Fortress home base. Stack ID where your fortress agent spawns and defends.</div>
                     </div>
                     <div class="cfg-field">
                         <label class="cfg-lbl">Kill Multiplier</label>
-                        <input class="cfg-input" type="number" id="cfg-kill-mult" min="1" max="10" value="3">
-                        <div class="cfg-field-desc">Min power advantage to attack. 3 = need 3× the enemy's force.</div>
+                        <input class="cfg-input" type="number" id="cfg-kill-mult" min="1" max="10" value="2">
+                        <div class="cfg-field-desc">Min power advantage to attack. 2 = need 2x the enemy's effective force.</div>
+                    </div>
+                    <div class="cfg-field">
+                        <label class="cfg-lbl">Slot Delta <span class="cfg-lbl-hint">[1–1000]</span></label>
+                        <input class="cfg-input" type="number" id="cfg-slot-delta" min="1" max="1000" value="50">
+                        <div class="cfg-field-desc">Slots between agent cycles. Lower = more frequent actions. 50 slots ~ 20 seconds on devnet.</div>
                     </div>
                     <div class="cfg-field">
                         <label class="cfg-lbl">Profit Threshold <span class="cfg-lbl-hint">[sniper]</span></label>
-                        <input class="cfg-input" type="number" id="cfg-profit-thresh" min="0" max="10" step="0.01" value="0.15">
-                        <div class="cfg-field-desc">Min bounty/cost ratio for sniper to fire. 0.15 = 15% return per attack.</div>
-                    </div>
-                    <div class="cfg-field">
-                        <label class="cfg-lbl">Max Gas <span class="cfg-lbl-hint">[gwei]</span></label>
-                        <input class="cfg-input" type="number" id="cfg-max-gas" min="1" value="5">
-                        <div class="cfg-field-desc">Hard gas ceiling. TXs skip when the network price exceeds this.</div>
-                    </div>
-                    <div class="cfg-field">
-                        <label class="cfg-lbl">Target Stacks <span class="cfg-lbl-hint">[nuke]</span></label>
-                        <input class="cfg-input" type="text" id="cfg-nuke-stacks" placeholder="e.g. 1,3,6,10" value="1,3,6,10">
-                        <div class="cfg-field-desc">Comma-separated stack IDs for nuke to target. Spawns minimum overwhelming force then kills each hostile stack.</div>
+                        <input class="cfg-input" type="number" id="cfg-profit-thresh" min="0" max="10" step="0.01" value="0.10">
+                        <div class="cfg-field-desc">Min bounty/cost ratio for sniper to fire. 0.10 = 10% return per attack.</div>
                     </div>
                 </div>
             </div>
@@ -598,10 +610,10 @@ var AGENT_INFO = {
         ]
     },
     'nuke': {
-        color: '#ff6b35', tier: 'TIER II — NUKE',
-        desc: 'Targets a fixed list of stack IDs. For each hostile stack, spawns the minimum force needed for overwhelming advantage, then kills.',
+        color: 'var(--red, #f44)', tier: 'TIER IV — ANNIHILATION',
+        desc: 'Targets specific stacks for total elimination. Spawns overwhelming force and clears all enemies in one strike.',
         fields: [
-            { key: 'TARGET_STACKS', label: 'Target Stacks', type: 'text', isArray: true, desc: 'Comma-separated stack IDs to nuke (e.g. 1,3,6,10).' }
+            { key: 'TARGET_STACKS', label: 'Target Stacks', type: 'text', isArray: true, desc: 'Comma-separated stack IDs to nuke (e.g. 35,10). Agent will clear all enemies on these stacks.' }
         ]
     },
 };
@@ -613,6 +625,14 @@ function openRosterModal() {
     goToStep(1);
     renderAgentOverview();
     renderRuns();
+
+    // If folder was already selected, re-read config from disk
+    if (cfgAgentsDir) {
+        document.getElementById('cfg-folder-name').textContent = cfgDirHandle ? cfgDirHandle.name + '/' : '';
+        document.getElementById('cfg-folder-status').textContent = '✓ Loaded';
+        document.getElementById('cfg-folder-status').className = 'cfg-folder-status ok';
+        loadConfigFromFolder();
+    }
 
     // Show last-used folder hint from cookie
     var agentAddr  = getCookie('kill_agent');
@@ -735,16 +755,17 @@ async function loadConfigFromFolder() {
         var cfgFh = await cfgAgentsDir.getFileHandle('config.json');
         var cfg = JSON.parse(await (await cfgFh.getFile()).text());
         window._cfgLoaded = cfg;
+        var ai = cfg['agent-identity'] || {};
+        if (ai.name)         document.getElementById('cfg-agent-id-name').value  = ai.name;
+        if (ai.build)        document.getElementById('cfg-agent-id-build').value = ai.build;
+        if (ai.capabilities) document.getElementById('cfg-agent-id-caps').value  = ai.capabilities;
         var s = cfg.settings || {};
-        if (s.HUB_STACK !== undefined)          document.getElementById('cfg-hub-stack').value = s.HUB_STACK;
-        if (s.KILL_MULTIPLIER !== undefined)    document.getElementById('cfg-kill-mult').value = s.KILL_MULTIPLIER;
-        if (s.MAX_GAS_PRICE_GWEI !== undefined) document.getElementById('cfg-max-gas').value = s.MAX_GAS_PRICE_GWEI;
+        if (s.HUB_STACK !== undefined)       document.getElementById('cfg-hub-stack').value   = s.HUB_STACK;
+        if (s.KILL_MULTIPLIER !== undefined) document.getElementById('cfg-kill-mult').value   = s.KILL_MULTIPLIER;
+        if (s.SLOT_DELTA !== undefined)      document.getElementById('cfg-slot-delta').value  = s.SLOT_DELTA;
         var sniper = (s.sniper || {});
         if (sniper.SPAWN_PROFITABILITY_THRESHOLD !== undefined)
             document.getElementById('cfg-profit-thresh').value = sniper.SPAWN_PROFITABILITY_THRESHOLD;
-        var nuke = (s.nuke || {});
-        if (nuke.TARGET_STACKS !== undefined)
-            document.getElementById('cfg-nuke-stacks').value = Array.isArray(nuke.TARGET_STACKS) ? nuke.TARGET_STACKS.join(',') : nuke.TARGET_STACKS;
     } catch (_) { window._cfgLoaded = null; }
 
     try {
@@ -923,15 +944,17 @@ function buildPreview() {
     var folder = cfgDirHandle ? cfgDirHandle.name + '/agents/' : '(download — no folder selected)';
     var lines = [
         ['Folder',             folder],
+        ['AGENT_NAME',         document.getElementById('cfg-agent-id-name').value  || 'AGENT KILL'],
+        ['BUILD',              document.getElementById('cfg-agent-id-build').value || '1.0.0'],
+        ['CAPABILITIES',       document.getElementById('cfg-agent-id-caps').value  || ''],
         ['Runs',               cfgRuns.map(function(r){ return r.name + ' [' + r.blocks.length + ' blocks]'; }).join(', ')],
-        ['HUB_STACK',          document.getElementById('cfg-hub-stack').value    || 22],
-        ['KILL_MULTIPLIER',    document.getElementById('cfg-kill-mult').value    || 3],
-        ['PROFIT_THRESHOLD',   document.getElementById('cfg-profit-thresh').value || 0.15],
-        ['MAX_GAS_PRICE_GWEI', document.getElementById('cfg-max-gas').value      || 5],
-        ['TARGET_STACKS',      document.getElementById('cfg-nuke-stacks').value   || '1,3,6,10'],
+        ['HUB_STACK',          document.getElementById('cfg-hub-stack').value    || 35],
+        ['KILL_MULTIPLIER',    document.getElementById('cfg-kill-mult').value    || 2],
+        ['SLOT_DELTA',         document.getElementById('cfg-slot-delta').value   || 50],
+        ['PROFIT_THRESHOLD',   document.getElementById('cfg-profit-thresh').value || 0.10],
     ];
     el.innerHTML = lines.map(function(row) {
-        return '<div><span style="color:#555;letter-spacing:1px;">' + row[0] + ':</span>  <span style="color:#aaa">' + row[1] + '</span></div>';
+        return '<div><span style="color:#888;letter-spacing:1px;">' + row[0] + ':</span>  <span style="color:#ccc">' + row[1] + '</span></div>';
     }).join('');
     // Reset result
     document.getElementById('cfg-result').style.display = 'none';
@@ -945,24 +968,27 @@ async function writeConfigFiles() {
     cfgRuns.forEach(function(r) { runsObj[r.name] = r.blocks; });
     var playbook = { runs: runsObj, strategy: cfgRuns.map(function(r){ return r.name; }) };
 
-    var hubStack     = parseInt(document.getElementById('cfg-hub-stack').value)     || 22;
-    var killMult     = parseInt(document.getElementById('cfg-kill-mult').value)     || 3;
-    var profitThresh = parseFloat(document.getElementById('cfg-profit-thresh').value) || 0.15;
-    var maxGas       = parseInt(document.getElementById('cfg-max-gas').value)       || 5;
-    var nukeStacksRaw = document.getElementById('cfg-nuke-stacks').value || '1,3,6,10';
-    var nukeStacks    = nukeStacksRaw.split(',').map(function(s){ return parseInt(s.trim()); }).filter(function(n){ return !isNaN(n); });
+    var agentName   = document.getElementById('cfg-agent-id-name').value  || 'AGENT KILL';
+    var agentBuild  = document.getElementById('cfg-agent-id-build').value || '1.0.0';
+    var agentCaps   = document.getElementById('cfg-agent-id-caps').value  || '';
+    var hubStack     = parseInt(document.getElementById('cfg-hub-stack').value)      || 35;
+    var killMult     = parseInt(document.getElementById('cfg-kill-mult').value)      || 2;
+    var slotDelta    = parseInt(document.getElementById('cfg-slot-delta').value)     || 50;
+    var profitThresh = parseFloat(document.getElementById('cfg-profit-thresh').value) || 0.10;
 
     var base = window._cfgLoaded || {};
     var updatedCfg = Object.assign({}, base, {
+        'agent-identity': {
+            name:         agentName,
+            build:        agentBuild,
+            capabilities: agentCaps
+        },
         settings: Object.assign({}, base.settings || {}, {
-            HUB_STACK:          hubStack,
-            KILL_MULTIPLIER:    killMult,
-            MAX_GAS_PRICE_GWEI: maxGas,
+            HUB_STACK:       hubStack,
+            KILL_MULTIPLIER: killMult,
+            SLOT_DELTA:      slotDelta,
             sniper: Object.assign({}, (base.settings || {}).sniper || {}, {
                 SPAWN_PROFITABILITY_THRESHOLD: profitThresh
-            }),
-            nuke: Object.assign({}, (base.settings || {}).nuke || {}, {
-                TARGET_STACKS: nukeStacks
             })
         })
     });

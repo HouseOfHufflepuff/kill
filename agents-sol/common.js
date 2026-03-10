@@ -172,7 +172,7 @@ function _printBox(title, cols, color = CYA) {
     console.log(color + '└' + cols.map(c => '─'.repeat(c.width + 2)).join('┴') + '┘' + RES);
 }
 
-async function displayHeader({ title, slot, wallet, connection, killMint, extra }) {
+async function displayHeader({ title, slot, wallet, connection, killMint, killGame, extra }) {
     const solBal = await connection.getBalance(wallet.publicKey);
     const solStr = (solBal / web3.LAMPORTS_PER_SOL).toFixed(4);
     let killStr = '0';
@@ -182,6 +182,26 @@ async function displayHeader({ title, slot, wallet, connection, killMint, extra 
         killStr = Math.round(Number(acct.amount) / 1e6).toLocaleString();
     } catch (_) {}
 
+    // Total power across all stacks owned by this wallet
+    let pwrStr = '0';
+    if (killGame) {
+        try {
+            const myKey = wallet.publicKey.toBase58();
+            const allStacks = await killGame.account.agentStack.all([]);
+            let totalPwr = 0n;
+            for (const { account: s } of allStacks) {
+                if (s.agent.toBase58() === myKey) {
+                    totalPwr += calcPower(BigInt(s.units.toString()), BigInt(s.reapers.toString()));
+                }
+            }
+            const v = Number(totalPwr);
+            if (v >= 1e9) pwrStr = (v / 1e9).toFixed(1) + 'B';
+            else if (v >= 1e6) pwrStr = (v / 1e6).toFixed(1) + 'M';
+            else if (v >= 1e3) pwrStr = Math.round(v / 1e3) + 'K';
+            else pwrStr = String(Math.round(v));
+        } catch (_) {}
+    }
+
     // Show wallet address with clickable explorer link
     const addr = wallet.publicKey.toBase58();
     console.log(`${CYA}   Agent: ${addrLink(addr)}${RES}`);
@@ -190,6 +210,7 @@ async function displayHeader({ title, slot, wallet, connection, killMint, extra 
         { label: 'Slot', value: String(slot), width: 12 },
         { label: 'SOL',  value: solStr,        width: 10 },
         { label: 'KILL', value: killStr,        width: 20 },
+        { label: 'PWR',  value: pwrStr,         width: 10 },
     ];
     const extraCols = Object.entries(extra || {}).map(([label, value]) => ({
         label, value: String(value),
