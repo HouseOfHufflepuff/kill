@@ -270,13 +270,14 @@
             <div class="cfg-section">
                 <div class="cfg-sec-hdr">Agent Types</div>
                 <div class="cfg-sec-sub">Each agent uses a different strategy. Mix them in your playbook. <strong style="color:#666">Click any agent to configure its settings and save to disk.</strong></div>
-                <div class="cfg-agent-grid" id="cfg-agent-overview"></div>
+                <div style="position:relative;">
+                    <div class="cfg-agent-grid" id="cfg-agent-overview"></div>
+                    <div style="position:absolute;bottom:8px;right:8px;display:flex;gap:8px;z-index:1;">
+                        <button class="cfg-nav-back" onclick="cfgBack(3)">← BACK</button>
+                        <button class="cfg-nav-next" onclick="cfgNext(3)">NEXT →</button>
+                    </div>
+                </div>
             </div>
-            <div class="cfg-nav">
-                <button class="cfg-nav-back" onclick="cfgBack(3)">← BACK</button>
-                <button class="cfg-nav-next" onclick="cfgNext(3)">NEXT →</button>
-            </div>
-            <div class="cfg-agent-grid" id="cfg-agent-overflow" style="margin-top:10px;"></div>
         </div>
 
         <!-- ── Step 4: Playbook ───────────────────────────────────────── -->
@@ -783,10 +784,8 @@ var GEAR_SVG = '<svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;h
 
 function renderAgentOverview() {
     var el = document.getElementById('cfg-agent-overview');
-    var overflow = document.getElementById('cfg-agent-overflow');
     if (!el) return;
-    var keys = Object.keys(AGENT_INFO);
-    function cardHtml(key) {
+    el.innerHTML = Object.keys(AGENT_INFO).map(function(key) {
         var info = AGENT_INFO[key];
         var hasFields = info.fields && info.fields.length > 0;
         return '<div class="cfg-agent-card" style="--ac:' + info.color + '" onclick="openAgentConfig(\'' + key + '\')">'
@@ -795,10 +794,7 @@ function renderAgentOverview() {
             + '<div class="cfg-agent-tier">' + info.tier + '</div>'
             + '<div class="cfg-agent-desc">' + info.desc + '</div>'
             + '</div>';
-    }
-    // First 4 agents above nav buttons, rest below
-    el.innerHTML = keys.slice(0, 4).map(cardHtml).join('');
-    if (overflow) overflow.innerHTML = keys.slice(4).map(cardHtml).join('');
+    }).join('');
 }
 
 var _agentCfgKey = null;

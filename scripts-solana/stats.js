@@ -70,12 +70,34 @@ function fmtSol(lamports) {
 }
 
 (async () => {
-    const { connection } = await setup();
+    const { connection, killGame, killFaucet, gameConfigAddr, faucetConfigPDA, fmtKill } = await setup();
 
     process.stdout.write("  Fetching unique wallets...");
     const uniqueWallets = await fetchUniqueWallets();
     process.stdout.write(`\r  Unique wallets: ${uniqueWallets}\n\n`);
 
+    // ── Vault balances ───────────────────────────────────────────────────────
+    console.log("── Vault Balances ──────────────────────────────────────────────────");
+    try {
+        const gc = await killGame.account.gameConfig.fetch(gameConfigAddr);
+        const { getAccount } = require("@solana/spl-token");
+        const gameVaultAcct = await getAccount(connection, gc.gameVault);
+        console.log(`  Game Vault:   ${fmtKill(gameVaultAcct.amount)} KILL`);
+    } catch (e) {
+        console.log(`  Game Vault:   (error: ${e.message})`);
+    }
+    try {
+        const [fcAddr] = faucetConfigPDA();
+        const fc = await killFaucet.account.faucetConfig.fetch(fcAddr);
+        const { getAccount } = require("@solana/spl-token");
+        const faucetVaultAcct = await getAccount(connection, fc.faucetVault);
+        console.log(`  Faucet Vault: ${fmtKill(faucetVaultAcct.amount)} KILL`);
+    } catch (e) {
+        console.log(`  Faucet Vault: (error: ${e.message})`);
+    }
+    console.log("");
+
+    // ── Contract tx stats ────────────────────────────────────────────────────
     console.log("── Contract Stats (devnet) ─────────────────────────────────────────");
     console.log(`  ${"CONTRACT".padEnd(12)}  ${"TX".padStart(6)}  ${"SOL FEES (est)".padStart(16)}`);
     console.log("  " + "─".repeat(40));

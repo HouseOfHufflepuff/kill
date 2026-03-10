@@ -56,10 +56,11 @@ module.exports = {
             let   spawnAmt   = enemyEffPower * BigInt(KILL_MULTIPLIER);
             if (spawnAmt < BigInt(MIN_SPAWN)) spawnAmt = BigInt(MIN_SPAWN);
             const spawnReaper   = spawnAmt / THERMAL_PARITY;
-            const totalPower    = spawnAmt + spawnReaper * THERMAL_PARITY;
-            const attackCostRaw = totalPower * SPAWN_COST_RAW;
+            // Cost = units spawned × 20 KILL (reapers are free, auto-granted 1 per 666 units)
+            const attackCostRaw = spawnAmt * SPAWN_COST_RAW;
+            // Ratio = kill won / cost (both in same raw units, cancels out)
             const ratio = attackCostRaw > 0n
-                ? parseFloat((bountyHuman * 1_000_000n / (attackCostRaw / 1_000_000n)).toString()) / 1_000_000
+                ? Number(netBounty * 100n / attackCostRaw) / 100
                 : 0;
 
             targets.push({

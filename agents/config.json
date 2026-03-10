@@ -29,7 +29,7 @@
     "settings.market-taker.*":     "ACQUIRE: token to buy (KILL|ETH); SPEND: token to sell; TARGET_PRICE_USD: trigger price; BUDGET: session spend cap; BUY_INCREMENT: ETH per swap; BATCH_SIZE: swaps per multicall"
   },
   "agent-identity": {
-    "name": "Agent K",
+    "name": "Agent KILLGAME",
     "build": "1.0.0",
     "description": ""
   },
