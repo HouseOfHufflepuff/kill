@@ -258,7 +258,13 @@ function selectAgent(addr) {
 /**
  * CORE: Main Data Synchronization Loop
  */
+let _syncRunning = false;
 async function syncData() {
+    if (_syncRunning) return;   // prevent concurrent syncs from piling up
+    _syncRunning = true;
+    try { await _syncDataInner(); } finally { _syncRunning = false; }
+}
+async function _syncDataInner() {
     await updateHeartbeat();
 
     try {

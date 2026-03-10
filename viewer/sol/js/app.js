@@ -61,6 +61,22 @@ function startGame() {
     // Agent registry: check on load then every 30 seconds
     pollAgentRegistry();
     setInterval(pollAgentRegistry, 30 * 1000);
+
+    // Re-sync immediately when tab becomes visible after being backgrounded
+    // Browsers throttle setInterval in background tabs (Chrome: 1/min, others: paused)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            // Trim knownIds to prevent unbounded growth during long sessions
+            if (knownIds.size > 500) {
+                const keep = [...knownIds].slice(-200);
+                knownIds.clear();
+                keep.forEach(id => knownIds.add(id));
+            }
+            syncCounter = 0;
+            syncData();
+            pollAgentRegistry();
+        }
+    });
 }
 
 // --- INITIALIZATION ---

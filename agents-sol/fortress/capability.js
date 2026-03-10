@@ -3,7 +3,7 @@ const anchor = require("@coral-xyz/anchor");
 const web3   = anchor.web3;
 const { getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync } = require("@solana/spl-token");
 const { GRN, YEL, RED, RES, getManhattanDist, calcPower, calcEffectivePower,
-        agentStackPDA, gameConfigPDA, txLink } = require('../common');
+        powerDecayPct, agentStackPDA, gameConfigPDA, txLink } = require('../common');
 
 function fmtPow(n) {
     const v = Number(n);
@@ -60,7 +60,7 @@ function topEnemy(enemies) {
 
 module.exports = {
     async run({ wallet, killGame, connection, KILL_MINT, GAME_ID, gameVault, gameConfigAddr, config }) {
-        const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, HUB_PERIMETER, KILL_MULTIPLIER } = config.settings;
+        const { HUB_STACK, TARGET_UNITS, REPLENISH_AMT, HUB_PERIMETER, KILL_MULTIPLIER, MOVE_ON_DECAY_PERCENT } = config.settings;
         const myKey = wallet.publicKey.toBase58();
 
         const agentAta = await getOrCreateAssociatedTokenAccount(
@@ -80,7 +80,7 @@ module.exports = {
             const reapers = BigInt(s.reapers.toString());
             const spawnSlot = BigInt(s.spawnSlot.toString());
             if (s.agent.toBase58() === myKey) {
-                byStack[id].mine = { agent: s.agent, stackId: id, units, reapers, power: calcPower(units, reapers) };
+                byStack[id].mine = { agent: s.agent, stackId: id, units, reapers, spawnSlot, power: calcPower(units, reapers) };
             } else if (units > 0n || reapers > 0n) {
                 byStack[id].enemies.push({ agent: s.agent, stackId: id, units, reapers, power: calcEffectivePower(units, reapers, spawnSlot, currentSlot) });
             }
@@ -224,7 +224,51 @@ module.exports = {
             }
         }
 
-        // ── Priority 4: SPAWN — below target units ────────────────────────────
+        // ── Priority 4: REFRESH — hub decay exceeds threshold, move out and back ─
+        if (!actionTaken && MOVE_ON_DECAY_PERCENT != null && MOVE_ON_DECAY_PERCENT > 0) {
+            const hubData = byStack[HUB_STACK]?.mine;
+            if (hubData && hubData.units > 0n && hubData.spawnSlot > 0n) {
+                const remaining = Number(powerDecayPct(hubData.spawnSlot, currentSlot));
+                const decayLost = 100 - remaining; // 0 = fresh, 95 = max decay
+                if (decayLost >= MOVE_ON_DECAY_PERCENT) {
+                    // Find an adjacent stack to bounce through
+                    const adj = bfsNextStep(HUB_STACK, HUB_STACK === 0 ? 1 : HUB_STACK - 1) ?? bfsNextStep(HUB_STACK, HUB_STACK + 1);
+                    if (adj !== null) {
+                        const fromPDA = agentStackPDA(wallet.publicKey, HUB_STACK, GAME_ID);
+                        const toPDA   = agentStackPDA(wallet.publicKey, adj, GAME_ID);
+                        const moveAccounts = {
+                            gameConfig:        gameConfigAddr,
+                            fromStack:         fromPDA,
+                            toStack:           toPDA,
+                            agentTokenAccount: agentAta.address,
+                            gameVault,
+                            killMint:          KILL_MINT,
+                            agent:             wallet.publicKey,
+                        };
+                        // Move hub → adjacent
+                        actionIxs.push(await killGame.methods
+                            .moveUnits(HUB_STACK, adj,
+                                       new anchor.BN(hubData.units.toString()),
+                                       new anchor.BN(hubData.reapers.toString()))
+                            .accounts(moveAccounts)
+                            .instruction()
+                        );
+                        // Move adjacent → hub (resets birth_slot)
+                        actionIxs.push(await killGame.methods
+                            .moveUnits(adj, HUB_STACK,
+                                       new anchor.BN(hubData.units.toString()),
+                                       new anchor.BN(hubData.reapers.toString()))
+                            .accounts({ ...moveAccounts, fromStack: toPDA, toStack: fromPDA })
+                            .instruction()
+                        );
+                        actionRows.push({ Action: 'REFRESH', Detail: `Hub ${HUB_STACK}→${adj}→${HUB_STACK} | decay ${decayLost}% ≥ ${MOVE_ON_DECAY_PERCENT}%`, Result: `${YEL}PENDING${RES}`, Tx: '' });
+                        actionTaken = true;
+                    }
+                }
+            }
+        }
+
+        // ── Priority 5: SPAWN — below target units ────────────────────────────
         if (!actionTaken && totalPower < BigInt(TARGET_UNITS)) {
             const hubStack = agentStackPDA(wallet.publicKey, HUB_STACK, GAME_ID);
             actionIxs.push(await killGame.methods

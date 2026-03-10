@@ -29,7 +29,8 @@
     "fortress": {
       "TARGET_UNITS":   66600,
       "REPLENISH_AMT":  6660,
-      "HUB_PERIMETER":  1
+      "HUB_PERIMETER":  1,
+      "MOVE_ON_DECAY_PERCENT": 50
     },
     "sniper": {
       "SPAWN_PROFITABILITY_THRESHOLD": 0.10

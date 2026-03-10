@@ -276,6 +276,7 @@
                 <button class="cfg-nav-back" onclick="cfgBack(3)">← BACK</button>
                 <button class="cfg-nav-next" onclick="cfgNext(3)">NEXT →</button>
             </div>
+            <div class="cfg-agent-grid" id="cfg-agent-overflow" style="margin-top:10px;"></div>
         </div>
 
         <!-- ── Step 4: Playbook ───────────────────────────────────────── -->
@@ -324,7 +325,7 @@
                     </div>
                     <div class="cfg-field">
                         <label class="cfg-lbl">Kill Multiplier</label>
-                        <input class="cfg-input" type="number" id="cfg-kill-mult" min="1" max="10" value="2">
+                        <input class="cfg-input" type="number" id="cfg-kill-mult" min="0.1" max="10" step="0.1" value="2">
                         <div class="cfg-field-desc">Min power advantage to attack. 2 = need 2x the enemy's effective force.</div>
                     </div>
                     <div class="cfg-field">
@@ -591,7 +592,8 @@ var AGENT_INFO = {
         fields: [
             { key: 'TARGET_UNITS',  label: 'Target Units',     type: 'number', min: 1, desc: 'Accumulate this many units at the hub before attacking.' },
             { key: 'REPLENISH_AMT', label: 'Replenish Amount', type: 'number', min: 1, desc: 'Units to spawn per replenish cycle when hub falls below target.' },
-            { key: 'HUB_PERIMETER', label: 'Hub Perimeter',    type: 'number', min: 1, desc: 'Stack radius around hub to defend against threats.' }
+            { key: 'HUB_PERIMETER', label: 'Hub Perimeter',    type: 'number', min: 1, desc: 'Stack radius around hub to defend against threats.' },
+            { key: 'MOVE_ON_DECAY_PERCENT', label: 'Refresh Decay %', type: 'number', min: 0, max: 95, step: 1, desc: 'When hub decay exceeds this %, move units out and back to reset birth slot. 0 = disabled. Range: 0–95%.' }
         ]
     },
     'aftershock': {
@@ -781,8 +783,10 @@ var GEAR_SVG = '<svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;h
 
 function renderAgentOverview() {
     var el = document.getElementById('cfg-agent-overview');
+    var overflow = document.getElementById('cfg-agent-overflow');
     if (!el) return;
-    el.innerHTML = Object.keys(AGENT_INFO).map(function(key) {
+    var keys = Object.keys(AGENT_INFO);
+    function cardHtml(key) {
         var info = AGENT_INFO[key];
         var hasFields = info.fields && info.fields.length > 0;
         return '<div class="cfg-agent-card" style="--ac:' + info.color + '" onclick="openAgentConfig(\'' + key + '\')">'
@@ -791,7 +795,10 @@ function renderAgentOverview() {
             + '<div class="cfg-agent-tier">' + info.tier + '</div>'
             + '<div class="cfg-agent-desc">' + info.desc + '</div>'
             + '</div>';
-    }).join('');
+    }
+    // First 4 agents above nav buttons, rest below
+    el.innerHTML = keys.slice(0, 4).map(cardHtml).join('');
+    if (overflow) overflow.innerHTML = keys.slice(4).map(cardHtml).join('');
 }
 
 var _agentCfgKey = null;
@@ -972,7 +979,7 @@ async function writeConfigFiles() {
     var agentBuild  = document.getElementById('cfg-agent-id-build').value || '1.0.0';
     var agentCaps   = document.getElementById('cfg-agent-id-caps').value  || '';
     var hubStack     = parseInt(document.getElementById('cfg-hub-stack').value)      || 35;
-    var killMult     = parseInt(document.getElementById('cfg-kill-mult').value)      || 2;
+    var killMult     = parseFloat(document.getElementById('cfg-kill-mult').value)    || 2;
     var slotDelta    = parseInt(document.getElementById('cfg-slot-delta').value)     || 50;
     var profitThresh = parseFloat(document.getElementById('cfg-profit-thresh').value) || 0.10;
 
