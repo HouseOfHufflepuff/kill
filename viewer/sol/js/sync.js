@@ -222,7 +222,7 @@ function updateTopStacks(stacks, activeReaperMap) {
         const isSelected  = selectedStacks.has(String(item.id));
         // Display decay as power LOST: 0% = fresh, 95% = fully aged (~3 days)
         const decayLost   = 100 - item.decayPct;
-        const decayColor  = decayLost <= 20 ? 'var(--pink)' : decayLost <= 50 ? '#aaa' : 'var(--cyan)';
+        const decayColor  = decayLost > 50 ? 'var(--green, #0f0)' : '#666';
         const decayTitle  = `POWER DECAY: ${decayLost}% lost (${item.decayPct}% effective)\n0% = fresh stack, 95% = ~3 days old\nFormula: 100 \u2212 max(5, 100\u2212(mult\u22121)\u00d795/49)\nmult = clamp(1+age/13224, 1, 50)`;
         return `
         <div class="stack-row${isSelected ? ' stack-row-selected' : ''}"

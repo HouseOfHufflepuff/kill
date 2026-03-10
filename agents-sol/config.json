@@ -18,9 +18,9 @@
     "SUPABASE_URL":  "https://jclsklriyozveiykzead.supabase.co",
     "SUPABASE_KEY":  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbHNrbHJpeW96dmVpeWt6ZWFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NDQzOTUsImV4cCI6MjA4ODMyMDM5NX0.ka7UCBzLiZNvU5WKPWmpB7x7xM99thukFwtBGRvr-I8",
     "MIN_SPAWN":     666,
-    "HUB_STACK":     35,
+    "HUB_STACK":     80,
     "TOTAL_SUPPLY":  666000000000,
-    "SLOT_DELTA":    10,
+    "SLOT_DELTA":    25,
     "KILL_MULTIPLIER": 2,
     "seed": {
       "SEED_AMOUNT": 666,
