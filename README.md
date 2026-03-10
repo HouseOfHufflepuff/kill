@@ -178,3 +178,4 @@ Please view the whitepaper for the most up to date game info.
 
 https://0xmeh.substack.com/p/killgame
 
+
