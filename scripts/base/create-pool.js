@@ -1,5 +1,5 @@
 // Uniswap V3 — Create & Initialize KILL/WETH Pool on Base
-// Run: hardhat run scripts/create-pool.js --network base
+// Run: hardhat run scripts/base/create-pool.js --network base
 //
 // This is a one-time setup script. Once the pool exists the market-maker
 // agent handles all liquidity operations.

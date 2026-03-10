@@ -1,10 +1,10 @@
 "use strict";
-// node scripts-solana/stacks.js [wallet_pubkey]
+// node scripts/solana/stacks.js [wallet_pubkey]
 // Lists all on-chain AgentStack accounts for a wallet (defaults to your keypair).
 //
 // Example:
-//   node scripts-solana/stacks.js
-//   node scripts-solana/stacks.js <other_wallet_address>
+//   node scripts/solana/stacks.js
+//   node scripts/solana/stacks.js <other_wallet_address>
 
 const { setup } = require("./common");
 const anchor = require("@coral-xyz/anchor");

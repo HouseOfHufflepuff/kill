@@ -1,12 +1,12 @@
 "use strict";
-// node scripts-solana/spawn.js <stack_id> <units>
+// node scripts/solana/spawn.js <stack_id> <units>
 // Spawns or reinforces a stack at the given grid position (0–215).
 // Costs 20 KILL per unit (SPAWN_COST × units on-chain).
 // One free Reaper is granted automatically per 666 units spawned.
 //
 // Example:
-//   node scripts-solana/spawn.js 0 666        — spawn 666 units + 1 free reaper at stack 0
-//   node scripts-solana/spawn.js 22 1332      — spawn 1332 units + 2 free reapers at stack 22
+//   node scripts/solana/spawn.js 0 666        — spawn 666 units + 1 free reaper at stack 0
+//   node scripts/solana/spawn.js 22 1332      — spawn 1332 units + 2 free reapers at stack 22
 
 const { setup, agentStackPDA, gameConfigPDA } = require("./common");
 const anchor = require("@coral-xyz/anchor");
@@ -19,7 +19,7 @@ async function main() {
     const units   = BigInt(process.argv[3] || "0");
 
     if (isNaN(stackId) || stackId < 0 || stackId > 215 || units <= 0n) {
-        console.error("Usage: node scripts-solana/spawn.js <stack_id 0-215> <units>");
+        console.error("Usage: node scripts/solana/spawn.js <stack_id 0-215> <units>");
         process.exit(1);
     }
 

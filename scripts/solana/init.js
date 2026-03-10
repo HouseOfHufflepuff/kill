@@ -1,5 +1,5 @@
 "use strict";
-// node scripts-solana/init.js
+// node scripts/solana/init.js
 //
 // One-time setup for all three programs on devnet.
 // Must be run by the admin wallet before any other scripts work.
@@ -134,7 +134,7 @@ async function main() {
         console.log(`   Tx           : ${txLink(tx)}`);
     }
 
-    console.log(`\nDone. Run next:\n  node scripts-solana/mint.js 1000000\n`);
+    console.log(`\nDone. Run next:\n  node scripts/solana/mint.js 1000000\n`);
 }
 
 main().catch(e => { console.error(e.message || e); process.exit(1); });

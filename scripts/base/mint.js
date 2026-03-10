@@ -13,8 +13,8 @@ const AGENT5_PUBLIC_KEY=process.env.AGENT5_PUBLIC_KEY;
 const MAX_PUB=process.env.MAX_PUB;
 
 
-//hardhat run scripts/mint.js --network base
-//hardhat run scripts/mint.js --network basesepolia
+//hardhat run scripts/base/mint.js --network base
+//hardhat run scripts/base/mint.js --network basesepolia
 // Minimal ABI — hardcoded so the script works regardless of compiled artifact.
 // The deployed contract still has mint(address,uint256) onlyOwner on-chain.
 const MINT_ABI = [

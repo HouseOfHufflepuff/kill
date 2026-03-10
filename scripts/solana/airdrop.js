@@ -1,5 +1,5 @@
 "use strict";
-// node scripts-solana/airdrop.js [sol_amount]
+// node scripts/solana/airdrop.js [sol_amount]
 // Requests a devnet SOL airdrop. Default: 2 SOL.
 
 const { setup } = require("./common");

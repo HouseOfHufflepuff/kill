@@ -1,10 +1,10 @@
 "use strict";
-// node scripts-solana/mint.js <amount_kill> [destination_pubkey]
+// node scripts/solana/mint.js <amount_kill> [destination_pubkey]
 // Mints KILL tokens. Admin wallet only.
 //
 // Examples:
-//   node scripts-solana/mint.js 1000000               — mint 1M KILL to yourself
-//   node scripts-solana/mint.js 500000 <other_pubkey> — mint 500K KILL to another wallet
+//   node scripts/solana/mint.js 1000000               — mint 1M KILL to yourself
+//   node scripts/solana/mint.js 500000 <other_pubkey> — mint 500K KILL to another wallet
 
 const { setup, cfg } = require("./common");
 const anchor = require("@coral-xyz/anchor");
@@ -24,7 +24,7 @@ const MINT_KEYPAIR_PATH = path.join(
 async function main() {
     const amountKill = parseFloat(process.argv[2]);
     if (isNaN(amountKill) || amountKill <= 0) {
-        console.error("Usage: node scripts-solana/mint.js <amount_kill> [destination_pubkey]");
+        console.error("Usage: node scripts/solana/mint.js <amount_kill> [destination_pubkey]");
         process.exit(1);
     }
 
@@ -32,7 +32,7 @@ async function main() {
 
     if (!fs.existsSync(MINT_KEYPAIR_PATH)) {
         console.error(`Kill mint keypair not found at ${MINT_KEYPAIR_PATH}`);
-        console.error("Run init.js first: node scripts-solana/init.js");
+        console.error("Run init.js first: node scripts/solana/init.js");
         process.exit(1);
     }
     const mintKp = web3.Keypair.fromSecretKey(

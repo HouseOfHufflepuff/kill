@@ -7,8 +7,8 @@ const KILL_GAME = process.env.KILL_GAME;
 const KILL_FAUCET = process.env.KILL_FAUCET;
 
 
-//hardhat run scripts/deploy.js --network basesepolia
-//hardhat run scripts/deploy.js --network base
+//hardhat run scripts/base/deploy.js --network basesepolia
+//hardhat run scripts/base/deploy.js --network base
 async function main() {
     const [deployer] = await ethers.getSigners();
     const weiAmount = (await deployer.getBalance()).toString();

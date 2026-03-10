@@ -1,5 +1,5 @@
 "use strict";
-// node scripts-solana/balance.js
+// node scripts/solana/balance.js
 // Shows SOL balance, KILL balance, and on-chain GameConfig state.
 
 const { setup } = require("./common");

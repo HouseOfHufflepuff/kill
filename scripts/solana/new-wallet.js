@@ -1,10 +1,10 @@
 "use strict";
-// node scripts-solana/new-wallet.js <name> [sol]
+// node scripts/solana/new-wallet.js <name> [sol]
 // Creates a new devnet keypair and airdrops SOL to fund it.
 //
 // Examples:
-//   node scripts-solana/new-wallet.js player2        — create player2.json, airdrop 2 SOL
-//   node scripts-solana/new-wallet.js player2 5      — create player2.json, airdrop 5 SOL
+//   node scripts/solana/new-wallet.js player2        — create player2.json, airdrop 2 SOL
+//   node scripts/solana/new-wallet.js player2 5      — create player2.json, airdrop 5 SOL
 
 const anchor = require("@coral-xyz/anchor");
 const { web3 } = anchor;
@@ -16,8 +16,8 @@ async function main() {
     const sol  = parseFloat(process.argv[3] || "2");
 
     if (!name) {
-        console.error("Usage: node scripts-solana/new-wallet.js <name> [sol]");
-        console.error("  e.g. node scripts-solana/new-wallet.js player2");
+        console.error("Usage: node scripts/solana/new-wallet.js <name> [sol]");
+        console.error("  e.g. node scripts/solana/new-wallet.js player2");
         process.exit(1);
     }
 
@@ -57,9 +57,9 @@ async function main() {
 
     console.log(`
 To use this wallet with any script, add --wallet ${name}:
-  node scripts-solana/balance.js --wallet ${name}
-  node scripts-solana/spawn.js 0 666 --wallet ${name}
-  node scripts-solana/mint.js 50000 ${kp.publicKey.toBase58()}
+  node scripts/solana/balance.js --wallet ${name}
+  node scripts/solana/spawn.js 0 666 --wallet ${name}
+  node scripts/solana/mint.js 50000 ${kp.publicKey.toBase58()}
 `);
 }
 

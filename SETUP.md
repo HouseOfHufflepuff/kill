@@ -11,9 +11,9 @@ hardhat test --network hardhat
 REPORT_GAS=true hardhat test --network hardhat
 
 # deploy & interact
-hardhat run scripts/deploy.js --network basesepolia
-hardhat run scripts/mint.js --network basesepolia
-hardhat run scripts/burn.js --network basesepolia
+hardhat run scripts/base/deploy.js --network basesepolia
+hardhat run scripts/base/mint.js --network basesepolia
+hardhat run scripts/base/burn.js --network basesepolia
 ```
 
 ### verify

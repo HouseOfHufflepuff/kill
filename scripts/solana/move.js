@@ -1,10 +1,10 @@
 "use strict";
-// node scripts-solana/move.js <from_stack_id> <to_stack_id>
+// node scripts/solana/move.js <from_stack_id> <to_stack_id>
 // Moves all units from one grid position to an adjacent one.
 // Costs 100 KILL (MOVE_COST on-chain). Stacks must be Manhattan distance = 1.
 //
 // Example:
-//   node scripts-solana/move.js 0 1    — move from stack 0 to stack 1
+//   node scripts/solana/move.js 0 1    — move from stack 0 to stack 1
 
 const { setup, agentStackPDA, gameConfigPDA } = require("./common");
 const { getOrCreateAssociatedTokenAccount } = require("@solana/spl-token");
@@ -14,7 +14,7 @@ async function main() {
     const toId   = parseInt(process.argv[3]);
 
     if (isNaN(fromId) || isNaN(toId) || fromId < 0 || fromId > 215 || toId < 0 || toId > 215) {
-        console.error("Usage: node scripts-solana/move.js <from_stack_id 0-215> <to_stack_id 0-215>");
+        console.error("Usage: node scripts/solana/move.js <from_stack_id 0-215> <to_stack_id 0-215>");
         process.exit(1);
     }
 

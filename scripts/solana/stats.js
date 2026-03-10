@@ -1,11 +1,11 @@
 "use strict";
-// scripts-solana/stats.js
+// scripts/solana/stats.js
 // Outputs total tx, unique wallets, and estimated SOL in tx fees for all three contracts.
 // Fees are calculated as totalTx * 5000 lamports (Solana base fee, no priority fees set
 // by these agents). Public devnet RPC rate-limits bulk getTransactions calls too
 // aggressively to fetch real fees without a Helius/private RPC.
 //
-// Usage: node scripts-solana/stats.js
+// Usage: node scripts/solana/stats.js
 
 const path = require("path");
 const fs   = require("fs");
@@ -21,7 +21,7 @@ const PAGE_SIZE  = 1000;
 const PAGE_DELAY = 600;   // ms between signature pagination calls
 const BASE_FEE   = 5000;  // lamports per tx (Solana base fee, 1 signature)
 
-const agentCfg     = JSON.parse(fs.readFileSync(path.join(__dirname, "../agents-sol/config.json"), "utf8"));
+const agentCfg     = JSON.parse(fs.readFileSync(path.join(__dirname, "../../agents-sol/config.json"), "utf8"));
 const SUPABASE_URL  = agentCfg.settings.SUPABASE_URL;
 const SUPABASE_KEY  = agentCfg.settings.SUPABASE_KEY;
 

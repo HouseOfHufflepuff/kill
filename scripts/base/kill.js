@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 
 const KILL_GAME = process.env.KILL_GAME;
 
-// hardhat run scripts/kill.js --network basesepolia
+// hardhat run scripts/base/kill.js --network basesepolia
 async function main() {
     const [owner] = await ethers.getSigners();
     

@@ -60,7 +60,7 @@ solana config set --url devnet
 
 # Fund with devnet SOL (airdrop)
 solana airdrop 2
-# Or use the script: node scripts-solana/airdrop.js 2
+# Or use the script: node scripts/solana/airdrop.js 2
 ```
 
 Your keypair path is stored in `.env`:
@@ -94,7 +94,7 @@ contracts-solana/
   tests/
     kill.ts                    ← Full integration test suite
 
-scripts-solana/                ← Interaction scripts (plain node, no hardhat)
+scripts/solana/                ← Interaction scripts (plain node, no hardhat)
   common.js                    ← Shared connection, wallet, programs, PDAs
   config.json                  ← Program IDs and constants
   balance.js
@@ -176,7 +176,7 @@ Deploy order matters if programs reference each other:
 After deploy, run `initialize_game` (admin only, once):
 
 ```bash
-node scripts-solana/init.js
+node scripts/solana/init.js
 ```
 
 ---
@@ -186,41 +186,41 @@ node scripts-solana/init.js
 All scripts run from the project root with plain `node`. No hardhat, no framework.
 
 ```bash
-node scripts-solana/<script>.js [args]
+node scripts/solana/<script>.js [args]
 ```
 
 | Script | Command | What it does |
 |---|---|---|
-| `balance.js` | `node scripts-solana/balance.js` | SOL + KILL balance, GameConfig state |
-| `airdrop.js` | `node scripts-solana/airdrop.js [sol]` | Devnet SOL airdrop (default: 2 SOL) |
-| `spawn.js` | `node scripts-solana/spawn.js <stack_id> <units>` | Spawn/reinforce a stack (costs 20 KILL) |
-| `move.js` | `node scripts-solana/move.js <from> <to>` | Move stack to adjacent position (costs 100 KILL) |
-| `kill.js` | `node scripts-solana/kill.js <atk_stack> <defender_pubkey> <def_stack>` | Attack an enemy stack |
-| `stacks.js` | `node scripts-solana/stacks.js [pubkey]` | List all stacks with grid coordinates |
+| `balance.js` | `node scripts/solana/balance.js` | SOL + KILL balance, GameConfig state |
+| `airdrop.js` | `node scripts/solana/airdrop.js [sol]` | Devnet SOL airdrop (default: 2 SOL) |
+| `spawn.js` | `node scripts/solana/spawn.js <stack_id> <units>` | Spawn/reinforce a stack (costs 20 KILL) |
+| `move.js` | `node scripts/solana/move.js <from> <to>` | Move stack to adjacent position (costs 100 KILL) |
+| `kill.js` | `node scripts/solana/kill.js <atk_stack> <defender_pubkey> <def_stack>` | Attack an enemy stack |
+| `stacks.js` | `node scripts/solana/stacks.js [pubkey]` | List all stacks with grid coordinates |
 
 ### Examples
 
 ```bash
 # Check your balance
-node scripts-solana/balance.js
+node scripts/solana/balance.js
 
 # Get devnet SOL
-node scripts-solana/airdrop.js 2
+node scripts/solana/airdrop.js 2
 
 # Spawn 666 units at stack 0
-node scripts-solana/spawn.js 0 666
+node scripts/solana/spawn.js 0 666
 
 # Spawn 1000 units + 5 reapers at hub stack 22
-node scripts-solana/spawn.js 22 1000 5
+node scripts/solana/spawn.js 22 1000 5
 
 # Move from stack 0 to adjacent stack 1
-node scripts-solana/move.js 0 1
+node scripts/solana/move.js 0 1
 
 # Attack another player's stack
-node scripts-solana/kill.js 1 <defender_wallet_pubkey> 2
+node scripts/solana/kill.js 1 <defender_wallet_pubkey> 2
 
 # See all your stacks
-node scripts-solana/stacks.js
+node scripts/solana/stacks.js
 ```
 
 ---
@@ -229,7 +229,7 @@ node scripts-solana/stacks.js
 
 | Concept | Ethereum (this repo) | Solana (this repo) |
 |---|---|---|
-| Run scripts | `hardhat run scripts/foo.js --network basesepolia` | `node scripts-solana/foo.js` |
+| Run scripts | `hardhat run scripts/foo.js --network basesepolia` | `node scripts/solana/foo.js` |
 | ABI | `agents/KillGame.json` | `contracts-solana/target/idl/kill_game.json` |
 | Provider | `ethers.provider` | `new Connection(rpcUrl)` |
 | Wallet | `new ethers.Wallet(PRIVATE_KEY)` | `Keypair.fromSecretKey(bytes)` |
@@ -357,4 +357,4 @@ curl -X POST https://jclsklriyozveiykzead.supabase.co/graphql/v1 \
 | Agent filter | `where: { agent: "..." }` | `filter: { agent: { eq: "..." } }` |
 
 
-node scripts-solana/stats.js
+node scripts/solana/stats.js

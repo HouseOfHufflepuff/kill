@@ -4,8 +4,8 @@ const KILL_GAME = process.env.KILL_GAME;
 const PUBLIC_KEY = process.env.PUBLIC_KEY;
 
 
-//hardhat run scripts/move.js --network basesepolia
-//hardhat run scripts/move.js --network base
+//hardhat run scripts/base/move.js --network basesepolia
+//hardhat run scripts/base/move.js --network base
 async function main() {
     const [owner] = await ethers.getSigners();
     console.log("Using Wallet:", owner.address);

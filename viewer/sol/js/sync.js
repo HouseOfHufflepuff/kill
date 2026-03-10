@@ -434,8 +434,8 @@ async function _syncDataInner() {
                     `<div class="kill-row kill-header"><span></span><span>OFFENSE</span><span>DEFENSE</span></div>` +
                     `<div class="kill-row"><span>BATTLE</span><span>${formatValue(offPow)}</span><span>${formatValue(defPow)}</span></div>` +
                     `<div class="kill-row"><span>OUTCOME</span><span>${formatValue(offLost)}</span><span>${formatValue(defLost)}</span></div>` +
-                    `<div class="kill-row"><span>KILL WON</span><span>${formatValue(atkBounty)}</span><span>${formatValue(defBounty)}</span></div>` +
                     `<div class="kill-row"><span>BURNED</span><span>${formatValue(totalBurned)}</span><span></span></div>` +
+                    `<div class="kill-row"><span>KILL WON</span><span>${formatValue(atkBounty)}</span><span>${formatValue(defBounty)}</span></div>` +
                     `</div>`;
                 addLog(slot, logMsg, 'log-kill', subMsg, evt.target);
                 triggerPulse(evt.stack_id, 'kill');

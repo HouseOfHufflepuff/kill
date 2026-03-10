@@ -1,10 +1,10 @@
 "use strict";
-// node scripts-solana/kill.js <stack_id> <defender_pubkey> <stack_id> <sent_units> [sent_reapers]
+// node scripts/solana/kill.js <stack_id> <defender_pubkey> <stack_id> <sent_units> [sent_reapers]
 // Attacks a defender on the same stack. Attacker and defender must share the same stack_id.
 // Win → collect bounty. Lose → sent units lost.
 //
 // Example:
-//   node scripts-solana/kill.js 35 <defender_wallet_address> 35 500000 0
+//   node scripts/solana/kill.js 35 <defender_wallet_address> 35 500000 0
 
 const { setup, agentStackPDA, gameConfigPDA, killATA } = require("./common");
 const anchor = require("@coral-xyz/anchor");
@@ -19,7 +19,7 @@ async function main() {
     const sentReapers     = process.argv[6] ? new BN(process.argv[6]) : new BN(0);
 
     if (isNaN(attackerStackId) || !defenderKey || isNaN(defenderStackId) || !sentUnits) {
-        console.error("Usage: node scripts-solana/kill.js <stack_id> <defender_pubkey> <stack_id> <sent_units> [sent_reapers]");
+        console.error("Usage: node scripts/solana/kill.js <stack_id> <defender_pubkey> <stack_id> <sent_units> [sent_reapers]");
         process.exit(1);
     }
 
