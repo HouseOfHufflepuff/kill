@@ -10,6 +10,7 @@ const KILL_FAUCET = process.env.KILL_FAUCET;
 //hardhat run scripts/base/deploy.js --network basesepolia
 //hardhat run scripts/base/deploy.js --network base
 async function main() {
+    console.log("running");
     const [deployer] = await ethers.getSigners();
     const weiAmount = (await deployer.getBalance()).toString();
     console.log("account balance:", await ethers.utils.formatEther(weiAmount));
@@ -23,13 +24,13 @@ async function main() {
     console.log(killToken.address + " deployed to KILLToken");
 
 
-    const KillFaucet = await ethers.getContractFactory("KILLFaucet");
-    const killFaucet = await KillFaucet.deploy(killToken.address);
-    console.log(killFaucet.address + " deployed to KillFaucet");
+    // const KillFaucet = await ethers.getContractFactory("KILLFaucet");
+    // const killFaucet = await KillFaucet.deploy(killToken.address);
+    // console.log(killFaucet.address + " deployed to KillFaucet");
 
-    const KillGame = await ethers.getContractFactory("KILLGame");
-    const killGame = await KillGame.deploy(killToken.address);
-    console.log(killGame.address + " deployed to KillGame");
+    // const KillGame = await ethers.getContractFactory("KILLGame");
+    // const killGame = await KillGame.deploy(killToken.address);
+    // console.log(killGame.address + " deployed to KillGame");
 
 
 

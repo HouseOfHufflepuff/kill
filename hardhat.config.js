@@ -42,6 +42,8 @@ module.exports = {
     base: {
       url: API_URL || "https://mainnet.base.org",
       accounts: accounts,
+      gasPrice: 100000000,
+      timeout: 360000
     },
     basesepolia: {
       url: API_URL || "https://sepolia.base.org",
