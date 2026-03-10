@@ -20,7 +20,7 @@
     "MIN_SPAWN":     666,
     "HUB_STACK":     35,
     "TOTAL_SUPPLY":  666000000000,
-    "SLOT_DELTA":    50,
+    "SLOT_DELTA":    10,
     "KILL_MULTIPLIER": 2,
     "seed": {
       "SEED_AMOUNT": 666,

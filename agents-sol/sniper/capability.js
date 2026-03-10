@@ -88,20 +88,22 @@ module.exports = {
         });
 
         const actionRows = [];
-        const best = sorted[0];
+        let remainingBal = killBal;
 
-        if (best && best.ratio >= threshold && killBal >= best.attackCostRaw) {
-            const attackerStackId  = best.stackId;
-            const defenderStackId  = best.stackId;
-            const attackerStack    = agentStackPDA(wallet.publicKey,  attackerStackId, GAME_ID);
-            const defenderStack    = agentStackPDA(best.defender,      defenderStackId, GAME_ID);
-            const defenderTokenAcc = getAssociatedTokenAddressSync(KILL_MINT, best.defender);
+        // Snipe ALL profitable targets in top 10, each as its own tx
+        const profitable = sorted.slice(0, 10).filter(t => t.ratio >= threshold);
+        for (const target of profitable) {
+            if (remainingBal < target.attackCostRaw) continue;
+
+            const attackerStack    = agentStackPDA(wallet.publicKey, target.stackId, GAME_ID);
+            const defenderStack    = agentStackPDA(target.defender,  target.stackId, GAME_ID);
+            const defenderTokenAcc = getAssociatedTokenAddressSync(KILL_MINT, target.defender);
 
             const tx = new web3.Transaction();
 
             // Spawn at target's stack
             tx.add(await killGame.methods
-                .spawn(attackerStackId, new anchor.BN(best.spawnAmt.toString()))
+                .spawn(target.stackId, new anchor.BN(target.spawnAmt.toString()))
                 .accounts({
                     gameConfig:        gameConfigAddr,
                     agentStack:        attackerStack,
@@ -115,7 +117,9 @@ module.exports = {
 
             // Kill the defender
             tx.add(await killGame.methods
-                .kill(attackerStackId, defenderStackId, new anchor.BN(best.spawnAmt.toString()), new anchor.BN(best.spawnReaper.toString()))
+                .kill(target.stackId, target.stackId,
+                      new anchor.BN(target.spawnAmt.toString()),
+                      new anchor.BN(target.spawnReaper.toString()))
                 .accounts({
                     gameConfig:           gameConfigAddr,
                     attackerStack,
@@ -125,22 +129,27 @@ module.exports = {
                     gameVault,
                     killMint:             KILL_MINT,
                     attacker:             wallet.publicKey,
-                    defender:             best.defender,
+                    defender:             target.defender,
                 })
                 .instruction()
             );
 
+            const row = {
+                Action: 'SNIPE',
+                Detail: `Stack ${target.stackId} | ${target.defender.toBase58().slice(0, 10)} | ${target.ratio.toFixed(2)}x`,
+                Result: `${RED}PENDING${RES}`,
+                Tx:     ''
+            };
             try {
                 const sig = await web3.sendAndConfirmTransaction(connection, tx, [wallet]);
-                actionRows.push({
-                    Action: 'SNIPE',
-                    Detail: `Stack ${best.stackId} | ${best.defender.toBase58().slice(0, 10)} | ${best.ratio.toFixed(2)}x`,
-                    Result: `${GRN}OK${RES}`,
-                    Tx:     txLink(sig)
-                });
+                row.Result = `${GRN}OK${RES}`;
+                row.Tx = txLink(sig);
+                remainingBal -= target.attackCostRaw;
             } catch (e) {
-                actionRows.push({ Action: 'SNIPE', Detail: e.message?.slice(0, 60), Result: `${RED}FAIL${RES}`, Tx: '' });
+                row.Result = `${RED}FAIL${RES}`;
+                row.Detail = e.message?.slice(0, 60);
             }
+            actionRows.push(row);
         }
 
         const sections = [{ title: 'SNIPER TARGETS', rows: targetRows, color: YEL }];

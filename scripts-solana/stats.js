@@ -65,6 +65,39 @@ async function fetchUniqueWallets() {
     return new Set(rows.map(r => r.agent)).size;
 }
 
+const SB_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Prefer": "count=exact" };
+
+async function fetchEventCounts() {
+    const tables = ["spawned", "killed", "moved"];
+    const counts = {};
+    for (const table of tables) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=id&limit=0`, {
+            method: "HEAD", headers: SB_HEADERS
+        });
+        if (!res.ok) throw new Error(`Supabase ${table}: ${res.status}`);
+        counts[table] = parseInt(res.headers.get("content-range")?.split("/")[1] || "0");
+    }
+    return counts;
+}
+
+async function fetchGlobalStats() {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/global_stat?id=eq.current&select=*`, {
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows[0] || null;
+}
+
+// ANSI colors
+const GRN = "\x1b[32m";
+const YEL = "\x1b[33m";
+const CYA = "\x1b[36m";
+const RED = "\x1b[31m";
+const PNK = "\x1b[35m";
+const DIM = "\x1b[2m";
+const RES = "\x1b[0m";
+
 function fmtSol(lamports) {
     return (lamports / 1e9).toFixed(6);
 }
@@ -72,50 +105,85 @@ function fmtSol(lamports) {
 (async () => {
     const { connection, killGame, killFaucet, gameConfigAddr, faucetConfigPDA, fmtKill } = await setup();
 
-    process.stdout.write("  Fetching unique wallets...");
+    process.stdout.write(`  ${DIM}Fetching unique wallets...${RES}`);
     const uniqueWallets = await fetchUniqueWallets();
-    process.stdout.write(`\r  Unique wallets: ${uniqueWallets}\n\n`);
+    process.stdout.write(`\r  ${CYA}Unique wallets:${RES} ${uniqueWallets}\n\n`);
 
     // ── Vault balances ───────────────────────────────────────────────────────
-    console.log("── Vault Balances ──────────────────────────────────────────────────");
+    console.log(`${CYA}── Vault Balances ──────────────────────────────────────────────────${RES}`);
     try {
         const gc = await killGame.account.gameConfig.fetch(gameConfigAddr);
         const { getAccount } = require("@solana/spl-token");
         const gameVaultAcct = await getAccount(connection, gc.gameVault);
-        console.log(`  Game Vault:   ${fmtKill(gameVaultAcct.amount)} KILL`);
+        console.log(`  Game Vault:   ${GRN}${fmtKill(gameVaultAcct.amount)}${RES} KILL`);
     } catch (e) {
-        console.log(`  Game Vault:   (error: ${e.message})`);
+        console.log(`  Game Vault:   ${RED}(error: ${e.message})${RES}`);
     }
     try {
         const [fcAddr] = faucetConfigPDA();
         const fc = await killFaucet.account.faucetConfig.fetch(fcAddr);
         const { getAccount } = require("@solana/spl-token");
         const faucetVaultAcct = await getAccount(connection, fc.faucetVault);
-        console.log(`  Faucet Vault: ${fmtKill(faucetVaultAcct.amount)} KILL`);
+        console.log(`  Faucet Vault: ${GRN}${fmtKill(faucetVaultAcct.amount)}${RES} KILL`);
     } catch (e) {
-        console.log(`  Faucet Vault: (error: ${e.message})`);
+        console.log(`  Faucet Vault: ${RED}(error: ${e.message})${RES}`);
     }
     console.log("");
 
+    // ── Instruction counts from Supabase ────────────────────────────────────
+    console.log(`${YEL}── Instruction Counts (indexed) ────────────────────────────────────${RES}`);
+    try {
+        const eventCounts = await fetchEventCounts();
+        const totalIxs = eventCounts.spawned + eventCounts.killed + eventCounts.moved;
+        console.log(`  ${DIM}${"TYPE".padEnd(12)}  ${"COUNT".padStart(8)}${RES}`);
+        console.log(`  ${DIM}${"─".repeat(22)}${RES}`);
+        console.log(`  ${"Spawns".padEnd(12)}  ${GRN}${String(eventCounts.spawned).padStart(8)}${RES}`);
+        console.log(`  ${"Kills".padEnd(12)}  ${RED}${String(eventCounts.killed).padStart(8)}${RES}`);
+        console.log(`  ${"Moves".padEnd(12)}  ${CYA}${String(eventCounts.moved).padStart(8)}${RES}`);
+        console.log(`  ${DIM}${"─".repeat(22)}${RES}`);
+        console.log(`  ${"TOTAL".padEnd(12)}  ${YEL}${String(totalIxs).padStart(8)}${RES}`);
+    } catch (e) {
+        console.log(`  ${RED}(error: ${e.message})${RES}`);
+    }
+
+    // ── Global stats from Supabase ──────────────────────────────────────────
+    try {
+        const gs = await fetchGlobalStats();
+        if (gs) {
+            console.log("");
+            console.log(`${PNK}── Economy (indexed) ───────────────────────────────────────────────${RES}`);
+            console.log(`  Units killed:   ${RED}${Number(gs.total_units_killed).toLocaleString()}${RES}`);
+            console.log(`  Reapers killed: ${RED}${Number(gs.total_reaper_killed).toLocaleString()}${RES}`);
+            console.log(`  KILL added:     ${YEL}${fmtKill(BigInt(Math.round(Number(gs.kill_added))))}${RES}`);
+            console.log(`  KILL extracted: ${GRN}${fmtKill(BigInt(Math.round(Number(gs.kill_extracted))))}${RES}`);
+            console.log(`  KILL burned:    ${RED}${fmtKill(BigInt(Math.round(Number(gs.kill_burned))))}${RES}`);
+            const pnl = Number(gs.kill_extracted) - Number(gs.kill_added);
+            const pnlColor = pnl >= 0 ? GRN : RED;
+            const pnlSign  = pnl >= 0 ? '+' : '';
+            console.log(`  Net P&L:        ${pnlColor}${pnlSign}${fmtKill(BigInt(Math.round(Math.abs(pnl))))}${RES}${pnl < 0 ? ` ${RED}(net loss)${RES}` : ` ${GRN}(net gain)${RES}`}`);
+        }
+    } catch (_) {}
+    console.log("");
+
     // ── Contract tx stats ────────────────────────────────────────────────────
-    console.log("── Contract Stats (devnet) ─────────────────────────────────────────");
-    console.log(`  ${"CONTRACT".padEnd(12)}  ${"TX".padStart(6)}  ${"SOL FEES (est)".padStart(16)}`);
-    console.log("  " + "─".repeat(40));
+    console.log(`${CYA}── Contract Stats (devnet) ─────────────────────────────────────────${RES}`);
+    console.log(`  ${DIM}${"CONTRACT".padEnd(12)}  ${"TX".padStart(6)}  ${"SOL FEES (est)".padStart(16)}${RES}`);
+    console.log(`  ${DIM}${"─".repeat(40)}${RES}`);
 
     let grandTx = 0, grandLamports = 0;
     for (const { name, id } of CONTRACTS) {
-        process.stdout.write(`  ${name.padEnd(12)}  counting...`);
+        process.stdout.write(`  ${DIM}${name.padEnd(12)}  counting...${RES}`);
         const totalTx = await fetchTxCount(connection, id);
         const lamports = totalTx * BASE_FEE;
         grandTx        += totalTx;
         grandLamports  += lamports;
         process.stdout.write(
-            `\r  ${name.padEnd(12)}  ${String(totalTx).padStart(6)}  ${fmtSol(lamports).padStart(16)} SOL\n`
+            `\r  ${name.padEnd(12)}  ${YEL}${String(totalTx).padStart(6)}${RES}  ${CYA}${fmtSol(lamports).padStart(16)}${RES} SOL\n`
         );
     }
 
-    console.log("  " + "─".repeat(40));
-    console.log(`  ${"TOTAL".padEnd(12)}  ${String(grandTx).padStart(6)}  ${fmtSol(grandLamports).padStart(16)} SOL`);
-    console.log("────────────────────────────────────────────────────────────────────");
-    console.log(`  (fees estimated at ${BASE_FEE} lamports/tx base fee × tx count)\n`);
+    console.log(`  ${DIM}${"─".repeat(40)}${RES}`);
+    console.log(`  ${"TOTAL".padEnd(12)}  ${YEL}${String(grandTx).padStart(6)}${RES}  ${CYA}${fmtSol(grandLamports).padStart(16)}${RES} SOL`);
+    console.log(`${DIM}────────────────────────────────────────────────────────────────────${RES}`);
+    console.log(`  ${DIM}(fees estimated at ${BASE_FEE} lamports/tx base fee × tx count)${RES}\n`);
 })();

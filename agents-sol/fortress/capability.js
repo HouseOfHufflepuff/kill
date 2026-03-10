@@ -128,7 +128,7 @@ module.exports = {
         let actionTaken  = false;
 
         // ── Priority 1: KILL — enemy on same stack, overwhelming force ─────────
-        //    Batch ALL killable stacks into one tx
+        //    Each kill sent as its own tx (Solana 1232-byte tx limit)
         if (!actionTaken) {
             const killable = myStacks
                 .filter(s => {
@@ -142,7 +142,7 @@ module.exports = {
             for (const myStack of killable) {
                 const top         = topEnemy(byStack[myStack.id].enemies);
                 const defenderAta = getAssociatedTokenAddressSync(KILL_MINT, top.agent);
-                actionIxs.push(await killGame.methods
+                const killIx = await killGame.methods
                     .kill(myStack.id, myStack.id,
                           new anchor.BN(myStack.units.toString()),
                           new anchor.BN(myStack.reapers.toString()))
@@ -157,9 +157,18 @@ module.exports = {
                         attacker:             wallet.publicKey,
                         defender:             top.agent,
                     })
-                    .instruction()
-                );
-                actionRows.push({ Action: 'KILL', Detail: `${top.agent.toBase58().slice(0, 10)} @ ${myStack.id} | sent:${fmtPow(myStack.power)} def:${fmtPow(top.power)}`, Result: `${RED}PENDING${RES}`, Tx: '' });
+                    .instruction();
+                const row = { Action: 'KILL', Detail: `${top.agent.toBase58().slice(0, 10)} @ ${myStack.id} | sent:${fmtPow(myStack.power)} def:${fmtPow(top.power)}`, Result: `${RED}PENDING${RES}`, Tx: '' };
+                const tx = new web3.Transaction().add(killIx);
+                try {
+                    const sig = await web3.sendAndConfirmTransaction(connection, tx, [wallet]);
+                    row.Result = `${GRN}OK${RES}`;
+                    row.Tx = txLink(sig);
+                } catch (e) {
+                    row.Result = `${RED}FAIL${RES}`;
+                    row.Detail = e.message?.slice(0, 60);
+                }
+                actionRows.push(row);
             }
             if (killable.length > 0) actionTaken = true;
         }
@@ -195,32 +204,57 @@ module.exports = {
         }
 
         // ── Priority 3: RETREAT — no enemies in perimeter ─────────────────────
+        //    Recall up to 2 stranded stacks per cycle, full path home per tx
+        const MAX_RETREAT    = 2;   // stacks to recall per cycle
+        const MAX_MOVES_TX   = 7;   // max move ixs per tx (stay under 1232 bytes)
         if (!actionTaken) {
             const stranded = myStacks
                 .filter(s => s.id !== HUB_STACK)
                 .sort((a, b) => a.dist - b.dist || Number(b.units - a.units));
-            if (stranded.length > 0) {
-                const s    = stranded[0];
-                const step = bfsNextStep(s.id, HUB_STACK);
-                if (step !== null) {
-                    actionIxs.push(await killGame.methods
-                        .moveUnits(s.id, step,
-                                   new anchor.BN(s.units.toString()),
-                                   new anchor.BN(s.reapers.toString()))
-                        .accounts({
-                            gameConfig:        gameConfigAddr,
-                            fromStack:         agentStackPDA(wallet.publicKey, s.id, GAME_ID),
-                            toStack:           agentStackPDA(wallet.publicKey, step, GAME_ID),
-                            agentTokenAccount: agentAta.address,
-                            gameVault,
-                            killMint:          KILL_MINT,
-                            agent:             wallet.publicKey,
-                        })
-                        .instruction()
-                    );
-                    actionRows.push({ Action: 'RETREAT', Detail: `Stack ${s.id} → ${step} (dist ${s.dist}→hub) | ${fmtPow(s.units)} units`, Result: `${YEL}PENDING${RES}`, Tx: '' });
-                    actionTaken = true;
+            const toRecall = stranded.slice(0, MAX_RETREAT);
+
+            for (const s of toRecall) {
+                const path = bfsPath(s.id, HUB_STACK);
+                if (path.length <= 1) continue;
+
+                // Chunk path into txs that fit within size limit
+                const hops = path.length - 1;
+                for (let ci = 0; ci < hops; ci += MAX_MOVES_TX) {
+                    const chunkEnd = Math.min(ci + MAX_MOVES_TX, hops);
+                    const tx = new web3.Transaction();
+                    const hopList = [];
+                    for (let i = ci; i < chunkEnd; i++) {
+                        const from = path[i];
+                        const to   = path[i + 1];
+                        tx.add(await killGame.methods
+                            .moveUnits(from, to,
+                                       new anchor.BN(s.units.toString()),
+                                       new anchor.BN(s.reapers.toString()))
+                            .accounts({
+                                gameConfig:        gameConfigAddr,
+                                fromStack:         agentStackPDA(wallet.publicKey, from, GAME_ID),
+                                toStack:           agentStackPDA(wallet.publicKey, to, GAME_ID),
+                                agentTokenAccount: agentAta.address,
+                                gameVault,
+                                killMint:          KILL_MINT,
+                                agent:             wallet.publicKey,
+                            })
+                            .instruction()
+                        );
+                        hopList.push(`${from}→${to}`);
+                    }
+                    const row = { Action: 'RETREAT', Detail: `${hopList.join(', ')} | ${fmtPow(s.units)} units`, Result: `${YEL}PENDING${RES}`, Tx: '' };
+                    try {
+                        const sig = await web3.sendAndConfirmTransaction(connection, tx, [wallet]);
+                        row.Result = `${GRN}OK${RES}`;
+                        row.Tx = txLink(sig);
+                    } catch (e) {
+                        row.Result = `${RED}FAIL${RES}`;
+                        row.Detail = e.message?.slice(0, 60);
+                    }
+                    actionRows.push(row);
                 }
+                actionTaken = true;
             }
         }
 
