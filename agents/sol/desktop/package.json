@@ -1,0 +1,49 @@
+{
+  "name": "killgame-sol",
+  "version": "1.0.0",
+  "description": "KILLGame Solana Agent — Desktop",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:all": "electron-builder --mac --win"
+  },
+  "build": {
+    "appId": "ai.killgame.sol",
+    "productName": "KILLGame SOL",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "agents/**/*",
+      "idl/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [],
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ]
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false
+    }
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/web3.js": "^1.98.0",
+    "@solana/spl-token": "^0.4.9"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}
