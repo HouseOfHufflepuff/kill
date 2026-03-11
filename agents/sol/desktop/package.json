@@ -2,6 +2,7 @@
   "name": "killgame-sol",
   "version": "1.0.0",
   "description": "KILLGame Solana Agent — Desktop",
+  "author": "KILLGame",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

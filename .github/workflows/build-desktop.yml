@@ -25,6 +25,10 @@ jobs:
         with:
           node-version: 20
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install dependencies
         working-directory: agents/sol/desktop
         run: npm ci

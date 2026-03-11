@@ -92,6 +92,29 @@ function switchOS(os) {
     document.getElementById('os-win').classList.toggle('active', !isMac);
 }
 
+function switchInstall(mode) {
+    var isCli = mode === 'cli';
+    document.getElementById('install-cli').style.display = isCli ? '' : 'none';
+    document.getElementById('install-app').style.display = isCli ? 'none' : '';
+    document.getElementById('os-cli').classList.toggle('active', isCli);
+    document.getElementById('os-app').classList.toggle('active', !isCli);
+}
+
+function switchChip(chip) {
+    var isApple = chip === 'apple';
+    document.getElementById('chip-apple').classList.toggle('active', isApple);
+    document.getElementById('chip-intel').classList.toggle('active', !isApple);
+    var link  = document.getElementById('dl-mac');
+    var label = document.getElementById('dl-mac-label');
+    if (isApple) {
+        link.href = 'https://killgame.ai/KILLGame-SOL-arm64.dmg';
+        label.textContent = 'Download for macOS (Apple Silicon)';
+    } else {
+        link.href = 'https://killgame.ai/KILLGame-SOL.dmg';
+        label.textContent = 'Download for macOS (Intel)';
+    }
+}
+
 function updateSystemStatus(totalStacked) {
     if (!statusEl) return;
     let statusText = "OPERATIONAL";
