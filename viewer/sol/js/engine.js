@@ -82,37 +82,18 @@ function copyCommand(id, btn) {
     }
 }
 
-function switchOS(os) {
-    const isMac = os === 'mac';
-    document.getElementById('cmd-mac').style.display          = isMac ? 'flex' : 'none';
-    document.getElementById('cmd-win').style.display          = isMac ? 'none' : 'flex';
-    document.getElementById('step-execute-mac').style.display = isMac ? '' : 'none';
-    document.getElementById('step-execute-win').style.display = isMac ? 'none' : '';
+function switchPlatform(os) {
+    var isMac = os === 'mac';
     document.getElementById('os-mac').classList.toggle('active', isMac);
     document.getElementById('os-win').classList.toggle('active', !isMac);
-}
-
-function switchInstall(mode) {
-    var isCli = mode === 'cli';
-    document.getElementById('install-cli').style.display = isCli ? '' : 'none';
-    document.getElementById('install-app').style.display = isCli ? 'none' : '';
-    document.getElementById('os-cli').classList.toggle('active', isCli);
-    document.getElementById('os-app').classList.toggle('active', !isCli);
-}
-
-function switchChip(chip) {
-    var isApple = chip === 'apple';
-    document.getElementById('chip-apple').classList.toggle('active', isApple);
-    document.getElementById('chip-intel').classList.toggle('active', !isApple);
-    var link  = document.getElementById('dl-mac');
-    var label = document.getElementById('dl-mac-label');
-    if (isApple) {
-        link.href = 'https://killgame.ai/KILLGame-SOL-arm64.dmg';
-        label.textContent = 'Download for macOS (Apple Silicon)';
-    } else {
-        link.href = 'https://killgame.ai/KILLGame-SOL.dmg';
-        label.textContent = 'Download for macOS (Intel)';
-    }
+    document.getElementById('dl-mac-section').style.display = isMac ? 'flex' : 'none';
+    document.getElementById('dl-win-section').style.display = isMac ? 'none' : 'flex';
+    document.getElementById('step-dl-text').textContent = isMac
+        ? 'Choose Apple Silicon or Intel below.'
+        : 'Click the download button below.';
+    document.getElementById('step-install-text').innerHTML = isMac
+        ? 'Open the <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">.dmg</code> and drag KILLGame SOL to Applications.<br><span style="opacity:0.7;font-size:0.65rem;">If macOS says "damaged", open Terminal and run: <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">xattr -cr /Applications/KILLGame\\ SOL.app</code></span>'
+        : 'Run the <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">.exe</code> installer and follow the prompts.';
 }
 
 function updateSystemStatus(totalStacked) {

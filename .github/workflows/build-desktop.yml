@@ -37,6 +37,17 @@ jobs:
         working-directory: agents/sol/desktop
         run: ${{ matrix.build_cmd }}
 
+      - name: Ad-hoc codesign (macOS)
+        if: runner.os == 'macOS'
+        working-directory: agents/sol/desktop
+        run: |
+          for app in dist/mac-arm64/*.app dist/mac/*.app; do
+            if [ -d "$app" ]; then
+              echo "Signing $app"
+              codesign --force --deep --sign - "$app"
+            fi
+          done
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
