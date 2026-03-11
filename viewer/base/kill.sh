@@ -15,14 +15,14 @@ done
 # 2. Pull agent files from GitHub
 echo "[2/5] Fetching agent files from GitHub..."
 for ROLE in $AGENTS; do
-  curl -f -s "$BASE_URL/agents/$ROLE/capability.js" -o "agents/$ROLE/capability.js"
-  curl -f -s "$BASE_URL/agents/$ROLE/config.json"   -o "agents/$ROLE/config.json"
+  curl -f -s "$BASE_URL/agents/base/$ROLE/capability.js" -o "agents/$ROLE/capability.js"
+  curl -f -s "$BASE_URL/agents/base/$ROLE/config.json"   -o "agents/$ROLE/config.json"
 done
-curl -f -s "$BASE_URL/agents/agent.js"      -o "agents/agent.js"
-curl -f -s "$BASE_URL/agents/common.js"     -o "agents/common.js"
-curl -f -s "$BASE_URL/agents/playbook.json" -o "agents/playbook.json"
-curl -f -s "$BASE_URL/agents/config.json"   -o "agents/config.json"
-curl -f -s "$BASE_URL/agents/KillGame.json" -o "agents/KillGame.json"
+curl -f -s "$BASE_URL/agents/base/agent.js"      -o "agents/agent.js"
+curl -f -s "$BASE_URL/agents/base/common.js"     -o "agents/common.js"
+curl -f -s "$BASE_URL/agents/base/playbook.json" -o "agents/playbook.json"
+curl -f -s "$BASE_URL/agents/base/config.json"   -o "agents/config.json"
+curl -f -s "$BASE_URL/agents/base/KillGame.json" -o "agents/KillGame.json"
 
 # 3. Write package.json
 echo "[3/5] Writing package.json..."

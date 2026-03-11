@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KILLGame SOL</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    background: #0a0a0a; color: #e0e0e0;
+    min-height: 100vh; padding: 20px;
+  }
+  h1 { color: #ff3333; font-size: 20px; margin-bottom: 16px; letter-spacing: 2px; }
+  .hidden { display: none !important; }
+
+  /* Setup */
+  #setup { max-width: 500px; margin: 60px auto; }
+  #setup h2 { color: #ff3333; font-size: 16px; margin-bottom: 20px; }
+  .btn {
+    display: inline-block; padding: 10px 24px; margin: 6px 4px;
+    background: #1a1a1a; color: #ff3333; border: 1px solid #ff3333;
+    font-family: inherit; font-size: 13px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #2a0a0a; }
+  .btn.active { background: #ff3333; color: #0a0a0a; }
+  .btn.green { color: #33ff33; border-color: #33ff33; }
+  .btn.green:hover { background: #0a2a0a; }
+  .btn.green.active { background: #33ff33; color: #0a0a0a; }
+  input, textarea {
+    width: 100%; padding: 10px; margin: 10px 0;
+    background: #111; color: #e0e0e0; border: 1px solid #333;
+    font-family: inherit; font-size: 13px;
+  }
+  .wallet-addr {
+    font-size: 12px; color: #888; word-break: break-all;
+    padding: 8px; background: #111; margin: 10px 0;
+  }
+  .note { font-size: 11px; color: #666; margin: 8px 0; }
+
+  /* Dashboard */
+  #dashboard { max-width: 900px; margin: 0 auto; }
+  .header-bar {
+    display: flex; gap: 20px; align-items: center;
+    padding: 12px 16px; background: #111; margin-bottom: 16px;
+    border: 1px solid #222;
+  }
+  .header-bar .stat { text-align: center; }
+  .header-bar .stat-label { font-size: 10px; color: #666; text-transform: uppercase; }
+  .header-bar .stat-value { font-size: 16px; color: #ff3333; }
+  .header-bar .stat-value.green { color: #33ff33; }
+
+  .controls { margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .status-dot.running { background: #33ff33; }
+  .status-dot.stopped { background: #ff3333; }
+  .status-text { font-size: 12px; color: #888; margin-left: 4px; }
+
+  /* Tables */
+  .section { margin-bottom: 16px; }
+  .section-title {
+    font-size: 12px; color: #ff3333; padding: 6px 0;
+    border-bottom: 1px solid #333; margin-bottom: 4px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 4px 8px; color: #888; border-bottom: 1px solid #222; }
+  td { padding: 4px 8px; border-bottom: 1px solid #111; }
+  td.ok { color: #33ff33; }
+  td.fail { color: #ff3333; }
+  td.pending { color: #ffaa00; }
+  td.secure { color: #33ff33; }
+  td.hostile { color: #ff3333; }
+  td.ready { color: #ffaa00; }
+
+  .error-msg { color: #ff3333; font-size: 12px; padding: 8px; background: #1a0a0a; margin: 8px 0; }
+  .cap-name { color: #33ccff; font-size: 14px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<!-- ── SETUP SCREEN ──────────────────────────────────────────────────────── -->
+<div id="setup">
+  <h1>KILLGAME SOL</h1>
+  <h2>Agent Setup</h2>
+
+  <div id="step-wallet">
+    <p style="margin-bottom: 12px; font-size: 13px;">Create or import your Solana wallet:</p>
+    <button class="btn" onclick="generateWallet()">Generate New Wallet</button>
+    <button class="btn" onclick="showImport()">Import Keypair</button>
+
+    <div id="import-box" class="hidden">
+      <textarea id="import-input" rows="3" placeholder="Paste 64-byte JSON array [...]"></textarea>
+      <button class="btn" onclick="importWallet()">Import</button>
+    </div>
+
+    <div id="wallet-info" class="hidden">
+      <div class="wallet-addr" id="wallet-addr"></div>
+      <p class="note">Fund this wallet with SOL to pay for transactions.</p>
+      <p class="note">Devnet faucet: <a href="https://faucet.solana.com" style="color:#33ccff;">faucet.solana.com</a></p>
+    </div>
+  </div>
+
+  <div id="step-start" class="hidden" style="margin-top: 20px;">
+    <button class="btn green" onclick="launchAgent()" id="btn-launch">Start Agent</button>
+  </div>
+
+  <div id="setup-error" class="error-msg hidden"></div>
+</div>
+
+<!-- ── DASHBOARD ─────────────────────────────────────────────────────────── -->
+<div id="dashboard" class="hidden">
+  <h1>KILLGAME SOL</h1>
+
+  <div class="header-bar">
+    <div class="stat"><div class="stat-label">Slot</div><div class="stat-value" id="d-slot">—</div></div>
+    <div class="stat"><div class="stat-label">SOL</div><div class="stat-value" id="d-sol">—</div></div>
+    <div class="stat"><div class="stat-label">KILL</div><div class="stat-value green" id="d-kill">—</div></div>
+    <div class="stat"><div class="stat-label">Power</div><div class="stat-value" id="d-power">—</div></div>
+    <div class="stat"><div class="stat-label">Agent</div><div class="stat-value cap-name" id="d-cap">—</div></div>
+    <div class="stat"><div class="stat-label">Next</div><div class="stat-value" id="d-next" style="font-size:12px;color:#888;">—</div></div>
+  </div>
+
+  <div class="controls">
+    <span class="status-dot stopped" id="status-dot"></span>
+    <span class="status-text" id="status-text">Stopped</span>
+    <button class="btn green" id="btn-start" onclick="launchAgent()">Start</button>
+    <button class="btn" id="btn-stop" onclick="stopAgent()" class="hidden">Stop</button>
+  </div>
+
+  <div id="sections"></div>
+  <div id="dash-error" class="error-msg hidden"></div>
+</div>
+
+<script>
+  let walletReady = false;
+
+  // ── Setup ──────────────────────────────────────────────────────────────
+  async function generateWallet() {
+    try {
+      const addr = await window.killAPI.generateWallet();
+      showWallet(addr);
+    } catch (e) { showSetupError(e.message); }
+  }
+
+  function showImport() {
+    document.getElementById("import-box").classList.remove("hidden");
+  }
+
+  async function importWallet() {
+    const input = document.getElementById("import-input").value.trim();
+    if (!input) return;
+    try {
+      const addr = await window.killAPI.importWallet(input);
+      showWallet(addr);
+    } catch (e) { showSetupError(e.message); }
+  }
+
+  function showWallet(addr) {
+    document.getElementById("wallet-addr").textContent = addr;
+    document.getElementById("wallet-info").classList.remove("hidden");
+    document.getElementById("step-start").classList.remove("hidden");
+    document.getElementById("import-box").classList.add("hidden");
+    walletReady = true;
+  }
+
+  function showSetupError(msg) {
+    const el = document.getElementById("setup-error");
+    el.textContent = msg;
+    el.classList.remove("hidden");
+  }
+
+  // ── Launch ─────────────────────────────────────────────────────────────
+  async function launchAgent() {
+    try {
+      document.getElementById("setup").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+      await window.killAPI.startAgent();
+    } catch (e) {
+      const el = document.getElementById("dash-error");
+      el.textContent = e.message;
+      el.classList.remove("hidden");
+    }
+  }
+
+  async function stopAgent() {
+    await window.killAPI.stopAgent();
+  }
+
+  // ── IPC Listeners ─────────────────────────────────────────────────────
+  window.killAPI.onWalletLoaded((addr) => {
+    showWallet(addr);
+  });
+
+  window.killAPI.onAgentTick((data) => {
+    document.getElementById("d-slot").textContent  = data.slot;
+    document.getElementById("d-sol").textContent   = data.sol;
+    document.getElementById("d-kill").textContent  = data.kill;
+    document.getElementById("d-power").textContent = data.power;
+    document.getElementById("d-cap").textContent   = data.capName;
+    document.getElementById("d-next").textContent  = data.next;
+  });
+
+  window.killAPI.onAgentSections((sections) => {
+    const container = document.getElementById("sections");
+    container.innerHTML = "";
+    for (const sec of sections) {
+      const div = document.createElement("div");
+      div.className = "section";
+      if (sec.title) {
+        const h = document.createElement("div");
+        h.className = "section-title";
+        h.textContent = sec.title;
+        div.appendChild(h);
+      }
+      if (sec.rows && sec.rows.length > 0) {
+        const table = document.createElement("table");
+        const keys = Object.keys(sec.rows[0]);
+        const thead = document.createElement("thead");
+        const hr = document.createElement("tr");
+        for (const k of keys) { const th = document.createElement("th"); th.textContent = k; hr.appendChild(th); }
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = document.createElement("tbody");
+        for (const row of sec.rows) {
+          const tr = document.createElement("tr");
+          for (const k of keys) {
+            const td = document.createElement("td");
+            const val = row[k] || "";
+            td.textContent = val;
+            const lower = val.toLowerCase();
+            if (lower === "ok")      td.className = "ok";
+            if (lower === "fail")    td.className = "fail";
+            if (lower === "pending") td.className = "pending";
+            if (lower === "secure")  td.className = "secure";
+            if (lower === "hostile") td.className = "hostile";
+            if (lower === "ready")   td.className = "ready";
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        div.appendChild(table);
+      }
+      container.appendChild(div);
+    }
+  });
+
+  window.killAPI.onAgentStatus((data) => {
+    const dot  = document.getElementById("status-dot");
+    const text = document.getElementById("status-text");
+    if (data.running) {
+      dot.className = "status-dot running";
+      text.textContent = "Running";
+    } else {
+      dot.className = "status-dot stopped";
+      text.textContent = "Stopped";
+    }
+  });
+
+  window.killAPI.onAgentError((msg) => {
+    const el = document.getElementById("dash-error");
+    el.textContent = msg;
+    el.classList.remove("hidden");
+    setTimeout(() => el.classList.add("hidden"), 5000);
+  });
+</script>
+</body>
+</html>

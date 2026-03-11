@@ -14,14 +14,14 @@ mkdir -p "contracts-solana/target/idl"
 # 2. Pull agent files from GitHub
 echo "[2/5] Fetching agent files from GitHub..."
 for ROLE in $AGENTS; do
-  curl -f -s "$BASE_URL/agents-sol/$ROLE/capability.js" -o "agents/$ROLE/capability.js" || echo "  WARN: agents-sol/$ROLE/capability.js not on main yet"
-  curl -f -s "$BASE_URL/agents-sol/$ROLE/config.json"   -o "agents/$ROLE/config.json"   || echo "  WARN: agents-sol/$ROLE/config.json not on main yet"
+  curl -f -s "$BASE_URL/agents/sol/$ROLE/capability.js" -o "agents/$ROLE/capability.js" || echo "  WARN: agents/sol/$ROLE/capability.js not on main yet"
+  curl -f -s "$BASE_URL/agents/sol/$ROLE/config.json"   -o "agents/$ROLE/config.json"   || echo "  WARN: agents/sol/$ROLE/config.json not on main yet"
 done
-curl -f -s "$BASE_URL/agents-sol/agent.js"      -o "agents/agent.js"      || echo "  WARN: agent.js"
-curl -f -s "$BASE_URL/agents-sol/common.js"     -o "agents/common.js"     || echo "  WARN: common.js"
-curl -f -s "$BASE_URL/agents-sol/playbook.json" -o "agents/playbook.json" || echo "  WARN: playbook.json"
-curl -f -s "$BASE_URL/agents-sol/config.json"   -o "agents/config.json"   || echo "  WARN: config.json"
-curl -f -s "$BASE_URL/agents-sol/KillGame.json" -o "agents/KillGame.json" || echo "  WARN: KillGame.json"
+curl -f -s "$BASE_URL/agents/sol/agent.js"      -o "agents/agent.js"      || echo "  WARN: agent.js"
+curl -f -s "$BASE_URL/agents/sol/common.js"     -o "agents/common.js"     || echo "  WARN: common.js"
+curl -f -s "$BASE_URL/agents/sol/playbook.json" -o "agents/playbook.json" || echo "  WARN: playbook.json"
+curl -f -s "$BASE_URL/agents/sol/config.json"   -o "agents/config.json"   || echo "  WARN: config.json"
+curl -f -s "$BASE_URL/agents/sol/KillGame.json" -o "agents/KillGame.json" || echo "  WARN: KillGame.json"
 cat <<'IDLEOF' > contracts-solana/target/idl/kill_game.json
 {
   "address": "2FbeFxvFH2b4KyAcwNToFr3pHzYK4ybYQWriXjjKEr5D",

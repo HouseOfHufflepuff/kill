@@ -1,0 +1,329 @@
+{
+  "address": "761RUKWGgStRshdz3HJcS7dPodFSckDAcudLtU1CZ1b6",
+  "metadata": {
+    "name": "kill_faucet",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "KILL Faucet — Solana/Anchor port of KillFaucet.sol"
+  },
+  "instructions": [
+    {
+      "name": "claim",
+      "docs": [
+        "Claim 10% of the current faucet vault balance.",
+        "Callable once per wallet.  Claimer must hold ≥ 1 KILL already."
+      ],
+      "discriminator": [
+        62,
+        198,
+        214,
+        193,
+        213,
+        159,
+        108,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "faucet_config",
+          "docs": [
+            "Faucet config — provides vault address and signs vault transfers."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  117,
+                  99,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim_record",
+          "docs": [
+            "Claim record — `init` fails if this account already exists, which is",
+            "how we enforce the one-claim-per-wallet rule with zero extra code.",
+            "Seeds: [b\"claim_record\", claimer.key()]"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "claimer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "faucet_vault",
+          "docs": [
+            "Faucet vault — source of the claim transfer."
+          ],
+          "writable": true
+        },
+        {
+          "name": "claimer_token_account",
+          "docs": [
+            "Claimer's KILL token account — receives the faucet payout."
+          ],
+          "writable": true
+        },
+        {
+          "name": "kill_mint"
+        },
+        {
+          "name": "claimer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_faucet",
+      "docs": [
+        "One-time setup: creates the FaucetConfig PDA and vault token account.",
+        "After calling this, transfer KILL tokens to the vault to fund the faucet."
+      ],
+      "discriminator": [
+        159,
+        109,
+        237,
+        214,
+        69,
+        231,
+        14,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "faucet_config",
+          "docs": [
+            "Singleton config PDA — seeds: [b\"faucet_config\"]"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  117,
+                  99,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "kill_mint",
+          "docs": [
+            "The KILL SPL mint (deploy KillToken first and pass its address here)."
+          ]
+        },
+        {
+          "name": "faucet_vault",
+          "docs": [
+            "Faucet vault — a new token account whose authority is `faucet_config`.",
+            "Top up this account to fund the faucet."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ClaimRecord",
+      "discriminator": [
+        57,
+        229,
+        0,
+        9,
+        65,
+        62,
+        96,
+        7
+      ]
+    },
+    {
+      "name": "FaucetConfig",
+      "discriminator": [
+        216,
+        31,
+        49,
+        154,
+        106,
+        125,
+        143,
+        142
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "AlreadyClaimed",
+      "msg": "You have already claimed from the faucet"
+    },
+    {
+      "code": 6001,
+      "name": "FaucetEmpty",
+      "msg": "Faucet vault is empty"
+    },
+    {
+      "code": 6002,
+      "name": "Unauthorized",
+      "msg": "Unauthorized — admin only"
+    }
+  ],
+  "types": [
+    {
+      "name": "ClaimRecord",
+      "docs": [
+        "One-per-wallet claim record — PDA seeds: [b\"claim_record\", claimer.key()]",
+        "",
+        "The mere existence of this account proves a wallet has already claimed.",
+        "Because `init` is used (not `init_if_needed`), a second claim attempt will",
+        "fail with \"account already in use\" before our instruction logic even runs."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "claimer",
+            "docs": [
+              "Wallet that claimed"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Slot at which the claim occurred"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "Canonical bump"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FaucetConfig",
+      "docs": [
+        "Singleton faucet configuration — PDA seeds: [b\"faucet_config\"]",
+        "",
+        "Holds the mint address and the vault token account.  The PDA itself is the",
+        "vault authority so the program can sign transfers without a private key."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kill_mint",
+            "docs": [
+              "SPL mint for the KILL token"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "faucet_vault",
+            "docs": [
+              "Faucet vault token account (PDA authority = this account)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "admin",
+            "docs": [
+              "Admin wallet (can top-up or reclaim vault funds)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "Canonical bump for cheap PDA re-derivation"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
