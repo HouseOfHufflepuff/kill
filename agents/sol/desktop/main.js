@@ -18,6 +18,8 @@ const IDL_FAUCET = JSON.parse(fs.readFileSync(path.join(IDL_DIR, "kill_faucet.js
 let mainWindow = null;
 let agentTimer = null;
 let wallet     = null;
+let startingSol  = null;
+let startingKill = null;
 
 // ── Window ────────────────────────────────────────────────────────────────────
 function createWindow() {
@@ -147,6 +149,11 @@ ipcMain.handle("start-agent", async (_e, strategyName) => {
   let lastSlot  = 0;
   const SLOT_DELTA = config.settings.SLOT_DELTA || 25;
 
+  // Record starting balances for P&L
+  const startBal = await getBalances(wallet, connection, KILL_MINT);
+  startingSol  = startBal.sol;
+  startingKill = startBal.kill;
+
   // Attempt faucet claim
   try {
     const { claimFaucet } = require(path.join(AGENTS_DIR, "common"));
@@ -182,12 +189,17 @@ ipcMain.handle("start-agent", async (_e, strategyName) => {
         }
       }
 
+      const pnlSol  = balances.sol - startingSol;
+      const pnlKill = balances.kill - startingKill;
+
       send("agent-tick", {
         slot, capName,
         sol: balances.sol.toFixed(4),
         kill: Math.round(balances.kill).toLocaleString(),
         power: fmtPow(totalPower),
         next: slots[(slotIndex) % slots.length],
+        pnlSol: pnlSol.toFixed(4),
+        pnlKill: Math.round(pnlKill).toLocaleString(),
       });
 
       const ctx = {
@@ -231,4 +243,20 @@ ipcMain.handle("get-strategies", async () => {
     return fs.existsSync(p);
   });
   return dirs;
+});
+
+ipcMain.handle("get-config", async () => {
+  const config   = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
+  const playbook = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "playbook.json"), "utf8"));
+  return { config, playbook };
+});
+
+ipcMain.handle("save-config", async (_e, data) => {
+  if (data.config) {
+    fs.writeFileSync(path.join(AGENTS_DIR, "config.json"), JSON.stringify(data.config, null, 2) + "\n");
+  }
+  if (data.playbook) {
+    fs.writeFileSync(path.join(AGENTS_DIR, "playbook.json"), JSON.stringify(data.playbook, null, 2) + "\n");
+  }
+  return true;
 });

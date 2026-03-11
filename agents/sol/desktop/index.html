@@ -28,6 +28,8 @@
   .btn.green { color: #33ff33; border-color: #33ff33; }
   .btn.green:hover { background: #0a2a0a; }
   .btn.green.active { background: #33ff33; color: #0a0a0a; }
+  .btn.cyan { color: #33ccff; border-color: #33ccff; }
+  .btn.cyan:hover { background: #0a1a2a; }
   input, textarea {
     width: 100%; padding: 10px; margin: 10px 0;
     background: #111; color: #e0e0e0; border: 1px solid #333;
@@ -42,7 +44,7 @@
   /* Dashboard */
   #dashboard { max-width: 900px; margin: 0 auto; }
   .header-bar {
-    display: flex; gap: 20px; align-items: center;
+    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
     padding: 12px 16px; background: #111; margin-bottom: 16px;
     border: 1px solid #222;
   }
@@ -50,6 +52,11 @@
   .header-bar .stat-label { font-size: 10px; color: #666; text-transform: uppercase; }
   .header-bar .stat-value { font-size: 16px; color: #ff3333; }
   .header-bar .stat-value.green { color: #33ff33; }
+  .header-bar .divider {
+    width: 1px; height: 32px; background: #333; flex-shrink: 0;
+  }
+  .pnl-pos { color: #33ff33 !important; }
+  .pnl-neg { color: #ff3333 !important; }
 
   .controls { margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -75,6 +82,35 @@
 
   .error-msg { color: #ff3333; font-size: 12px; padding: 8px; background: #1a0a0a; margin: 8px 0; }
   .cap-name { color: #33ccff; font-size: 14px; font-weight: bold; }
+
+  /* Config Modal */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-box {
+    background: #111; border: 1px solid #333; padding: 24px;
+    width: min(700px, 92vw); max-height: 85vh; overflow-y: auto;
+  }
+  .modal-box h2 { color: #ff3333; font-size: 16px; margin-bottom: 16px; }
+  .cfg-group { margin-bottom: 16px; }
+  .cfg-group-title {
+    font-size: 12px; color: #33ccff; text-transform: uppercase;
+    border-bottom: 1px solid #222; padding-bottom: 4px; margin-bottom: 8px;
+  }
+  .cfg-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+  }
+  .cfg-row label {
+    font-size: 12px; color: #888; width: 220px; flex-shrink: 0;
+  }
+  .cfg-row input {
+    flex: 1; padding: 6px 8px; margin: 0;
+    background: #0a0a0a; color: #e0e0e0; border: 1px solid #333;
+    font-family: inherit; font-size: 12px;
+  }
+  .cfg-actions { display: flex; gap: 8px; margin-top: 16px; }
 </style>
 </head>
 <body>
@@ -117,6 +153,10 @@
     <div class="stat"><div class="stat-label">SOL</div><div class="stat-value" id="d-sol">—</div></div>
     <div class="stat"><div class="stat-label">KILL</div><div class="stat-value green" id="d-kill">—</div></div>
     <div class="stat"><div class="stat-label">Power</div><div class="stat-value" id="d-power">—</div></div>
+    <div class="divider"></div>
+    <div class="stat"><div class="stat-label">SOL P&L</div><div class="stat-value" id="d-pnl-sol" style="font-size:14px;">—</div></div>
+    <div class="stat"><div class="stat-label">KILL P&L</div><div class="stat-value" id="d-pnl-kill" style="font-size:14px;">—</div></div>
+    <div class="divider"></div>
     <div class="stat"><div class="stat-label">Agent</div><div class="stat-value cap-name" id="d-cap">—</div></div>
     <div class="stat"><div class="stat-label">Next</div><div class="stat-value" id="d-next" style="font-size:12px;color:#888;">—</div></div>
   </div>
@@ -125,11 +165,25 @@
     <span class="status-dot stopped" id="status-dot"></span>
     <span class="status-text" id="status-text">Stopped</span>
     <button class="btn green" id="btn-start" onclick="launchAgent()">Start</button>
-    <button class="btn" id="btn-stop" onclick="stopAgent()" class="hidden">Stop</button>
+    <button class="btn" id="btn-stop" onclick="stopAgent()">Stop</button>
+    <button class="btn cyan" id="btn-config" onclick="openConfig()">Configure</button>
   </div>
 
   <div id="sections"></div>
   <div id="dash-error" class="error-msg hidden"></div>
+</div>
+
+<!-- ── CONFIG MODAL ──────────────────────────────────────────────────────── -->
+<div id="config-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h2>AGENT CONFIGURATION</h2>
+    <div id="cfg-body"></div>
+    <div class="cfg-actions">
+      <button class="btn green" onclick="saveConfig()">Save</button>
+      <button class="btn" onclick="closeConfig()">Cancel</button>
+    </div>
+    <div id="cfg-status" style="font-size:11px;color:#33ff33;margin-top:8px;"></div>
+  </div>
 </div>
 
 <script>
@@ -187,6 +241,130 @@
     await window.killAPI.stopAgent();
   }
 
+  // ── P&L display ─────────────────────────────────────────────────────
+  function updatePnl(elId, value) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const num = parseFloat(value.replace(/,/g, ''));
+    el.textContent = (num >= 0 ? '+' : '') + value;
+    el.className = 'stat-value ' + (num >= 0 ? 'pnl-pos' : 'pnl-neg');
+  }
+
+  // ── Config Modal ───────────────────────────────────────────────────────
+  let cfgData = null;
+
+  async function openConfig() {
+    try {
+      cfgData = await window.killAPI.getConfig();
+      renderConfig();
+      document.getElementById("config-modal").classList.remove("hidden");
+    } catch (e) {
+      const el = document.getElementById("dash-error");
+      el.textContent = "Failed to load config: " + e.message;
+      el.classList.remove("hidden");
+    }
+  }
+
+  function closeConfig() {
+    document.getElementById("config-modal").classList.add("hidden");
+    document.getElementById("cfg-status").textContent = "";
+  }
+
+  function renderConfig() {
+    const body = document.getElementById("cfg-body");
+    const s = cfgData.config.settings;
+    const pb = cfgData.playbook;
+
+    body.innerHTML = `
+      <div class="cfg-group">
+        <div class="cfg-group-title">Playbook</div>
+        ${Object.entries(pb.runs).map(([name, caps]) => `
+          <div class="cfg-row">
+            <label>${name}</label>
+            <input type="text" data-pb-run="${name}" value="${caps.join(', ')}">
+          </div>
+        `).join('')}
+        <div class="cfg-row">
+          <label>strategy (run order)</label>
+          <input type="text" id="cfg-strategy" value="${pb.strategy.join(', ')}">
+        </div>
+      </div>
+
+      <div class="cfg-group">
+        <div class="cfg-group-title">Global</div>
+        <div class="cfg-row"><label>SLOT_DELTA</label><input type="number" data-cfg="SLOT_DELTA" value="${s.SLOT_DELTA}"></div>
+        <div class="cfg-row"><label>MIN_SPAWN</label><input type="number" data-cfg="MIN_SPAWN" value="${s.MIN_SPAWN}"></div>
+        <div class="cfg-row"><label>HUB_STACK</label><input type="number" data-cfg="HUB_STACK" value="${s.HUB_STACK}"></div>
+        <div class="cfg-row"><label>KILL_MULTIPLIER</label><input type="number" data-cfg="KILL_MULTIPLIER" value="${s.KILL_MULTIPLIER}"></div>
+      </div>
+
+      <div class="cfg-group">
+        <div class="cfg-group-title">Fortress</div>
+        <div class="cfg-row"><label>TARGET_UNITS</label><input type="number" data-cfg-cap="fortress.TARGET_UNITS" value="${s.fortress.TARGET_UNITS}"></div>
+        <div class="cfg-row"><label>REPLENISH_AMT</label><input type="number" data-cfg-cap="fortress.REPLENISH_AMT" value="${s.fortress.REPLENISH_AMT}"></div>
+        <div class="cfg-row"><label>HUB_PERIMETER</label><input type="number" data-cfg-cap="fortress.HUB_PERIMETER" value="${s.fortress.HUB_PERIMETER}"></div>
+        <div class="cfg-row"><label>MOVE_ON_DECAY_PERCENT</label><input type="number" data-cfg-cap="fortress.MOVE_ON_DECAY_PERCENT" value="${s.fortress.MOVE_ON_DECAY_PERCENT}"></div>
+      </div>
+
+      <div class="cfg-group">
+        <div class="cfg-group-title">Sniper</div>
+        <div class="cfg-row"><label>SPAWN_PROFITABILITY_THRESHOLD</label><input type="number" step="0.01" data-cfg-cap="sniper.SPAWN_PROFITABILITY_THRESHOLD" value="${s.sniper.SPAWN_PROFITABILITY_THRESHOLD}"></div>
+      </div>
+
+      <div class="cfg-group">
+        <div class="cfg-group-title">Seed</div>
+        <div class="cfg-row"><label>SEED_AMOUNT</label><input type="number" data-cfg-cap="seed.SEED_AMOUNT" value="${s.seed.SEED_AMOUNT}"></div>
+        <div class="cfg-row"><label>BATCH_SEED</label><input type="number" data-cfg-cap="seed.BATCH_SEED" value="${s.seed.BATCH_SEED}"></div>
+      </div>
+
+      <div class="cfg-group">
+        <div class="cfg-group-title">Aftershock</div>
+        <div class="cfg-row"><label>MAX_KILL</label><input type="number" data-cfg-cap="aftershock.MAX_KILL" value="${s.aftershock.MAX_KILL}"></div>
+      </div>
+
+      <div class="cfg-group">
+        <div class="cfg-group-title">Nuke</div>
+        <div class="cfg-row"><label>TARGET_STACKS</label><input type="text" data-cfg-cap="nuke.TARGET_STACKS" value="${s.nuke.TARGET_STACKS.join(', ')}"></div>
+      </div>
+    `;
+  }
+
+  async function saveConfig() {
+    // Read playbook
+    const newPlaybook = { runs: {}, strategy: [] };
+    document.querySelectorAll('[data-pb-run]').forEach(el => {
+      const name = el.dataset.pbRun;
+      newPlaybook.runs[name] = el.value.split(',').map(s => s.trim()).filter(Boolean);
+    });
+    const stratEl = document.getElementById('cfg-strategy');
+    newPlaybook.strategy = stratEl.value.split(',').map(s => s.trim()).filter(Boolean);
+
+    // Read global settings
+    const s = cfgData.config.settings;
+    document.querySelectorAll('[data-cfg]').forEach(el => {
+      const key = el.dataset.cfg;
+      s[key] = el.type === 'number' ? Number(el.value) : el.value;
+    });
+
+    // Read capability settings
+    document.querySelectorAll('[data-cfg-cap]').forEach(el => {
+      const [cap, key] = el.dataset.cfgCap.split('.');
+      if (key === 'TARGET_STACKS') {
+        s[cap][key] = el.value.split(',').map(v => Number(v.trim())).filter(v => !isNaN(v));
+      } else {
+        s[cap][key] = el.type === 'number' ? Number(el.value) : el.value;
+      }
+    });
+
+    try {
+      await window.killAPI.saveConfig({ config: cfgData.config, playbook: newPlaybook });
+      document.getElementById("cfg-status").textContent = "Saved. Restart agent to apply changes.";
+    } catch (e) {
+      document.getElementById("cfg-status").textContent = "Error: " + e.message;
+      document.getElementById("cfg-status").style.color = "#ff3333";
+    }
+  }
+
   // ── IPC Listeners ─────────────────────────────────────────────────────
   window.killAPI.onWalletLoaded((addr) => {
     showWallet(addr);
@@ -199,6 +377,8 @@
     document.getElementById("d-power").textContent = data.power;
     document.getElementById("d-cap").textContent   = data.capName;
     document.getElementById("d-next").textContent  = data.next;
+    updatePnl("d-pnl-sol", data.pnlSol);
+    updatePnl("d-pnl-kill", data.pnlKill);
   });
 
   window.killAPI.onAgentSections((sections) => {

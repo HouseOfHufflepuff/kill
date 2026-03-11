@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld("killAPI", {
   startAgent:     (strat)   => ipcRenderer.invoke("start-agent", strat),
   stopAgent:      ()        => ipcRenderer.invoke("stop-agent"),
   getStrategies:  ()        => ipcRenderer.invoke("get-strategies"),
+  getConfig:      ()        => ipcRenderer.invoke("get-config"),
+  saveConfig:     (data)    => ipcRenderer.invoke("save-config", data),
   onWalletLoaded: (cb)      => ipcRenderer.on("wallet-loaded",   (_e, d) => cb(d)),
   onAgentTick:    (cb)      => ipcRenderer.on("agent-tick",       (_e, d) => cb(d)),
   onAgentSections:(cb)      => ipcRenderer.on("agent-sections",   (_e, d) => cb(d)),
