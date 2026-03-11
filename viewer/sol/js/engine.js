@@ -88,9 +88,7 @@ function switchPlatform(os) {
     document.getElementById('os-win').classList.toggle('active', !isMac);
     document.getElementById('dl-mac-section').style.display = isMac ? 'flex' : 'none';
     document.getElementById('dl-win-section').style.display = isMac ? 'none' : 'flex';
-    document.getElementById('step-dl-text').textContent = isMac
-        ? 'Choose Apple Silicon or Intel below.'
-        : 'Click the download button below.';
+    document.getElementById('step-dl-text').textContent = 'Click the download button below.';
     document.getElementById('step-install-text').innerHTML = isMac
         ? 'Open the <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">.dmg</code> and drag KILLGame SOL to Applications.<br><span style="opacity:0.7;font-size:0.65rem;">If macOS says "damaged", open Terminal and run: <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">xattr -cr /Applications/KILLGame\\ SOL.app</code></span>'
         : 'Run the <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">.exe</code> installer and follow the prompts.';
