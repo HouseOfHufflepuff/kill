@@ -26,7 +26,7 @@
     "icon": "icon.png",
     "mac": {
       "category": "public.app-category.games",
-      "artifactName": "KILLGameSetup.dmg",
+      "artifactName": "KILLGAME.dmg",
       "target": [
         { "target": "dmg", "arch": ["arm64"] }
       ]
@@ -37,7 +37,7 @@
     "nsis": {
       "oneClick": true,
       "allowToChangeInstallationDirectory": false,
-      "artifactName": "KILLGameSetup.exe"
+      "artifactName": "KILLGAME.exe"
     }
   },
   "dependencies": {

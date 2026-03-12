@@ -554,17 +554,6 @@ async function pollAgentRegistry() {
         }
     }
 
-    // ── Configure button ──────────────────────────────────────────────────────
-    const cfgBtn = document.getElementById('cfg-agent-btn');
-    if (cfgBtn) {
-        if (agentOnline) {
-            cfgBtn.style.color = 'var(--cyan)';
-            cfgBtn.style.borderColor = 'rgba(20,241,149,0.35)';
-        } else {
-            cfgBtn.style.color = '';
-            cfgBtn.style.borderColor = '';
-        }
-    }
 
     // ── Mission checklist ─────────────────────────────────────────────────────
     function setCheck(id, on) {
