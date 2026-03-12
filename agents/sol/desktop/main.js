@@ -14,9 +14,36 @@ if (isDev) {
 }
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
-const AGENTS_DIR = path.join(__dirname, "agents");
+const BUNDLED_AGENTS_DIR = path.join(__dirname, "agents");
+const AGENTS_DIR = BUNDLED_AGENTS_DIR;
 const IDL_DIR    = path.join(__dirname, "idl");
-const ENV_PATH   = path.join(app.getPath("userData"), ".env");
+const USER_DATA  = app.getPath("userData");
+const ENV_PATH   = path.join(USER_DATA, ".env");
+
+// User-writable config: stored in userData, seeded from bundled defaults
+const USER_CONFIG_PATH   = path.join(USER_DATA, "config.json");
+const USER_PLAYBOOK_PATH = path.join(USER_DATA, "playbook.json");
+
+function ensureUserConfig() {
+  if (!fs.existsSync(USER_CONFIG_PATH)) {
+    const src = path.join(BUNDLED_AGENTS_DIR, "config.json");
+    if (fs.existsSync(src)) fs.copyFileSync(src, USER_CONFIG_PATH);
+  }
+  if (!fs.existsSync(USER_PLAYBOOK_PATH)) {
+    const src = path.join(BUNDLED_AGENTS_DIR, "playbook.json");
+    if (fs.existsSync(src)) fs.copyFileSync(src, USER_PLAYBOOK_PATH);
+  }
+}
+
+function readConfig() {
+  ensureUserConfig();
+  return JSON.parse(fs.readFileSync(USER_CONFIG_PATH, "utf8"));
+}
+
+function readPlaybook() {
+  ensureUserConfig();
+  return JSON.parse(fs.readFileSync(USER_PLAYBOOK_PATH, "utf8"));
+}
 
 const IDL_GAME   = JSON.parse(fs.readFileSync(path.join(IDL_DIR, "kill_game.json"),   "utf8"));
 const IDL_FAUCET = JSON.parse(fs.readFileSync(path.join(IDL_DIR, "kill_faucet.json"), "utf8"));
@@ -33,7 +60,7 @@ let startingKill = null;
 function startBlockScan() {
   if (scanTimer) return;
   try {
-    const cfg  = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
+    const cfg  = readConfig();
     const conn = new web3.Connection(cfg.network.rpc_url, "confirmed");
     scanTimer = setInterval(async () => {
       try {
@@ -56,7 +83,7 @@ function createWindow() {
   const iconPath = path.join(__dirname, "icon.png");
   mainWindow = new BrowserWindow({
     width: 900, height: 700,
-    title: "KILLGame SOL",
+    title: "KILLGAME",
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -85,7 +112,7 @@ app.whenReady().then(() => {
           startBlockScan();
           // Try devnet airdrop on startup if wallet is unfunded
           try {
-            const cfg = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
+            const cfg = readConfig();
             const conn = new web3.Connection(cfg.network.rpc_url, "confirmed");
             const solBal = await conn.getBalance(kp.publicKey);
             if (solBal === 0) {
@@ -184,8 +211,8 @@ ipcMain.handle("start-agent", async (_e, strategyName) => {
   if (agentTimer) { clearInterval(agentTimer); agentTimer = null; }
   stopBlockScan();
 
-  const config   = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
-  const playbook = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "playbook.json"), "utf8"));
+  const config   = readConfig();
+  const playbook = readPlaybook();
   const rpcUrl   = config.network.rpc_url;
   const connection = new web3.Connection(rpcUrl, "confirmed");
   const KILL_MINT  = new web3.PublicKey(config.network.kill_mint);
@@ -327,7 +354,7 @@ ipcMain.handle("stop-agent", async () => {
 
 ipcMain.handle("get-balances", async () => {
   if (!wallet) throw new Error("No wallet");
-  const config    = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
+  const config    = readConfig();
   const conn      = new web3.Connection(config.network.rpc_url, "confirmed");
   const KILL_MINT = new web3.PublicKey(config.network.kill_mint);
   return await getBalances(wallet, conn, KILL_MINT);
@@ -343,9 +370,7 @@ ipcMain.handle("get-strategies", async () => {
 });
 
 ipcMain.handle("get-config", async () => {
-  const config   = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
-  const playbook = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "playbook.json"), "utf8"));
-  return { config, playbook };
+  return { config: readConfig(), playbook: readPlaybook() };
 });
 
 ipcMain.handle("open-external", async (_e, url) => {
@@ -353,11 +378,12 @@ ipcMain.handle("open-external", async (_e, url) => {
 });
 
 ipcMain.handle("save-config", async (_e, data) => {
+  ensureUserConfig();
   if (data.config) {
-    fs.writeFileSync(path.join(AGENTS_DIR, "config.json"), JSON.stringify(data.config, null, 2) + "\n");
+    fs.writeFileSync(USER_CONFIG_PATH, JSON.stringify(data.config, null, 2) + "\n");
   }
   if (data.playbook) {
-    fs.writeFileSync(path.join(AGENTS_DIR, "playbook.json"), JSON.stringify(data.playbook, null, 2) + "\n");
+    fs.writeFileSync(USER_PLAYBOOK_PATH, JSON.stringify(data.playbook, null, 2) + "\n");
   }
   return true;
 });

@@ -13,7 +13,7 @@
   },
   "build": {
     "appId": "ai.killgame.sol",
-    "productName": "KILLGame SOL",
+    "productName": "KILLGAME",
     "files": [
       "main.js",
       "preload.js",
