@@ -21,7 +21,7 @@ const PAGE_SIZE  = 1000;
 const PAGE_DELAY = 600;   // ms between signature pagination calls
 const BASE_FEE   = 5000;  // lamports per tx (Solana base fee, 1 signature)
 
-const agentCfg     = JSON.parse(fs.readFileSync(path.join(__dirname, "../../agents-sol/config.json"), "utf8"));
+const agentCfg     = JSON.parse(fs.readFileSync(path.join(__dirname, "../../agents/sol/config.json"), "utf8"));
 const SUPABASE_URL  = agentCfg.settings.SUPABASE_URL;
 const SUPABASE_KEY  = agentCfg.settings.SUPABASE_KEY;
 

@@ -1,5 +1,5 @@
 "use strict";
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
 const fs   = require("fs");
 const anchor = require("@coral-xyz/anchor");
@@ -17,15 +17,40 @@ const IDL_FAUCET = JSON.parse(fs.readFileSync(path.join(IDL_DIR, "kill_faucet.js
 // ── State ─────────────────────────────────────────────────────────────────────
 let mainWindow = null;
 let agentTimer = null;
+let scanTimer  = null;
 let wallet     = null;
 let startingSol  = null;
 let startingKill = null;
 
+// ── Block Scanner ──────────────────────────────────────────────────────────────
+function startBlockScan() {
+  if (scanTimer) return;
+  try {
+    const cfg  = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
+    const conn = new web3.Connection(cfg.network.rpc_url, "confirmed");
+    scanTimer = setInterval(async () => {
+      try {
+        const slot = await conn.getSlot("confirmed");
+        send("block-scan", { slot });
+      } catch (_) {}
+    }, 2000);
+    console.log("[SCAN] Block scanner started");
+  } catch (e) {
+    console.log("[SCAN] Failed to start block scanner:", e.message);
+  }
+}
+
+function stopBlockScan() {
+  if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+}
+
 // ── Window ────────────────────────────────────────────────────────────────────
 function createWindow() {
+  const iconPath = path.join(__dirname, "icon.png");
   mainWindow = new BrowserWindow({
     width: 900, height: 700,
     title: "KILLGame SOL",
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -36,8 +61,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === "darwin" && app.dock) {
+    try { app.dock.setIcon(path.join(__dirname, "icon.png")); } catch (_) {}
+  }
   createWindow();
-  // Send saved wallet on load if exists
   if (fs.existsSync(ENV_PATH)) {
     try {
       const raw = fs.readFileSync(ENV_PATH, "utf8");
@@ -45,14 +72,36 @@ app.whenReady().then(() => {
       if (match) {
         const kp = web3.Keypair.fromSecretKey(Uint8Array.from(JSON.parse(match[1])));
         wallet = kp;
-        mainWindow.webContents.once("did-finish-load", () => {
-          mainWindow.webContents.send("wallet-loaded", kp.publicKey.toBase58());
+        mainWindow.webContents.once("did-finish-load", async () => {
+          const addr = kp.publicKey.toBase58();
+          mainWindow.webContents.send("wallet-loaded", addr);
+          startBlockScan();
+          // Try devnet airdrop on startup if wallet is unfunded
+          try {
+            const cfg = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
+            const conn = new web3.Connection(cfg.network.rpc_url, "confirmed");
+            const solBal = await conn.getBalance(kp.publicKey);
+            if (solBal === 0) {
+              console.log("[STARTUP] SOL = 0, requesting devnet airdrop...");
+              try {
+                const sig = await conn.requestAirdrop(kp.publicKey, 1e9); // 1 SOL
+                await conn.confirmTransaction(sig, "confirmed");
+                console.log("[STARTUP] Airdrop confirmed:", sig);
+                send("agent-airdrop", { success: true, sol: 1 });
+              } catch (aerr) {
+                console.log("[STARTUP] Airdrop failed:", aerr.message);
+                send("agent-unfunded", { address: addr });
+              }
+            }
+          } catch (e) {
+            console.log("[STARTUP] Balance check failed:", e.message);
+          }
         });
       }
     } catch (_) {}
   }
 });
-app.on("window-all-closed", () => app.quit());
+app.on("window-all-closed", () => { stopBlockScan(); app.quit(); });
 
 // ── Wallet IPC ────────────────────────────────────────────────────────────────
 ipcMain.handle("generate-wallet", async () => {
@@ -60,7 +109,8 @@ ipcMain.handle("generate-wallet", async () => {
   const keyArray = Array.from(kp.secretKey);
   fs.writeFileSync(ENV_PATH, `AGENT_PK=${JSON.stringify(keyArray)}\n`);
   wallet = kp;
-  return kp.publicKey.toBase58();
+  startBlockScan();
+  return { address: kp.publicKey.toBase58(), privateKey: JSON.stringify(keyArray) };
 });
 
 ipcMain.handle("import-wallet", async (_e, input) => {
@@ -73,6 +123,7 @@ ipcMain.handle("import-wallet", async (_e, input) => {
   const kp = web3.Keypair.fromSecretKey(Uint8Array.from(keyArray));
   fs.writeFileSync(ENV_PATH, `AGENT_PK=${JSON.stringify(keyArray)}\n`);
   wallet = kp;
+  startBlockScan();
   return kp.publicKey.toBase58();
 });
 
@@ -124,6 +175,7 @@ async function getBalances(w, connection, killMint) {
 ipcMain.handle("start-agent", async (_e, strategyName) => {
   if (!wallet) throw new Error("No wallet configured");
   if (agentTimer) { clearInterval(agentTimer); agentTimer = null; }
+  stopBlockScan();
 
   const config   = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
   const playbook = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "playbook.json"), "utf8"));
@@ -160,24 +212,40 @@ ipcMain.handle("start-agent", async (_e, strategyName) => {
     await claimFaucet(killFaucet, wallet, connection, KILL_MINT, FAUCET_ID);
   } catch (_) {}
 
+  console.log("[AGENT] Starting. Wallet:", wallet.publicKey.toBase58());
+  console.log("[AGENT] Slots:", slots);
+  console.log("[AGENT] SLOT_DELTA:", SLOT_DELTA);
+  console.log("[AGENT] Starting SOL:", startingSol, "KILL:", startingKill);
   send("agent-status", { running: true, strategy: playbook.strategy });
 
   agentTimer = setInterval(async () => {
     try {
       const slot = await connection.getSlot("confirmed");
-      if (slot < lastSlot + SLOT_DELTA) return;
+      const needed = lastSlot + SLOT_DELTA;
+      if (slot < needed) {
+        console.log(`[AGENT] Waiting for slot ${needed}, current ${slot}`);
+        return;
+      }
       lastSlot = slot;
 
       const capName = slots[slotIndex % slots.length];
       slotIndex++;
+      console.log(`[AGENT] Slot ${slot} — running capability: ${capName}`);
 
-      const capCfg = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, capName, "config.json"), "utf8"));
       const mergedConfig = {
         ...config,
         settings: { ...config.settings, ...(config.settings[capName] || {}) },
       };
+      console.log(`[AGENT] Merged settings for ${capName}:`, JSON.stringify(mergedConfig.settings));
 
       const balances = await getBalances(wallet, connection, KILL_MINT);
+      console.log(`[AGENT] Balances — SOL: ${balances.sol.toFixed(4)}, KILL: ${balances.kill}`);
+
+      if (balances.sol === 0) {
+        console.log("[AGENT] No SOL — skipping capability, sending unfunded.");
+        send("agent-unfunded", { address: wallet.publicKey.toBase58() });
+        return;
+      }
 
       // Get total power
       let totalPower = 0n;
@@ -188,6 +256,7 @@ ipcMain.handle("start-agent", async (_e, strategyName) => {
           totalPower += calcPower(BigInt(s.units.toString()), BigInt(s.reapers.toString()));
         }
       }
+      console.log(`[AGENT] Total power: ${totalPower}`);
 
       const pnlSol  = balances.sol - startingSol;
       const pnlKill = balances.kill - startingKill;
@@ -210,22 +279,34 @@ ipcMain.handle("start-agent", async (_e, strategyName) => {
         config: mergedConfig,
       };
 
+      console.log(`[AGENT] Calling ${capName}.run()...`);
       const sections = await capabilities[capName].run({ ...ctx, slot });
+      console.log(`[AGENT] ${capName}.run() returned:`, JSON.stringify(sections));
+
       if (Array.isArray(sections)) {
-        // Strip ANSI from section data for GUI
+        const stripAnsi = (s) => {
+          // Preserve OSC8 hyperlinks as __TXLINK:URL__ before stripping
+          let out = String(s).replace(
+            /\x1b\]8;;([^\x1b]*)\x1b\\[\s\S]*?\x1b\]8;;\x1b\\/g,
+            (_, url) => url ? `__TXLINK:${url}__` : ""
+          );
+          return out.replace(/\x1b[^m]*m/g, "");
+        };
         const clean = sections.map(sec => ({
-          title: sec.title ? sec.title.replace(/\x1b[^m]*m/g, "") : "",
+          title: stripAnsi(sec.title || ""),
           rows: (sec.rows || []).map(row => {
             const r = {};
-            for (const [k, v] of Object.entries(row)) {
-              r[k] = String(v).replace(/\x1b[^m]*m/g, "").replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, "");
-            }
+            for (const [k, v] of Object.entries(row)) r[k] = stripAnsi(v);
             return r;
           }),
         }));
         send("agent-sections", clean);
+      } else {
+        console.warn(`[AGENT] ${capName}.run() did not return an array — got:`, typeof sections);
       }
     } catch (e) {
+      console.error("[AGENT] Error in interval:", e.message);
+      console.error(e.stack);
       send("agent-error", e.message);
     }
   }, 2000);
@@ -234,6 +315,15 @@ ipcMain.handle("start-agent", async (_e, strategyName) => {
 ipcMain.handle("stop-agent", async () => {
   if (agentTimer) { clearInterval(agentTimer); agentTimer = null; }
   send("agent-status", { running: false });
+  startBlockScan();
+});
+
+ipcMain.handle("get-balances", async () => {
+  if (!wallet) throw new Error("No wallet");
+  const config    = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
+  const conn      = new web3.Connection(config.network.rpc_url, "confirmed");
+  const KILL_MINT = new web3.PublicKey(config.network.kill_mint);
+  return await getBalances(wallet, conn, KILL_MINT);
 });
 
 ipcMain.handle("get-strategies", async () => {
@@ -249,6 +339,10 @@ ipcMain.handle("get-config", async () => {
   const config   = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "config.json"), "utf8"));
   const playbook = JSON.parse(fs.readFileSync(path.join(AGENTS_DIR, "playbook.json"), "utf8"));
   return { config, playbook };
+});
+
+ipcMain.handle("open-external", async (_e, url) => {
+  await shell.openExternal(url);
 });
 
 ipcMain.handle("save-config", async (_e, data) => {

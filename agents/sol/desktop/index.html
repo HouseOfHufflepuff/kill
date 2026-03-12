@@ -5,112 +5,293 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KILLGame SOL</title>
 <style>
+  :root {
+    --purple: #9945FF;
+    --green:  #14F195;
+    --blue:   #00C2FF;
+    --bg:     #050505;
+    --surface:#0d0d0d;
+    --border: #1e1e1e;
+    --text:   #eee;
+    --muted:  #555;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
-    background: #0a0a0a; color: #e0e0e0;
-    min-height: 100vh; padding: 20px;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 10px 14px;
   }
-  h1 { color: #ff3333; font-size: 20px; margin-bottom: 16px; letter-spacing: 2px; }
+  h1 { color: var(--purple); font-size: 15px; margin-bottom: 6px; letter-spacing: 2px; }
   .hidden { display: none !important; }
 
-  /* Setup */
+  /* ── Setup ─────────────────────────────────────────────────────────── */
   #setup { max-width: 500px; margin: 60px auto; }
-  #setup h2 { color: #ff3333; font-size: 16px; margin-bottom: 20px; }
+  #setup h2 { color: var(--purple); font-size: 16px; margin-bottom: 20px; }
   .btn {
-    display: inline-block; padding: 10px 24px; margin: 6px 4px;
-    background: #1a1a1a; color: #ff3333; border: 1px solid #ff3333;
-    font-family: inherit; font-size: 13px; cursor: pointer;
-    transition: background 0.15s;
+    display: inline-block; padding: 7px 18px; margin: 3px 2px;
+    background: transparent; color: var(--purple); border: 1px solid var(--purple);
+    font-family: inherit; font-size: 12px; cursor: pointer;
+    transition: background 0.12s, box-shadow 0.12s, transform 0.08s, color 0.12s;
+    letter-spacing: 1px; user-select: none;
   }
-  .btn:hover { background: #2a0a0a; }
-  .btn.active { background: #ff3333; color: #0a0a0a; }
-  .btn.green { color: #33ff33; border-color: #33ff33; }
-  .btn.green:hover { background: #0a2a0a; }
-  .btn.green.active { background: #33ff33; color: #0a0a0a; }
-  .btn.cyan { color: #33ccff; border-color: #33ccff; }
-  .btn.cyan:hover { background: #0a1a2a; }
+  .btn:hover {
+    background: rgba(153,69,255,0.18);
+    box-shadow: 0 0 16px rgba(153,69,255,0.5), inset 0 0 8px rgba(153,69,255,0.1);
+    color: #c580ff;
+  }
+  .btn:active { transform: scale(0.96); background: rgba(153,69,255,0.3); box-shadow: 0 0 6px rgba(153,69,255,0.4); }
+  .btn.active { background: var(--purple); color: #000; box-shadow: 0 0 14px var(--purple); }
+  .btn.green { color: var(--green); border-color: var(--green); }
+  .btn.green:hover {
+    background: rgba(20,241,149,0.15);
+    box-shadow: 0 0 16px rgba(20,241,149,0.45), inset 0 0 8px rgba(20,241,149,0.08);
+    color: #5fffb8;
+  }
+  .btn.green:active { transform: scale(0.96); background: rgba(20,241,149,0.25); }
+  .btn.green.active { background: var(--green); color: #000; box-shadow: 0 0 14px var(--green); }
+  .btn.cyan { color: var(--blue); border-color: var(--blue); }
+  .btn.cyan:hover {
+    background: rgba(0,194,255,0.15);
+    box-shadow: 0 0 16px rgba(0,194,255,0.45), inset 0 0 8px rgba(0,194,255,0.08);
+    color: #40d8ff;
+  }
+  .btn.cyan:active { transform: scale(0.96); background: rgba(0,194,255,0.25); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
   input, textarea {
     width: 100%; padding: 10px; margin: 10px 0;
-    background: #111; color: #e0e0e0; border: 1px solid #333;
+    background: #111; color: var(--text); border: 1px solid #333;
     font-family: inherit; font-size: 13px;
   }
   .wallet-addr {
     font-size: 12px; color: #888; word-break: break-all;
     padding: 8px; background: #111; margin: 10px 0;
   }
-  .note { font-size: 11px; color: #666; margin: 8px 0; }
+  .note { font-size: 11px; color: var(--muted); margin: 8px 0; }
 
-  /* Dashboard */
-  #dashboard { max-width: 900px; margin: 0 auto; }
+  /* ── Dashboard ──────────────────────────────────────────────────────── */
+  #dashboard { width: 100%; }
+  .top-bar {
+    display: flex; align-items: baseline; gap: 16px; margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .top-bar h1 { margin-bottom: 0; flex-shrink: 0; }
+  .wallet-link {
+    font-size: 11px; color: var(--green); word-break: break-all;
+    cursor: pointer; text-decoration: none; letter-spacing: 0.5px;
+    opacity: 0.85; transition: opacity 0.15s;
+  }
+  .wallet-link:hover { opacity: 1; text-decoration: underline; }
   .header-bar {
-    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
-    padding: 12px 16px; background: #111; margin-bottom: 16px;
-    border: 1px solid #222;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    padding: 7px 12px; background: var(--surface); margin-bottom: 8px;
+    border: 1px solid var(--border);
   }
   .header-bar .stat { text-align: center; }
-  .header-bar .stat-label { font-size: 10px; color: #666; text-transform: uppercase; }
-  .header-bar .stat-value { font-size: 16px; color: #ff3333; }
-  .header-bar .stat-value.green { color: #33ff33; }
-  .header-bar .divider {
-    width: 1px; height: 32px; background: #333; flex-shrink: 0;
-  }
-  .pnl-pos { color: #33ff33 !important; }
-  .pnl-neg { color: #ff3333 !important; }
+  .header-bar .stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; }
+  .header-bar .stat-value { font-size: 13px; color: var(--purple); }
+  .header-bar .stat-value.green { color: var(--green); }
+  .header-bar .divider { width: 1px; height: 24px; background: #2a2a2a; flex-shrink: 0; }
+  .pnl-pos { color: var(--green) !important; }
+  .pnl-neg { color: var(--purple) !important; }
 
-  .controls { margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
-  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-  .status-dot.running { background: #33ff33; }
-  .status-dot.stopped { background: #ff3333; }
+  .controls { margin-bottom: 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; transition: background 0.3s; }
+  .status-dot.running  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-dot.starting { background: var(--blue);  box-shadow: 0 0 6px var(--blue); }
+  .status-dot.stopping { background: #ffaa00;       box-shadow: 0 0 6px #ffaa00; }
+  .status-dot.stopped  { background: var(--muted); }
   .status-text { font-size: 12px; color: #888; margin-left: 4px; }
 
-  /* Tables */
-  .section { margin-bottom: 16px; }
-  .section-title {
-    font-size: 12px; color: #ff3333; padding: 6px 0;
-    border-bottom: 1px solid #333; margin-bottom: 4px;
-  }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; padding: 4px 8px; color: #888; border-bottom: 1px solid #222; }
-  td { padding: 4px 8px; border-bottom: 1px solid #111; }
-  td.ok { color: #33ff33; }
-  td.fail { color: #ff3333; }
-  td.pending { color: #ffaa00; }
-  td.secure { color: #33ff33; }
-  td.hostile { color: #ff3333; }
-  td.ready { color: #ffaa00; }
+  .error-msg { color: var(--purple); font-size: 11px; padding: 6px 8px; background: rgba(153,69,255,0.06); border: 1px solid rgba(153,69,255,0.2); margin: 6px 0; }
+  .cap-name  { color: var(--blue); font-size: 12px; font-weight: bold; }
 
-  .error-msg { color: #ff3333; font-size: 12px; padding: 8px; background: #1a0a0a; margin: 8px 0; }
-  .cap-name { color: #33ccff; font-size: 14px; font-weight: bold; }
-
-  /* Config Modal */
+  /* ── Modal base ─────────────────────────────────────────────────────── */
   .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85); z-index: 100;
+    background: rgba(0,0,0,0.9); z-index: 100;
     display: flex; align-items: center; justify-content: center;
   }
   .modal-box {
-    background: #111; border: 1px solid #333; padding: 24px;
-    width: min(700px, 92vw); max-height: 85vh; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border); padding: 24px;
+    width: min(700px, 92vw); max-height: 88vh; overflow-y: auto;
+    position: relative; box-shadow: 0 0 40px rgba(153,69,255,0.15);
   }
-  .modal-box h2 { color: #ff3333; font-size: 16px; margin-bottom: 16px; }
-  .cfg-group { margin-bottom: 16px; }
-  .cfg-group-title {
-    font-size: 12px; color: #33ccff; text-transform: uppercase;
-    border-bottom: 1px solid #222; padding-bottom: 4px; margin-bottom: 8px;
+  .modal-box h2 {
+    color: var(--purple); font-size: 15px; letter-spacing: 3px;
+    margin-bottom: 4px; text-transform: uppercase;
   }
-  .cfg-row {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+  .modal-sub {
+    font-size: 11px; color: var(--muted); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 20px;
   }
-  .cfg-row label {
-    font-size: 12px; color: #888; width: 220px; flex-shrink: 0;
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .modal-status { font-size: 11px; color: var(--green); margin-top: 8px; min-height: 16px; }
+
+  /* ── Settings modal fields ──────────────────────────────────────────── */
+  .cfg-section { margin-bottom: 20px; }
+  .cfg-section-title {
+    font-size: 11px; color: var(--blue); text-transform: uppercase;
+    letter-spacing: 2px; border-bottom: 1px solid #1a1a1a;
+    padding-bottom: 4px; margin-bottom: 12px;
   }
-  .cfg-row input {
-    flex: 1; padding: 6px 8px; margin: 0;
-    background: #0a0a0a; color: #e0e0e0; border: 1px solid #333;
-    font-family: inherit; font-size: 12px;
+  .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cfg-field { display: flex; flex-direction: column; gap: 4px; }
+  .cfg-field.full { grid-column: 1 / -1; }
+  .cfg-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+  .cfg-hint { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+  .cfg-input {
+    background: #000; border: 1px solid #2a2a2a; color: var(--text);
+    padding: 9px 11px; font-family: inherit; font-size: 12px;
+    outline: none; transition: border-color 0.15s;
   }
-  .cfg-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .cfg-input:focus { border-color: var(--purple); box-shadow: 0 0 8px rgba(153,69,255,0.2); }
+
+  /* ── Playbook modal ─────────────────────────────────────────────────── */
+  .runs-list { display: flex; flex-direction: column; gap: 12px; }
+  .run-card { background: #080808; border: 1px solid var(--border); padding: 14px; }
+  .run-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .run-lbl { font-size: 11px; letter-spacing: 3px; color: #aaa; font-weight: bold; }
+  .run-rm {
+    background: none; border: 1px solid #333; color: var(--muted);
+    padding: 4px 10px; cursor: pointer; font-family: inherit;
+    font-size: 10px; letter-spacing: 1px; transition: 0.15s;
+  }
+  .run-rm:hover { border-color: var(--purple); color: var(--purple); box-shadow: 0 0 8px rgba(153,69,255,0.2); }
+  .run-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .slot-card { background: #000; border: 1px solid #1a1a1a; padding: 8px 10px; }
+  .slot-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .slot-lbl { font-size: 9px; letter-spacing: 2px; color: var(--muted); }
+  .slot-rm {
+    background: none; border: none; color: #333; cursor: pointer;
+    font-size: 13px; line-height: 1; padding: 0 2px; transition: 0.15s; font-family: monospace;
+  }
+  .slot-rm:hover { color: var(--purple); }
+  .slot-select {
+    background: #0a0a0a; border: 1px solid #2a2a2a; color: #ddd;
+    padding: 7px 8px; font-family: inherit; font-size: 11px;
+    cursor: pointer; outline: none; width: 100%; transition: 0.15s;
+  }
+  .slot-select:focus { border-color: var(--green); }
+  .add-slot-btn {
+    background: none; border: 1px dashed #222; color: var(--muted);
+    padding: 6px 8px; cursor: pointer; font-family: inherit;
+    font-size: 10px; letter-spacing: 1px; width: 100%;
+    transition: 0.15s; margin-top: 6px; text-align: left;
+  }
+  .add-slot-btn:hover { border-color: var(--green); color: var(--green); }
+  .add-run-btn {
+    background: none; border: 1px dashed #252525; color: #666;
+    padding: 10px; cursor: pointer; font-family: inherit;
+    font-size: 11px; letter-spacing: 2px; width: 100%;
+    transition: 0.15s; margin-top: 10px;
+  }
+  .add-run-btn:hover { border-color: var(--green); color: var(--green); }
+
+  /* ── Tables ─────────────────────────────────────────────────────────── */
+  .section { margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); }
+  .section-title {
+    font-size: 9px; color: var(--purple); padding: 5px 10px;
+    border-bottom: 1px solid var(--border); letter-spacing: 3px;
+    text-transform: uppercase; background: #080808;
+  }
+  .section-sub {
+    font-size: 9px; color: #555; padding: 3px 10px;
+    background: #060606; border-top: 1px solid #111; border-bottom: 1px solid #111;
+    letter-spacing: 2px; text-transform: uppercase;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th {
+    text-align: left; padding: 5px 10px; color: #555;
+    border-bottom: 1px solid #161616; font-size: 9px;
+    letter-spacing: 1px; text-transform: uppercase; background: #080808;
+  }
+  td { padding: 5px 10px; border-bottom: 1px solid #111; color: #ccc; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.025); }
+  .badge {
+    display: inline-block; padding: 1px 7px; font-size: 9px;
+    letter-spacing: 1px; border-radius: 2px;
+  }
+  .badge-secure  { background: rgba(20,241,149,0.1);  color: var(--green);  border: 1px solid rgba(20,241,149,0.2); }
+  .badge-hostile { background: rgba(153,69,255,0.1);  color: var(--purple); border: 1px solid rgba(153,69,255,0.2); }
+  .badge-ready   { background: rgba(255,170,0,0.1);   color: #ffaa00;       border: 1px solid rgba(255,170,0,0.2); }
+  .badge-ok      { background: rgba(20,241,149,0.1);  color: var(--green);  border: 1px solid rgba(20,241,149,0.2); }
+  .badge-fail    { background: rgba(153,69,255,0.1);  color: var(--purple); border: 1px solid rgba(153,69,255,0.2); }
+  .badge-pending { background: rgba(255,170,0,0.08);  color: #ffaa00;       border: 1px solid rgba(255,170,0,0.15); }
+  /* Last action bar */
+  .last-action-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 5px 10px; background: #080808; border: 1px solid var(--border);
+    font-size: 10px; min-height: 28px;
+  }
+  .last-action-label { font-size: 8px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; flex-shrink: 0; }
+  .last-action-type { font-weight: bold; letter-spacing: 1px; }
+  .last-action-detail { color: #888; flex: 1; }
+  td.ok      { color: var(--green); }
+  td.fail    { color: var(--purple); }
+  td.pending { color: #ffaa00; }
+  td.secure  { color: var(--green); }
+  td.hostile { color: var(--purple); }
+  td.ready   { color: #ffaa00; }
+
+  /* ── Two-column layout ──────────────────────────────────────────────── */
+  #dashboard { display: flex; flex-direction: column; height: calc(100vh - 20px); }
+  .dash-cols { display: flex; gap: 12px; flex: 1; min-height: 0; }
+  .dash-main { flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+
+  /* ── Kill Log (25% right column, full height) ───────────────────────── */
+  .kill-log-panel {
+    width: 25%; min-width: 200px; max-width: 420px; flex-shrink: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .kill-log-title {
+    font-size: 9px; letter-spacing: 3px; color: var(--purple);
+    padding: 5px 10px; border-bottom: 1px solid var(--border);
+    background: var(--surface); text-transform: uppercase; flex-shrink: 0;
+  }
+  .kill-log-entries {
+    flex: 1; overflow-y: auto; padding: 4px 6px;
+    display: flex; flex-direction: column;
+  }
+  .kill-log-entries::-webkit-scrollbar { width: 4px; }
+  .kill-log-entries::-webkit-scrollbar-track { background: #000; }
+  .kill-log-entries::-webkit-scrollbar-thumb { background: #333; }
+  /* Match website log-entry style exactly */
+  .log-entry {
+    margin-bottom: 4px; border-left: 2px solid transparent;
+    padding: 3px 8px; line-height: 1.4; font-size: 0.65rem;
+    background: rgba(255,255,255,0.02);
+  }
+  .log-kill    { border-left-color: var(--purple); color: var(--purple); }
+  .log-spawn   { border-left-color: var(--green);  color: var(--green); }
+  .log-move    { border-left-color: var(--blue);   color: var(--blue); }
+  .log-retreat { border-left-color: #ffaa00;        color: #ffaa00; }
+  .log-refresh { border-left-color: #ffaa00;        color: #ffaa00; }
+  .log-network { border-left-color: transparent;    color: #aaa; }
+  .log-block { color: #777; font-size: 0.6rem; }
+  .log-ok   { color: var(--green); }
+  .log-fail { color: var(--purple); }
+  .log-tx { color: var(--blue); cursor: pointer; text-decoration: none; margin-left: 4px; }
+  .log-tx:hover { text-decoration: underline; }
+
+  /* ── Private key modal ──────────────────────────────────────────────── */
+  .pk-warn {
+    background: rgba(153,69,255,0.06); border: 1px solid rgba(153,69,255,0.3);
+    padding: 10px 12px; font-size: 11px; color: #cc99ff;
+    margin-bottom: 14px; line-height: 1.6;
+  }
+  .pk-box {
+    background: #000; border: 1px solid #222;
+    padding: 10px 12px; font-size: 11px; color: var(--green);
+    word-break: break-all; margin: 10px 0; line-height: 1.6;
+  }
+  .pk-addr { font-size: 11px; color: #888; word-break: break-all; margin-bottom: 4px; }
+  .copy-btn {
+    background: none; border: 1px solid #444; color: #888;
+    padding: 4px 12px; cursor: pointer; font-family: inherit;
+    font-size: 10px; letter-spacing: 1px; transition: 0.15s; margin-top: 6px;
+  }
+  .copy-btn:hover { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 8px rgba(0,194,255,0.2); }
 </style>
 </head>
 <body>
@@ -146,54 +327,256 @@
 
 <!-- ── DASHBOARD ─────────────────────────────────────────────────────────── -->
 <div id="dashboard" class="hidden">
-  <h1>KILLGAME SOL</h1>
-
-  <div class="header-bar">
-    <div class="stat"><div class="stat-label">Slot</div><div class="stat-value" id="d-slot">—</div></div>
-    <div class="stat"><div class="stat-label">SOL</div><div class="stat-value" id="d-sol">—</div></div>
-    <div class="stat"><div class="stat-label">KILL</div><div class="stat-value green" id="d-kill">—</div></div>
-    <div class="stat"><div class="stat-label">Power</div><div class="stat-value" id="d-power">—</div></div>
-    <div class="divider"></div>
-    <div class="stat"><div class="stat-label">SOL P&L</div><div class="stat-value" id="d-pnl-sol" style="font-size:14px;">—</div></div>
-    <div class="stat"><div class="stat-label">KILL P&L</div><div class="stat-value" id="d-pnl-kill" style="font-size:14px;">—</div></div>
-    <div class="divider"></div>
-    <div class="stat"><div class="stat-label">Agent</div><div class="stat-value cap-name" id="d-cap">—</div></div>
-    <div class="stat"><div class="stat-label">Next</div><div class="stat-value" id="d-next" style="font-size:12px;color:#888;">—</div></div>
+  <div class="top-bar">
+    <h1>KILLGAME SOL</h1>
+    <a id="d-wallet" class="wallet-link" href="#" onclick="return false;">—</a>
   </div>
 
-  <div class="controls">
-    <span class="status-dot stopped" id="status-dot"></span>
-    <span class="status-text" id="status-text">Stopped</span>
-    <button class="btn green" id="btn-start" onclick="launchAgent()">Start</button>
-    <button class="btn" id="btn-stop" onclick="stopAgent()">Stop</button>
-    <button class="btn cyan" id="btn-config" onclick="openConfig()">Configure</button>
+  <div class="dash-cols">
+    <div class="dash-main">
+
+      <div class="controls">
+        <span class="status-dot stopped" id="status-dot"></span>
+        <span class="status-text" id="status-text">Stopped</span>
+        <button class="btn green" id="btn-start" onclick="launchAgent()">Start</button>
+        <button class="btn" id="btn-stop" onclick="stopAgent()">Stop</button>
+        <button class="btn cyan" onclick="openPlaybook()">Playbook</button>
+        <button class="btn cyan" onclick="openSettings()">Settings</button>
+      </div>
+
+      <div class="header-bar">
+        <div class="stat"><div class="stat-label">Slot</div><div class="stat-value" id="d-slot">—</div></div>
+        <div class="stat"><div class="stat-label">SOL</div><div class="stat-value" id="d-sol">—</div></div>
+        <div class="stat"><div class="stat-label">KILL</div><div class="stat-value green" id="d-kill">—</div></div>
+        <div class="stat"><div class="stat-label">Power</div><div class="stat-value" id="d-power">—</div></div>
+        <div class="divider"></div>
+        <div class="stat"><div class="stat-label">SOL P&L</div><div class="stat-value" id="d-pnl-sol" style="font-size:12px;">—</div></div>
+        <div class="stat"><div class="stat-label">KILL P&L</div><div class="stat-value" id="d-pnl-kill" style="font-size:12px;">—</div></div>
+        <div class="divider"></div>
+        <div class="stat"><div class="stat-label">Agent</div><div class="stat-value cap-name" id="d-cap">—</div></div>
+        <div class="stat"><div class="stat-label">Next</div><div class="stat-value" id="d-next" style="font-size:11px;color:#888;">—</div></div>
+      </div>
+
+      <div id="last-action-bar" class="last-action-bar">
+        <span class="last-action-label">Last Action</span>
+        <span id="la-type" class="last-action-type" style="color:var(--muted);">—</span>
+        <span id="la-detail" class="last-action-detail"></span>
+        <span id="la-result"></span>
+        <span id="la-tx"></span>
+      </div>
+
+      <div id="unfunded-banner" class="hidden" style="
+        background:#0e0500;border:1px solid #663300;padding:8px 12px;font-size:11px;line-height:1.6;
+      ">
+        <div style="color:#ff6600;font-weight:bold;letter-spacing:2px;margin-bottom:4px;">⚠ WALLET UNFUNDED — AGENT PAUSED</div>
+        <div style="color:#888;">Your wallet has no SOL. Fund it to start the agent.</div>
+        <div style="margin-top:6px;"><span style="color:#555;font-size:11px;">ADDRESS</span><br>
+          <span id="unfunded-addr" style="color:#33ccff;font-size:11px;word-break:break-all;"></span></div>
+        <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <a href="https://faucet.solana.com" style="color:#ff3333;font-size:11px;letter-spacing:1px;">→ faucet.solana.com</a>
+          <button class="btn" style="font-size:11px;padding:4px 12px;" onclick="retryFunding()">Retry</button>
+        </div>
+      </div>
+
+      <div id="sections"></div>
+
+    </div>
+    <div class="kill-log-panel">
+      <div class="kill-log-title">KILL Log</div>
+      <div class="kill-log-entries" id="kill-log-entries"></div>
+    </div>
   </div>
 
-  <div id="sections"></div>
   <div id="dash-error" class="error-msg hidden"></div>
 </div>
 
-<!-- ── CONFIG MODAL ──────────────────────────────────────────────────────── -->
-<div id="config-modal" class="modal-overlay hidden">
-  <div class="modal-box">
-    <h2>AGENT CONFIGURATION</h2>
-    <div id="cfg-body"></div>
-    <div class="cfg-actions">
-      <button class="btn green" onclick="saveConfig()">Save</button>
-      <button class="btn" onclick="closeConfig()">Cancel</button>
+<!-- ── PRIVATE KEY MODAL ─────────────────────────────────────────────────── -->
+<div id="pk-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:520px;">
+    <h2>Wallet Created</h2>
+    <div class="modal-sub">Save your private key — you cannot recover it later</div>
+    <div class="pk-warn">
+      ⚠ This is the only time your private key will be shown. Write it down or store it in a password manager. Anyone with this key controls your wallet.
     </div>
-    <div id="cfg-status" style="font-size:11px;color:#33ff33;margin-top:8px;"></div>
+    <div style="font-size:11px;color:#666;margin-bottom:4px;letter-spacing:1px;text-transform:uppercase;">Public Address</div>
+    <div class="pk-addr" id="pk-addr"></div>
+    <div style="font-size:11px;color:#666;margin-bottom:4px;margin-top:12px;letter-spacing:1px;text-transform:uppercase;">Private Key (64-byte array)</div>
+    <div class="pk-box" id="pk-key"></div>
+    <button class="copy-btn" onclick="copyPK()">COPY PRIVATE KEY</button>
+    <div class="modal-actions" style="margin-top:18px;">
+      <button class="btn green" onclick="closePKModal()">I've saved my key — Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PLAYBOOK MODAL ─────────────────────────────────────────────────────── -->
+<div id="playbook-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h2>Playbook</h2>
+    <div class="modal-sub">Each run executes its slots in order, then repeats. Suggested: sniper → fortress → fortress</div>
+    <div class="runs-list" id="pb-runs-list"></div>
+    <button class="add-run-btn" onclick="pbAddRun()">+ ADD RUN</button>
+    <div class="modal-actions">
+      <button class="btn green" onclick="savePlaybook()">Save</button>
+      <button class="btn" onclick="closePlaybook()">Cancel</button>
+    </div>
+    <div class="modal-status" id="pb-status"></div>
+  </div>
+</div>
+
+<!-- ── SETTINGS MODAL ─────────────────────────────────────────────────────── -->
+<div id="settings-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h2>Settings</h2>
+    <div class="modal-sub">Written to agents/config.json immediately on save</div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Agent Identity</div>
+      <div class="cfg-grid">
+        <div class="cfg-field">
+          <label class="cfg-lbl">Agent Name</label>
+          <input class="cfg-input" type="text" id="s-name" maxlength="32">
+          <div class="cfg-hint">Display name visible in the registry.</div>
+        </div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">Build Version</label>
+          <input class="cfg-input" type="text" id="s-build" maxlength="16">
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Network</div>
+      <div class="cfg-grid">
+        <div class="cfg-field full">
+          <label class="cfg-lbl">RPC URL</label>
+          <input class="cfg-input" type="text" id="s-rpc">
+          <div class="cfg-hint">e.g. https://api.devnet.solana.com or your private RPC.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Game Settings</div>
+      <div class="cfg-grid">
+        <div class="cfg-field">
+          <label class="cfg-lbl">Hub Stack <span style="color:#444;">[0–215]</span></label>
+          <input class="cfg-input" type="number" id="s-hub-stack" min="0" max="215">
+          <div class="cfg-hint">Home base stack ID for fortress agent.</div>
+        </div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">Kill Multiplier</label>
+          <input class="cfg-input" type="number" id="s-kill-mult" min="0.1" max="10" step="0.1">
+          <div class="cfg-hint">Min power advantage ratio to attack.</div>
+        </div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">Slot Delta</label>
+          <input class="cfg-input" type="number" id="s-slot-delta" min="1" max="1000">
+          <div class="cfg-hint">Slots between agent cycles. ~25 slots = ~10s.</div>
+        </div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">Min Spawn</label>
+          <input class="cfg-input" type="number" id="s-min-spawn" min="1">
+          <div class="cfg-hint">Minimum units to spawn in one tx.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Seed</div>
+      <div class="cfg-grid">
+        <div class="cfg-field">
+          <label class="cfg-lbl">Seed Amount</label>
+          <input class="cfg-input" type="number" id="s-seed-amt" min="1">
+          <div class="cfg-hint">KILL to seed per target stack.</div>
+        </div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">Batch Seed</label>
+          <input class="cfg-input" type="number" id="s-batch-seed" min="1">
+          <div class="cfg-hint">Number of stacks to seed per cycle.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Fortress</div>
+      <div class="cfg-grid">
+        <div class="cfg-field">
+          <label class="cfg-lbl">Target Units</label>
+          <input class="cfg-input" type="number" id="s-fort-target" min="1">
+          <div class="cfg-hint">Units to maintain at hub.</div>
+        </div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">Replenish Amount</label>
+          <input class="cfg-input" type="number" id="s-fort-replenish" min="1">
+          <div class="cfg-hint">Units spawned per replenish cycle.</div>
+        </div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">Hub Perimeter</label>
+          <input class="cfg-input" type="number" id="s-fort-perimeter" min="1">
+          <div class="cfg-hint">Stack radius to defend around hub.</div>
+        </div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">Move on Decay %</label>
+          <input class="cfg-input" type="number" id="s-fort-decay" min="1" max="100">
+          <div class="cfg-hint">% power loss before retreating.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Sniper</div>
+      <div class="cfg-grid">
+        <div class="cfg-field">
+          <label class="cfg-lbl">Profit Threshold</label>
+          <input class="cfg-input" type="number" id="s-sniper-thresh" min="0" max="10" step="0.01">
+          <div class="cfg-hint">Min bounty/cost ratio to fire. 0.10 = 10% return.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Aftershock</div>
+      <div class="cfg-grid">
+        <div class="cfg-field">
+          <label class="cfg-lbl">Max KILL</label>
+          <input class="cfg-input" type="number" id="s-aftershock-max" min="1">
+          <div class="cfg-hint">Max KILL to spend per aftershock attack.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Nuke</div>
+      <div class="cfg-grid">
+        <div class="cfg-field full">
+          <label class="cfg-lbl">Target Stacks</label>
+          <input class="cfg-input" type="text" id="s-nuke-stacks">
+          <div class="cfg-hint">Comma-separated stack IDs to target (e.g. 35, 10).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn green" onclick="saveSettings()">Save</button>
+      <button class="btn" onclick="closeSettings()">Cancel</button>
+    </div>
+    <div class="modal-status" id="settings-status"></div>
   </div>
 </div>
 
 <script>
-  let walletReady = false;
+  const CAPABILITIES = ["seed", "fortress", "sniper", "aftershock", "nuke"];
+  let walletReady  = false;
+  let pendingPK    = null;
+  let agentRunning = false;
 
-  // ── Setup ──────────────────────────────────────────────────────────────
+  // ── Setup ──────────────────────────────────────────────────────────────────
   async function generateWallet() {
     try {
-      const addr = await window.killAPI.generateWallet();
-      showWallet(addr);
+      const result = await window.killAPI.generateWallet();
+      showWallet(result.address);
+      showPKModal(result.address, result.privateKey);
     } catch (e) { showSetupError(e.message); }
   }
 
@@ -215,6 +598,7 @@
     document.getElementById("wallet-info").classList.remove("hidden");
     document.getElementById("step-start").classList.remove("hidden");
     document.getElementById("import-box").classList.add("hidden");
+    setWalletLink(addr);
     walletReady = true;
   }
 
@@ -224,150 +608,322 @@
     el.classList.remove("hidden");
   }
 
-  // ── Launch ─────────────────────────────────────────────────────────────
+  // ── Private Key Modal ──────────────────────────────────────────────────────
+  function showPKModal(addr, privateKey) {
+    document.getElementById("pk-addr").textContent = addr;
+    document.getElementById("pk-key").textContent = privateKey;
+    pendingPK = privateKey;
+    document.getElementById("pk-modal").classList.remove("hidden");
+  }
+
+  function closePKModal() {
+    document.getElementById("pk-modal").classList.add("hidden");
+    pendingPK = null;
+  }
+
+  function copyPK() {
+    const key = document.getElementById("pk-key").textContent;
+    navigator.clipboard.writeText(key).then(() => {
+      const btn = document.querySelector('#pk-modal .copy-btn');
+      btn.textContent = "COPIED!";
+      setTimeout(() => { btn.textContent = "COPY PRIVATE KEY"; }, 2000);
+    });
+  }
+
+  // ── Launch ─────────────────────────────────────────────────────────────────
   async function launchAgent() {
+    const btn = document.getElementById("btn-start");
+    const dot  = document.getElementById("status-dot");
+    const text = document.getElementById("status-text");
+    btn.textContent = "Starting...";
+    btn.disabled = true;
+    dot.className = "status-dot starting";
+    text.textContent = "Starting...";
     try {
       document.getElementById("setup").classList.add("hidden");
       document.getElementById("dashboard").classList.remove("hidden");
       await window.killAPI.startAgent();
     } catch (e) {
-      const el = document.getElementById("dash-error");
-      el.textContent = e.message;
-      el.classList.remove("hidden");
+      btn.textContent = "Start";
+      btn.disabled = false;
+      dot.className = "status-dot stopped";
+      text.textContent = "Stopped";
+      showDashError(e.message);
     }
   }
 
   async function stopAgent() {
+    const btn  = document.getElementById("btn-stop");
+    const dot  = document.getElementById("status-dot");
+    const text = document.getElementById("status-text");
+    btn.textContent = "Stopping...";
+    btn.disabled = true;
+    dot.className = "status-dot stopping";
+    text.textContent = "Stopping...";
     await window.killAPI.stopAgent();
+    btn.textContent = "Stop";
+    btn.disabled = false;
   }
 
-  // ── P&L display ─────────────────────────────────────────────────────
+  // ── Kill Log helpers ───────────────────────────────────────────────────────
+  function appendLog(slot, msg, cls, txUrl) {
+    const log = document.getElementById("kill-log-entries");
+    if (!log) return;
+    const entry = document.createElement("div");
+    entry.className = `log-entry ${cls}`;
+    entry.innerHTML = `<span class="log-block">${slot}</span> > ${msg}`;
+    if (txUrl) {
+      const a = document.createElement("a");
+      a.className = "log-tx";
+      a.textContent = "[ tx ]";
+      a.onclick = (e) => { e.preventDefault(); window.killAPI.openExternal(txUrl); };
+      entry.appendChild(a);
+    }
+    log.appendChild(entry);
+    while (log.children.length > 120) log.removeChild(log.firstChild);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // ── P&L display ────────────────────────────────────────────────────────────
   function updatePnl(elId, value) {
     const el = document.getElementById(elId);
     if (!el) return;
-    const num = parseFloat(value.replace(/,/g, ''));
+    const num = parseFloat(String(value).replace(/,/g, ''));
     el.textContent = (num >= 0 ? '+' : '') + value;
     el.className = 'stat-value ' + (num >= 0 ? 'pnl-pos' : 'pnl-neg');
   }
 
-  // ── Config Modal ───────────────────────────────────────────────────────
+  // ── Playbook Modal ─────────────────────────────────────────────────────────
+  let pbRuns = [];   // [{ name, slots: ['seed','fortress',...] }]
+
+  async function openPlaybook() {
+    try {
+      const data = await window.killAPI.getConfig();
+      const pb = data.playbook;
+      pbRuns = pb.strategy.map(name => ({
+        name,
+        slots: [...(pb.runs[name] || [])]
+      }));
+      renderPlaybook();
+      document.getElementById("playbook-modal").classList.remove("hidden");
+    } catch (e) { showDashError("Failed to load playbook: " + e.message); }
+  }
+
+  function closePlaybook() {
+    document.getElementById("playbook-modal").classList.add("hidden");
+    document.getElementById("pb-status").textContent = "";
+  }
+
+  function renderPlaybook() {
+    const list = document.getElementById("pb-runs-list");
+    list.innerHTML = "";
+    pbRuns.forEach((run, ri) => {
+      const card = document.createElement("div");
+      card.className = "run-card";
+      card.innerHTML = `
+        <div class="run-hdr">
+          <span class="run-lbl">RUN ${ri + 1} — ${run.name.toUpperCase()}</span>
+          <button class="run-rm" onclick="pbRemoveRun(${ri})">REMOVE</button>
+        </div>
+        <div class="run-slots" id="pb-slots-${ri}"></div>
+        <button class="add-slot-btn" onclick="pbAddSlot(${ri})">+ ADD BLOCK</button>
+      `;
+      list.appendChild(card);
+      renderSlots(ri);
+    });
+  }
+
+  function renderSlots(ri) {
+    const container = document.getElementById(`pb-slots-${ri}`);
+    container.innerHTML = "";
+    pbRuns[ri].slots.forEach((cap, si) => {
+      const slot = document.createElement("div");
+      slot.className = "slot-card";
+      slot.innerHTML = `
+        <div class="slot-top">
+          <span class="slot-lbl">BLOCK ${si + 1}</span>
+          <button class="slot-rm" onclick="pbRemoveSlot(${ri}, ${si})">×</button>
+        </div>
+        <select class="slot-select" onchange="pbSetSlot(${ri}, ${si}, this.value)">
+          ${CAPABILITIES.map(c => `<option value="${c}" ${c === cap ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+      `;
+      container.appendChild(slot);
+    });
+  }
+
+  function pbAddRun() {
+    const name = "run" + (pbRuns.length + 1);
+    pbRuns.push({ name, slots: ["seed"] });
+    renderPlaybook();
+  }
+
+  function pbRemoveRun(ri) {
+    pbRuns.splice(ri, 1);
+    renderPlaybook();
+  }
+
+  function pbAddSlot(ri) {
+    pbRuns[ri].slots.push("seed");
+    renderSlots(ri);
+  }
+
+  function pbRemoveSlot(ri, si) {
+    pbRuns[ri].slots.splice(si, 1);
+    renderSlots(ri);
+  }
+
+  function pbSetSlot(ri, si, val) {
+    pbRuns[ri].slots[si] = val;
+  }
+
+  async function savePlaybook() {
+    const runsObj = {};
+    pbRuns.forEach(r => { runsObj[r.name] = r.slots; });
+    const playbook = {
+      runs: runsObj,
+      strategy: pbRuns.map(r => r.name)
+    };
+    try {
+      await window.killAPI.saveConfig({ playbook });
+      closePlaybook();
+      fetchAgentInfo();
+    } catch (e) {
+      const el = document.getElementById("pb-status");
+      el.textContent = "Error: " + e.message;
+      el.style.color = "#ff3333";
+    }
+  }
+
+  // ── Settings Modal ─────────────────────────────────────────────────────────
   let cfgData = null;
 
-  async function openConfig() {
+  async function openSettings() {
     try {
       cfgData = await window.killAPI.getConfig();
-      renderConfig();
-      document.getElementById("config-modal").classList.remove("hidden");
-    } catch (e) {
-      const el = document.getElementById("dash-error");
-      el.textContent = "Failed to load config: " + e.message;
-      el.classList.remove("hidden");
-    }
+      populateSettings(cfgData.config);
+      document.getElementById("settings-modal").classList.remove("hidden");
+    } catch (e) { showDashError("Failed to load settings: " + e.message); }
   }
 
-  function closeConfig() {
-    document.getElementById("config-modal").classList.add("hidden");
-    document.getElementById("cfg-status").textContent = "";
+  function closeSettings() {
+    document.getElementById("settings-modal").classList.add("hidden");
+    document.getElementById("settings-status").textContent = "";
   }
 
-  function renderConfig() {
-    const body = document.getElementById("cfg-body");
-    const s = cfgData.config.settings;
-    const pb = cfgData.playbook;
+  function populateSettings(cfg) {
+    const id = cfg["agent-identity"] || {};
+    const net = cfg.network || {};
+    const s = cfg.settings || {};
 
-    body.innerHTML = `
-      <div class="cfg-group">
-        <div class="cfg-group-title">Playbook</div>
-        ${Object.entries(pb.runs).map(([name, caps]) => `
-          <div class="cfg-row">
-            <label>${name}</label>
-            <input type="text" data-pb-run="${name}" value="${caps.join(', ')}">
-          </div>
-        `).join('')}
-        <div class="cfg-row">
-          <label>strategy (run order)</label>
-          <input type="text" id="cfg-strategy" value="${pb.strategy.join(', ')}">
-        </div>
-      </div>
-
-      <div class="cfg-group">
-        <div class="cfg-group-title">Global</div>
-        <div class="cfg-row"><label>SLOT_DELTA</label><input type="number" data-cfg="SLOT_DELTA" value="${s.SLOT_DELTA}"></div>
-        <div class="cfg-row"><label>MIN_SPAWN</label><input type="number" data-cfg="MIN_SPAWN" value="${s.MIN_SPAWN}"></div>
-        <div class="cfg-row"><label>HUB_STACK</label><input type="number" data-cfg="HUB_STACK" value="${s.HUB_STACK}"></div>
-        <div class="cfg-row"><label>KILL_MULTIPLIER</label><input type="number" data-cfg="KILL_MULTIPLIER" value="${s.KILL_MULTIPLIER}"></div>
-      </div>
-
-      <div class="cfg-group">
-        <div class="cfg-group-title">Fortress</div>
-        <div class="cfg-row"><label>TARGET_UNITS</label><input type="number" data-cfg-cap="fortress.TARGET_UNITS" value="${s.fortress.TARGET_UNITS}"></div>
-        <div class="cfg-row"><label>REPLENISH_AMT</label><input type="number" data-cfg-cap="fortress.REPLENISH_AMT" value="${s.fortress.REPLENISH_AMT}"></div>
-        <div class="cfg-row"><label>HUB_PERIMETER</label><input type="number" data-cfg-cap="fortress.HUB_PERIMETER" value="${s.fortress.HUB_PERIMETER}"></div>
-        <div class="cfg-row"><label>MOVE_ON_DECAY_PERCENT</label><input type="number" data-cfg-cap="fortress.MOVE_ON_DECAY_PERCENT" value="${s.fortress.MOVE_ON_DECAY_PERCENT}"></div>
-      </div>
-
-      <div class="cfg-group">
-        <div class="cfg-group-title">Sniper</div>
-        <div class="cfg-row"><label>SPAWN_PROFITABILITY_THRESHOLD</label><input type="number" step="0.01" data-cfg-cap="sniper.SPAWN_PROFITABILITY_THRESHOLD" value="${s.sniper.SPAWN_PROFITABILITY_THRESHOLD}"></div>
-      </div>
-
-      <div class="cfg-group">
-        <div class="cfg-group-title">Seed</div>
-        <div class="cfg-row"><label>SEED_AMOUNT</label><input type="number" data-cfg-cap="seed.SEED_AMOUNT" value="${s.seed.SEED_AMOUNT}"></div>
-        <div class="cfg-row"><label>BATCH_SEED</label><input type="number" data-cfg-cap="seed.BATCH_SEED" value="${s.seed.BATCH_SEED}"></div>
-      </div>
-
-      <div class="cfg-group">
-        <div class="cfg-group-title">Aftershock</div>
-        <div class="cfg-row"><label>MAX_KILL</label><input type="number" data-cfg-cap="aftershock.MAX_KILL" value="${s.aftershock.MAX_KILL}"></div>
-      </div>
-
-      <div class="cfg-group">
-        <div class="cfg-group-title">Nuke</div>
-        <div class="cfg-row"><label>TARGET_STACKS</label><input type="text" data-cfg-cap="nuke.TARGET_STACKS" value="${s.nuke.TARGET_STACKS.join(', ')}"></div>
-      </div>
-    `;
+    document.getElementById("s-name").value        = id.name || "";
+    document.getElementById("s-build").value       = id.build || "";
+    document.getElementById("s-rpc").value         = net.rpc_url || "";
+    document.getElementById("s-hub-stack").value   = s.HUB_STACK || 80;
+    document.getElementById("s-kill-mult").value   = s.KILL_MULTIPLIER || 2;
+    document.getElementById("s-slot-delta").value  = s.SLOT_DELTA || 25;
+    document.getElementById("s-min-spawn").value   = s.MIN_SPAWN || 666;
+    document.getElementById("s-seed-amt").value    = (s.seed || {}).SEED_AMOUNT || 666;
+    document.getElementById("s-batch-seed").value  = (s.seed || {}).BATCH_SEED || 10;
+    document.getElementById("s-fort-target").value    = (s.fortress || {}).TARGET_UNITS || 66600;
+    document.getElementById("s-fort-replenish").value = (s.fortress || {}).REPLENISH_AMT || 6660;
+    document.getElementById("s-fort-perimeter").value = (s.fortress || {}).HUB_PERIMETER || 1;
+    document.getElementById("s-fort-decay").value     = (s.fortress || {}).MOVE_ON_DECAY_PERCENT || 50;
+    document.getElementById("s-sniper-thresh").value  = (s.sniper || {}).SPAWN_PROFITABILITY_THRESHOLD || 0.10;
+    document.getElementById("s-aftershock-max").value = (s.aftershock || {}).MAX_KILL || 1000000;
+    document.getElementById("s-nuke-stacks").value    = ((s.nuke || {}).TARGET_STACKS || []).join(", ");
   }
 
-  async function saveConfig() {
-    // Read playbook
-    const newPlaybook = { runs: {}, strategy: [] };
-    document.querySelectorAll('[data-pb-run]').forEach(el => {
-      const name = el.dataset.pbRun;
-      newPlaybook.runs[name] = el.value.split(',').map(s => s.trim()).filter(Boolean);
-    });
-    const stratEl = document.getElementById('cfg-strategy');
-    newPlaybook.strategy = stratEl.value.split(',').map(s => s.trim()).filter(Boolean);
+  async function saveSettings() {
+    if (!cfgData) return;
+    const cfg = JSON.parse(JSON.stringify(cfgData.config));
 
-    // Read global settings
-    const s = cfgData.config.settings;
-    document.querySelectorAll('[data-cfg]').forEach(el => {
-      const key = el.dataset.cfg;
-      s[key] = el.type === 'number' ? Number(el.value) : el.value;
-    });
+    cfg["agent-identity"].name  = document.getElementById("s-name").value.trim();
+    cfg["agent-identity"].build = document.getElementById("s-build").value.trim();
+    cfg.network.rpc_url         = document.getElementById("s-rpc").value.trim();
 
-    // Read capability settings
-    document.querySelectorAll('[data-cfg-cap]').forEach(el => {
-      const [cap, key] = el.dataset.cfgCap.split('.');
-      if (key === 'TARGET_STACKS') {
-        s[cap][key] = el.value.split(',').map(v => Number(v.trim())).filter(v => !isNaN(v));
-      } else {
-        s[cap][key] = el.type === 'number' ? Number(el.value) : el.value;
-      }
-    });
+    const s = cfg.settings;
+    s.HUB_STACK        = Number(document.getElementById("s-hub-stack").value);
+    s.KILL_MULTIPLIER  = Number(document.getElementById("s-kill-mult").value);
+    s.SLOT_DELTA       = Number(document.getElementById("s-slot-delta").value);
+    s.MIN_SPAWN        = Number(document.getElementById("s-min-spawn").value);
+    s.seed.SEED_AMOUNT = Number(document.getElementById("s-seed-amt").value);
+    s.seed.BATCH_SEED  = Number(document.getElementById("s-batch-seed").value);
+    s.fortress.TARGET_UNITS           = Number(document.getElementById("s-fort-target").value);
+    s.fortress.REPLENISH_AMT          = Number(document.getElementById("s-fort-replenish").value);
+    s.fortress.HUB_PERIMETER          = Number(document.getElementById("s-fort-perimeter").value);
+    s.fortress.MOVE_ON_DECAY_PERCENT  = Number(document.getElementById("s-fort-decay").value);
+    s.sniper.SPAWN_PROFITABILITY_THRESHOLD = Number(document.getElementById("s-sniper-thresh").value);
+    s.aftershock.MAX_KILL = Number(document.getElementById("s-aftershock-max").value);
+    s.nuke.TARGET_STACKS = document.getElementById("s-nuke-stacks").value
+      .split(",").map(v => Number(v.trim())).filter(v => !isNaN(v) && v !== 0);
 
     try {
-      await window.killAPI.saveConfig({ config: cfgData.config, playbook: newPlaybook });
-      document.getElementById("cfg-status").textContent = "Saved. Restart agent to apply changes.";
+      await window.killAPI.saveConfig({ config: cfg });
+      cfgData.config = cfg;
+      closeSettings();
     } catch (e) {
-      document.getElementById("cfg-status").textContent = "Error: " + e.message;
-      document.getElementById("cfg-status").style.color = "#ff3333";
+      const el = document.getElementById("settings-status");
+      el.textContent = "Error: " + e.message;
+      el.style.color = "#ff3333";
     }
   }
 
-  // ── IPC Listeners ─────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  async function retryFunding() {
+    document.getElementById("unfunded-banner").classList.add("hidden");
+    await window.killAPI.stopAgent();
+    await window.killAPI.startAgent();
+  }
+
+  function showDashError(msg) {
+    const el = document.getElementById("dash-error");
+    el.textContent = msg;
+    el.classList.remove("hidden");
+    setTimeout(() => el.classList.add("hidden"), 5000);
+  }
+
+  // ── IPC Listeners ──────────────────────────────────────────────────────────
+  async function fetchAgentInfo() {
+    try {
+      const data = await window.killAPI.getConfig();
+      const identity = (data.config || {})["agent-identity"] || {};
+      const pb = data.playbook || {};
+      const capEl = document.getElementById("d-cap");
+      const nextEl = document.getElementById("d-next");
+      if (capEl) capEl.textContent = identity.name || "—";
+      if (nextEl) {
+        const caps = (pb.strategy || []).flatMap(r => pb.runs[r] || []);
+        nextEl.textContent = caps.length ? caps.join(" → ") : "—";
+      }
+    } catch (_) {}
+  }
+
+  async function fetchBalances() {
+    try {
+      const bal = await window.killAPI.getBalances();
+      document.getElementById("d-sol").textContent  = bal.sol.toFixed(4);
+      document.getElementById("d-kill").textContent = Math.round(bal.kill).toLocaleString();
+    } catch (_) {}
+  }
+
+  function setWalletLink(addr) {
+    const el = document.getElementById("d-wallet");
+    el.textContent = addr;
+    el.onclick = (e) => {
+      e.preventDefault();
+      window.killAPI.openExternal(`https://explorer.solana.com/address/${addr}?cluster=devnet`);
+    };
+  }
+
   window.killAPI.onWalletLoaded((addr) => {
-    showWallet(addr);
+    // Already have a saved wallet — skip setup, go straight to dashboard
+    document.getElementById("setup").classList.add("hidden");
+    document.getElementById("dashboard").classList.remove("hidden");
+    setWalletLink(addr);
+    walletReady = true;
+    fetchBalances();
+    fetchAgentInfo();
   });
 
   window.killAPI.onAgentTick((data) => {
@@ -379,70 +935,222 @@
     document.getElementById("d-next").textContent  = data.next;
     updatePnl("d-pnl-sol", data.pnlSol);
     updatePnl("d-pnl-kill", data.pnlKill);
+    appendLog(data.slot, `block — running <span style="color:var(--blue)">${data.capName}</span> | SOL ${data.sol} | KILL ${data.kill} | power ${data.power}`, "log-network");
   });
 
+  function renderCell(td, val) {
+    if (val.startsWith("__TXLINK:") && val.endsWith("__")) {
+      const url = val.slice(9, -2);
+      const a = document.createElement("a");
+      a.className = "log-tx";
+      a.textContent = "[ tx ]";
+      a.onclick = (e) => { e.preventDefault(); window.killAPI.openExternal(url); };
+      td.appendChild(a);
+    } else {
+      const lower = val.toLowerCase();
+      const badgeMap = { ok: "badge-ok", fail: "badge-fail", pending: "badge-pending", secure: "badge-secure", hostile: "badge-hostile", ready: "badge-ready" };
+      if (badgeMap[lower]) {
+        const span = document.createElement("span");
+        span.className = `badge ${badgeMap[lower]}`;
+        span.textContent = val;
+        td.appendChild(span);
+      } else {
+        td.textContent = val;
+      }
+    }
+  }
+
+  function renderSectionTable(parentDiv, sec, isSubheader) {
+    if (isSubheader) {
+      const sub = document.createElement("div");
+      sub.className = "section-sub";
+      sub.textContent = sec.title || "stranded";
+      parentDiv.appendChild(sub);
+    }
+    if (sec.rows && sec.rows.length > 0) {
+      const table = document.createElement("table");
+      const keys = Object.keys(sec.rows[0]);
+      const thead = document.createElement("thead");
+      const hr = document.createElement("tr");
+      for (const k of keys) { const th = document.createElement("th"); th.textContent = k; hr.appendChild(th); }
+      thead.appendChild(hr);
+      table.appendChild(thead);
+      const tbody = document.createElement("tbody");
+      for (const row of sec.rows) {
+        const tr = document.createElement("tr");
+        for (const k of keys) {
+          const td = document.createElement("td");
+          renderCell(td, row[k] || "");
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      parentDiv.appendChild(table);
+    }
+  }
+
   window.killAPI.onAgentSections((sections) => {
+    // ── Left: render table view — combine TACTICAL+STRANDED into one block ──
     const container = document.getElementById("sections");
     container.innerHTML = "";
-    for (const sec of sections) {
+
+    // Group sections: pair "tactical"+"stranded" together, others standalone
+    const TACTICAL_KEY = "tactical";
+    const STRANDED_KEY = "stranded";
+    const grouped = [];
+    let i = 0;
+    while (i < sections.length) {
+      const sec = sections[i];
+      const titleL = (sec.title || "").toLowerCase();
+      if (titleL.includes(TACTICAL_KEY)) {
+        // Look for a following stranded section
+        const next = sections[i + 1];
+        const nextL = next ? (next.title || "").toLowerCase() : "";
+        if (next && nextL.includes(STRANDED_KEY)) {
+          grouped.push({ type: "combined", primary: sec, secondary: next });
+          i += 2;
+        } else {
+          grouped.push({ type: "single", sec });
+          i++;
+        }
+      } else if (titleL.includes(STRANDED_KEY) && grouped.length > 0 && grouped[grouped.length - 1].type === "combined") {
+        // Already consumed as secondary — skip
+        i++;
+      } else {
+        grouped.push({ type: "single", sec });
+        i++;
+      }
+    }
+
+    for (const g of grouped) {
       const div = document.createElement("div");
       div.className = "section";
-      if (sec.title) {
+      if (g.type === "combined") {
         const h = document.createElement("div");
         h.className = "section-title";
-        h.textContent = sec.title;
+        h.textContent = g.primary.title;
         div.appendChild(h);
-      }
-      if (sec.rows && sec.rows.length > 0) {
-        const table = document.createElement("table");
-        const keys = Object.keys(sec.rows[0]);
-        const thead = document.createElement("thead");
-        const hr = document.createElement("tr");
-        for (const k of keys) { const th = document.createElement("th"); th.textContent = k; hr.appendChild(th); }
-        thead.appendChild(hr);
-        table.appendChild(thead);
-        const tbody = document.createElement("tbody");
-        for (const row of sec.rows) {
-          const tr = document.createElement("tr");
-          for (const k of keys) {
-            const td = document.createElement("td");
-            const val = row[k] || "";
-            td.textContent = val;
-            const lower = val.toLowerCase();
-            if (lower === "ok")      td.className = "ok";
-            if (lower === "fail")    td.className = "fail";
-            if (lower === "pending") td.className = "pending";
-            if (lower === "secure")  td.className = "secure";
-            if (lower === "hostile") td.className = "hostile";
-            if (lower === "ready")   td.className = "ready";
-            tr.appendChild(td);
-          }
-          tbody.appendChild(tr);
+        renderSectionTable(div, g.primary, false);
+        renderSectionTable(div, g.secondary, true);
+      } else {
+        const sec = g.sec;
+        if (sec.title) {
+          const h = document.createElement("div");
+          h.className = "section-title";
+          h.textContent = sec.title;
+          div.appendChild(h);
         }
-        table.appendChild(tbody);
-        div.appendChild(table);
+        renderSectionTable(div, sec, false);
       }
       container.appendChild(div);
     }
+
+    // ── Right: append action lines to KILL Log + update last-action-bar ─
+    const slot = document.getElementById("d-slot").textContent;
+    const stripVal = (s) => String(s || "").replace(/__TXLINK:[^_]*__/g, "").replace(/\x1b[^m]*m/g, "").trim();
+    let lastAction = null;
+    for (const sec of sections) {
+      const rows = sec.rows || [];
+      if (rows.length === 0 || !("Action" in rows[0])) continue;
+      for (const row of rows) {
+        const action = (row.Action || "").toUpperCase();
+        const cleanDetail = stripVal(row.Detail);
+        const cleanResult = stripVal(row.Result);
+        let txUrl = null;
+        const txMatch = (row.Tx || "").match(/__TXLINK:([^_]*)__/) || (row.Detail || "").match(/__TXLINK:([^_]*)__/);
+        if (txMatch) txUrl = txMatch[1];
+        let cls = "log-network";
+        if (action === "KILL")                            cls = "log-kill";
+        else if (action === "SPAWN" || action === "SEED") cls = "log-spawn";
+        else if (action === "MOVE")                       cls = "log-move";
+        else if (action === "RETREAT" || action === "REFRESH") cls = "log-retreat";
+        let msg = action;
+        if (cleanDetail) msg += ` <span style="opacity:0.8">${cleanDetail}</span>`;
+        if (cleanResult) {
+          const l = cleanResult.toLowerCase();
+          const c = (l==="ok"||l==="secure") ? "log-ok" : (l==="fail"||l==="hostile") ? "log-fail" : "";
+          msg += ` <span class="${c}">[${cleanResult}]</span>`;
+        }
+        appendLog(slot, msg, cls, txUrl);
+        lastAction = { action, cls, detail: cleanDetail, result: cleanResult, txUrl };
+      }
+    }
+
+    // Update last-action-bar if we got any action this tick
+    if (lastAction) {
+      const colorMap = { "log-kill": "var(--purple)", "log-spawn": "var(--green)", "log-move": "var(--blue)", "log-retreat": "#ffaa00", "log-refresh": "#ffaa00" };
+      document.getElementById("la-type").textContent = lastAction.action;
+      document.getElementById("la-type").style.color = colorMap[lastAction.cls] || "#aaa";
+      document.getElementById("la-detail").textContent = lastAction.detail;
+      const resEl = document.getElementById("la-result");
+      resEl.innerHTML = "";
+      if (lastAction.result) {
+        const rl = lastAction.result.toLowerCase();
+        const badgeMap = { ok: "badge-ok", fail: "badge-fail", pending: "badge-pending", secure: "badge-secure", hostile: "badge-hostile", ready: "badge-ready" };
+        const span = document.createElement("span");
+        span.className = `badge ${badgeMap[rl] || ""}`;
+        span.textContent = lastAction.result;
+        resEl.appendChild(span);
+      }
+      const txEl = document.getElementById("la-tx");
+      txEl.innerHTML = "";
+      if (lastAction.txUrl) {
+        const a = document.createElement("a");
+        a.className = "log-tx";
+        a.textContent = "[ tx ]";
+        a.onclick = (e) => { e.preventDefault(); window.killAPI.openExternal(lastAction.txUrl); };
+        txEl.appendChild(a);
+      }
+    }
+  });
+
+  window.killAPI.onBlockScan((data) => {
+    if (agentRunning) return;
+    document.getElementById("d-slot").textContent = data.slot;
+    appendLog(data.slot, "block", "log-network");
   });
 
   window.killAPI.onAgentStatus((data) => {
-    const dot  = document.getElementById("status-dot");
-    const text = document.getElementById("status-text");
+    const dot   = document.getElementById("status-dot");
+    const text  = document.getElementById("status-text");
+    const btnStart = document.getElementById("btn-start");
     if (data.running) {
+      agentRunning = true;
       dot.className = "status-dot running";
       text.textContent = "Running";
+      btnStart.textContent = "Start";
+      btnStart.disabled = false;
+      appendLog("—", `AGENT ONLINE — strategy: ${(data.strategy || []).join(", ")}`, "log-spawn");
     } else {
+      agentRunning = false;
       dot.className = "status-dot stopped";
       text.textContent = "Stopped";
+      btnStart.textContent = "Start";
+      btnStart.disabled = false;
+      appendLog("—", "AGENT STOPPED", "log-network");
+      fetchBalances();
     }
   });
 
   window.killAPI.onAgentError((msg) => {
-    const el = document.getElementById("dash-error");
-    el.textContent = msg;
-    el.classList.remove("hidden");
-    setTimeout(() => el.classList.add("hidden"), 5000);
+    showDashError(msg);
+    const slot = document.getElementById("d-slot").textContent;
+    appendLog(slot, `ERROR: ${msg}`, "log-kill");
+  });
+
+  window.killAPI.onAgentUnfunded((data) => {
+    const banner = document.getElementById("unfunded-banner");
+    document.getElementById("unfunded-addr").textContent = data.address;
+    banner.classList.remove("hidden");
+    const slot = document.getElementById("d-slot").textContent;
+    appendLog(slot, "WALLET UNFUNDED — agent paused", "log-kill");
+  });
+
+  window.killAPI.onAgentAirdrop((data) => {
+    document.getElementById("unfunded-banner").classList.add("hidden");
+    const slot = document.getElementById("d-slot").textContent;
+    appendLog(slot, `AIRDROP +${data.sol} SOL received — restart agent`, "log-spawn");
   });
 </script>
 </body>

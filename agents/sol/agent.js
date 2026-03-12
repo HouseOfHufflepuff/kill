@@ -23,7 +23,7 @@ function loadKeypair(envKey) {
 
 // ── IDL loader ────────────────────────────────────────────────────────────────
 
-const IDL_DIR    = path.join(__dirname, "../contracts-solana/target/idl");
+const IDL_DIR    = path.join(__dirname, "../../contracts-solana/target/idl");
 const IDL_GAME   = JSON.parse(fs.readFileSync(path.join(IDL_DIR, "kill_game.json"),   "utf8"));
 const IDL_FAUCET = JSON.parse(fs.readFileSync(path.join(IDL_DIR, "kill_faucet.json"), "utf8"));
 
