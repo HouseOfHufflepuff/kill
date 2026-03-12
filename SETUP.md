@@ -101,6 +101,70 @@ anchor deploy --program-name kill_faucet --provider.cluster devnet
 
 ---
 
+## Desktop App (Electron)
+
+The KILLGame desktop app lives at `agents/sol/desktop/`.
+
+### Install dependencies
+
+```shell
+cd agents/sol/desktop
+npm install
+```
+
+### Run in development
+
+```shell
+npm start
+
+# With DevTools open:
+NODE_ENV=development npm start
+```
+
+### Build installer
+
+```shell
+# macOS → dist/KILLGameSetup.dmg
+npm run build:mac
+
+# Windows → dist/KILLGameSetup.exe
+npm run build:win
+
+# Both
+npm run build:all
+```
+
+> macOS builds must run on macOS. For signed builds set `CSC_LINK` and `CSC_KEY_PASSWORD` before building.
+
+### Publish
+
+Upload artifacts to the web root:
+
+```
+https://killgame.ai/KILLGameSetup.dmg
+https://killgame.ai/KILLGameSetup.exe
+https://killgame.ai/kill.sh
+```
+
+### Developer install (source)
+
+```shell
+curl -fsSL https://killgame.ai/kill.sh | bash
+```
+
+Clones repo to `~/.killgame`, installs deps, writes `killgame` to `~/.local/bin/`.
+
+```shell
+killgame setup    # Create or import Solana wallet
+killgame start    # Launch agent GUI
+killgame dev      # Launch with DevTools open
+killgame update   # Pull latest from GitHub
+killgame build    # Build distributable DMG / EXE
+killgame where    # Print install directory
+```
+
+---
+
 ## GraphQL indexer
 
 ```shell
