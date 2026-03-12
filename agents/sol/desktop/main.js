@@ -6,6 +6,13 @@ const anchor = require("@coral-xyz/anchor");
 const web3   = anchor.web3;
 const { getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync, getAccount } = require("@solana/spl-token");
 
+// ── Dev mode isolation ───────────────────────────────────────────────────────
+const isDev = !app.isPackaged;
+if (isDev) {
+  app.setName("killgame-sol-dev");
+  app.setPath("userData", path.join(app.getPath("appData"), "killgame-sol-dev"));
+}
+
 // ── Paths ─────────────────────────────────────────────────────────────────────
 const AGENTS_DIR = path.join(__dirname, "agents");
 const IDL_DIR    = path.join(__dirname, "idl");
