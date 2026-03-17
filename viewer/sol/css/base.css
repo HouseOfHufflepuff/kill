@@ -84,7 +84,7 @@ footer {
 
 .footer-economy { font-family: 'JetBrains Mono'; font-size: 0.9rem; font-weight: 400; text-align: right; }
 
-#system-status { font-family: 'Rubik Dirt', sans-serif; font-size: 1.6rem; display: inline-flex; align-items: center; }
+#system-status { font-family: 'Rubik Dirt', sans-serif; font-size: 1.6rem; font-weight: 400; display: inline-flex; align-items: center; }
 
 /* --- MODAL SYSTEM FIX (REVISED v1.0.6) --- */
 .modal { 
