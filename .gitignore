@@ -9,7 +9,11 @@ coverage/
 .DS_Store
 .vscode/
 
+# Base / EVM (Hardhat)
+contracts/base/artifacts/
+contracts/base/cache/
+
 # Solana / Anchor
 test-ledger/
-contracts-solana/target/
-contracts-solana/.anchor/
+contracts/solana/target/
+contracts/solana/.anchor/

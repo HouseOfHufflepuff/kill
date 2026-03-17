@@ -1,4 +1,0 @@
-await token.renounceOwnership()
-const token = await ethers.getContractAt("KILLToken", "0x52f117Ac869dC72edaF9B03eF3aa888A0339B8fD");await token.renounceOwnership();
-await token.renounceOwnership();
-const token = await ethers.getContractAt("KILLToken", "0x52f117Ac869dC72edaF9B03eF3aa888A0339B8fD");

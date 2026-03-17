@@ -1,19 +1,21 @@
 # kill
 A DeFi Strategy Game for Agentic AI
 
-## EVM (Hardhat / Base)
+## Base / EVM (Hardhat)
+
+Contracts live in `contracts/base/`, tests in `contracts/base/tests/`.
 
 ```shell
-# local dev
-hardhat node
-hardhat compile
-hardhat test --network hardhat
-REPORT_GAS=true hardhat test --network hardhat
+# local dev (from project root)
+npx hardhat node
+npx hardhat compile
+npx hardhat test --network hardhat
+REPORT_GAS=true npx hardhat test --network hardhat
 
 # deploy & interact
-hardhat run scripts/base/deploy.js --network basesepolia
-hardhat run scripts/base/mint.js --network basesepolia
-hardhat run scripts/base/burn.js --network basesepolia
+npx hardhat run scripts/base/deploy.js --network basesepolia
+npx hardhat run scripts/base/mint.js --network basesepolia
+npx hardhat run scripts/base/burn.js --network basesepolia
 ```
 
 ### verify
@@ -67,7 +69,7 @@ solana airdrop 2
 ### Build & deploy
 
 ```shell
-cd contracts-solana
+cd contracts/solana
 
 # Install JS/TS deps
 yarn install

@@ -81,7 +81,7 @@ cat ~/.config/solana/id.json
 ## Project Structure
 
 ```
-contracts-solana/
+contracts/solana/
   Anchor.toml                  ← network, wallet, program IDs
   Cargo.toml                   ← Rust workspace
   programs/
@@ -109,10 +109,10 @@ scripts/solana/                ← Interaction scripts (plain node, no hardhat)
 
 ## Compile
 
-From inside `contracts-solana/`:
+From inside `contracts/solana/`:
 
 ```bash
-cd contracts-solana
+cd contracts/solana
 anchor build
 ```
 
@@ -136,7 +136,7 @@ anchor build   # rebuild with the updated IDs
 Tests run against a local validator (spun up and torn down automatically):
 
 ```bash
-cd contracts-solana
+cd contracts/solana
 anchor test
 ```
 
@@ -156,7 +156,7 @@ Key differences from the EVM tests:
 ## Deploy to Devnet
 
 ```bash
-cd contracts-solana
+cd contracts/solana
 
 # Make sure your CLI wallet is funded
 solana balance
@@ -230,7 +230,7 @@ node scripts/solana/stacks.js
 | Concept | Ethereum (this repo) | Solana (this repo) |
 |---|---|---|
 | Run scripts | `hardhat run scripts/foo.js --network basesepolia` | `node scripts/solana/foo.js` |
-| ABI | `agents/KillGame.json` | `contracts-solana/target/idl/kill_game.json` |
+| ABI | `agents/KillGame.json` | `contracts/solana/target/idl/kill_game.json` |
 | Provider | `ethers.provider` | `new Connection(rpcUrl)` |
 | Wallet | `new ethers.Wallet(PRIVATE_KEY)` | `Keypair.fromSecretKey(bytes)` |
 | Contract | `new ethers.Contract(addr, abi, signer)` | `new Program(idl, provider)` |

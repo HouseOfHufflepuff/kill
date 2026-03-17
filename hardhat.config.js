@@ -77,6 +77,12 @@ module.exports = {
       }
     ]
   },
+  paths: {
+    sources: "./contracts/base",
+    tests: "./contracts/base/tests",
+    artifacts: "./contracts/base/artifacts",
+    cache: "./contracts/base/cache",
+  },
   // MERGED GAS REPORTER CONFIGURATION
   gasReporter: {
     enabled: true,

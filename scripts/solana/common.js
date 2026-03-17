@@ -14,7 +14,7 @@ const web3    = anchor.web3;
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
 
 // ── IDL paths (compiled by `anchor build`) ────────────────────────────────────
-const IDL_DIR  = path.join(__dirname, "../../contracts-solana/target/idl");
+const IDL_DIR  = path.join(__dirname, "../../contracts/solana/target/idl");
 const IDL_GAME   = JSON.parse(fs.readFileSync(path.join(IDL_DIR, "kill_game.json"),   "utf8"));
 const IDL_TOKEN  = JSON.parse(fs.readFileSync(path.join(IDL_DIR, "kill_token.json"),  "utf8"));
 const IDL_FAUCET = JSON.parse(fs.readFileSync(path.join(IDL_DIR, "kill_faucet.json"), "utf8"));

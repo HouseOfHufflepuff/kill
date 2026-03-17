@@ -17,7 +17,7 @@ const fs      = { readFileSync: readFileSync };
 const PROGRAM_ID = "2FbeFxvFH2b4KyAcwNToFr3pHzYK4ybYQWriXjjKEr5D";
 const RPC_URL    = "https://api.devnet.solana.com";
 
-const idl      = JSON.parse(readFileSync("contracts-solana/target/idl/kill_game.json", "utf8"));
+const idl      = JSON.parse(readFileSync("contracts/solana/target/idl/kill_game.json", "utf8"));
 const conn     = new web3.Connection(RPC_URL, "confirmed");
 const dummyKey = web3.Keypair.generate().publicKey;
 const provider = new anchor.AnchorProvider(conn, { publicKey: dummyKey }, {});

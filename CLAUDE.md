@@ -7,12 +7,13 @@ KILL is a deflationary on-chain strategy game deployed on **Solana** (primary) a
 ## Quick Start
 
 ```bash
-# EVM (Hardhat)
+# Base / EVM (Hardhat)
 npm install
-npx hardhat test
+npx hardhat compile
+npx hardhat test --network hardhat
 
 # Solana (Anchor) — requires Rust 1.89+, Solana CLI v3, Anchor 0.32.1
-cd contracts-solana
+cd contracts/solana
 anchor build
 anchor test                    # runs local validator + 29 integration tests
 
@@ -24,14 +25,21 @@ npm install && npm start
 ## Project Layout
 
 ```
-contracts/                     # Solidity (EVM reference implementation)
-  KillGame.sol                 # Core game: spawn, move, kill, bounties
-  KillToken.sol                # ERC20Capped (666B supply, 18 decimals)
-contracts-solana/              # Anchor programs (Solana primary)
-  programs/kill_game/          # Game logic (spawn, move, kill, admin)
-  programs/kill_token/         # SPL mint wrapper (6 decimals)
-  programs/kill_faucet/        # One-time devnet claim (1000 KILL)
-  tests/kill.ts                # All tests — single file (shared PDAs)
+contracts/
+  base/                        # Solidity (EVM reference implementation)
+    KillGame.sol               # Core game: spawn, move, kill, bounties
+    KillToken.sol              # ERC20Capped (666B supply, 18 decimals)
+    KillFaucet.sol             # ERC20 faucet
+    tests/                     # Hardhat/Mocha test suite
+      killgame.js              # Core game tests (27 tests)
+      killtoken.js             # Token tests
+      multicall.js             # Batching tests
+      econsim.js               # Economic simulation
+  solana/                      # Anchor programs (Solana primary)
+    programs/kill_game/        # Game logic (spawn, move, kill, admin)
+    programs/kill_token/       # SPL mint wrapper (6 decimals)
+    programs/kill_faucet/      # One-time devnet claim (1000 KILL)
+    tests/kill.ts              # All tests — single file (shared PDAs)
 agents/sol/                    # AI agent framework
   agent.js                     # Orchestrator / runner
   common.js                    # Shared: PDA derivation, power calc, RPC
@@ -106,7 +114,7 @@ This creates tension: high bounty but low combat effectiveness.
 
 ## Testing Notes
 
-- All Solana tests live in `contracts-solana/tests/kill.ts` (single file) because all three programs share singleton PDAs (token_config, game_config). Separate files would conflict on initialization.
+- All Solana tests live in `contracts/solana/tests/kill.ts` (single file) because all three programs share singleton PDAs (token_config, game_config). Separate files would conflict on initialization.
 - Can't fast-forward Solana localnet slots like `evm_mine`, so multiplier=1 in tests.
 - `resolve_combat` returns: `(won, rem_atk_u, rem_atk_r, atk_u_lost, atk_r_lost, def_u_lost, def_r_lost)`
 
@@ -124,14 +132,20 @@ Key agent strategies:
 ## Common Commands
 
 ```bash
-# Solana scripts
+# Base / EVM (from project root)
+npx hardhat compile                                      # compile contracts/base/*.sol
+npx hardhat test --network hardhat                       # run contracts/base/tests/
+REPORT_GAS=true npx hardhat test --network hardhat
+npx hardhat run scripts/base/deploy.js --network basesepolia
+
+# Solana (from contracts/solana/)
+cd contracts/solana
+anchor build                                             # compile all 3 programs
+anchor test                                              # local validator + tests
+
+# Solana scripts (from project root)
 node scripts/solana/balance.js
 node scripts/solana/spawn.js <stack> <units>
 node scripts/solana/kill.js <atk_stack> <defender_pk> <def_stack>
 node scripts/solana/stacks.js [pubkey]
-
-# EVM
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat run scripts/base/deploy.js --network basesepolia
 ```
