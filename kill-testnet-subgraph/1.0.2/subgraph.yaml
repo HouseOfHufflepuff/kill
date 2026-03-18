@@ -17,9 +17,12 @@ dataSources:
         - Spawned
         - Moved
         - Killed
+        - Claimed
         - GlobalStat
         - Stack
         - AgentStack
+        - Agent
+        - Config
       abis:
         - name: killgame
           file: ./abis/killgame.json
@@ -32,4 +35,8 @@ dataSources:
           handler: handleKilled
         - event: GlobalStats(uint256,uint256,uint256,uint256,uint256)
           handler: handleGlobalStats
+        - event: ConfigUpdated(uint256,uint256,uint256,uint256,uint256)
+          handler: handleConfigUpdated
+        - event: Claimed(indexed address,indexed uint16,uint256)
+          handler: handleClaimed
       file: ./mapping.ts

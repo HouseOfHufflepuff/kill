@@ -38,10 +38,12 @@ type Killed @entity(immutable: true) {
   block_number: BigInt!
 }
 
-type DefenderReward @entity(immutable: true) {
+# Airdrop claim — one per eligible pt1 wallet, free spawn funded by vault.
+type Claimed @entity(immutable: true) {
   id: ID!
-  defender: Bytes!
-  amount: BigInt!
+  claimer: Bytes!
+  stackId: BigInt!
+  units: BigInt!
   block_number: BigInt!
 }
 
@@ -51,11 +53,11 @@ type Stack @entity(immutable: false) {
   totalBoostedUnits: BigInt!
   birthBlock: BigInt!
   currentBounty: BigInt!
-  active: Boolean! # Added to track stacks for bounty recalculation
+  active: Boolean!
 }
 
 type AgentStack @entity(immutable: false) {
-  id: ID! 
+  id: ID!
   agent: Bytes!
   stackId: BigInt!
   birthBlock: BigInt!
@@ -64,21 +66,41 @@ type AgentStack @entity(immutable: false) {
 }
 
 type Agent @entity(immutable: false) {
-  id: ID! # Wallet Address
+  id: ID!               # wallet address
   totalSpent: BigInt!
   totalEarned: BigInt!
   netPnL: BigInt!
   lastActiveBlock: BigInt!
+  airdropClaimed: Boolean!
 }
 
+# Singleton (id: "current") — updated on every ConfigUpdated event.
+# FE reads this to compute live bounties and decay without hitting the contract.
+type Config @entity(immutable: false) {
+  id: ID!                      # always "current"
+  spawnCost: BigInt!           # KILL wei per unit
+  treasuryBps: BigInt!         # fee taken from bounty payouts (bps)
+  maxMultiplier: BigInt!       # bounty/decay multiplier cap
+  blocksPerMultiplier: BigInt! # blocks per one multiplier step
+  globalCapBps: BigInt!        # max bounty as % of vault (bps)
+}
+
+# Singleton (id: "current") — running economy totals, updated on GlobalStats.
+# Also mirrors live config params so one query gives FE everything it needs
+# to compute bounties and power decay client-side.
 type GlobalStat @entity(immutable: false) {
   id: ID!
   totalUnitsKilled: BigInt!
   totalReaperKilled: BigInt!
-  killAdded: BigInt!      
-  killExtracted: BigInt!  
-  killBurned: BigInt!     
-  totalPnL: BigInt!       
-  currentTreasury: BigInt! 
-  maxBounty: BigInt!      
+  killAdded: BigInt!
+  killExtracted: BigInt!
+  killBurned: BigInt!
+  totalPnL: BigInt!
+  currentTreasury: BigInt!
+  maxBounty: BigInt!
+  # Config mirror — kept in sync with Config entity
+  spawnCost: BigInt!
+  blocksPerMultiplier: BigInt!
+  maxMultiplier: BigInt!
+  globalCapBps: BigInt!
 }
