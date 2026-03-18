@@ -366,7 +366,8 @@ describe("KILLGame: Full Suite", function () {
       expect(await killGame.airdropAmount()).to.equal(ethers.utils.parseEther("3000000"));
     });
 
-    it("should revert claim when merkleRoot not set", async function () {
+    it("should revert claim when merkleRoot is cleared to zero", async function () {
+      await killGame.connect(owner).setMerkleRoot(ethers.constants.HashZero);
       const proof = getProof(tree, leaves, userA, [owner, userA, userB]);
       await expect(killGame.connect(userA).claim(proof, 1))
         .to.be.revertedWith("No airdrop");
@@ -427,6 +428,222 @@ describe("KILLGame: Full Suite", function () {
       await killGame.connect(userA).claim(proof, 1);
       expect(await killGame.balanceOf(userA.address, 1))
         .to.equal(ethers.BigNumber.from(300000));
+    });
+  });
+
+  describe("Airdrop: auto-kill on claim", function () {
+    // Uses the synthetic tree (owner, userA, userB) so we control the merkle root.
+    // Tests the spawn+kill multicall behaviour inside claim().
+    let tree, leaves, root;
+    // claim units = 3M KILL / 20 KILL = 150,000.  threshold = 75,000.
+    const CLAIM_UNITS = ethers.BigNumber.from(3_000_000).div(20); // 150,000
+    const THRESHOLD   = CLAIM_UNITS.div(2);                       //  75,000
+
+    beforeEach(async function () {
+      ({ tree, leaves } = buildTree([owner, userA, userB]));
+      root = tree.getHexRoot();
+      await killGame.connect(owner).setMerkleRoot(root);
+    });
+
+    it("auto-kills a weak occupant (units <= 50% of claim) and emits Killed", async function () {
+      // userB spawns 50,000 units on stack 1 — below the 75,000 threshold
+      await killGame.connect(userB).spawn(1, 50_000);
+      expect(await killGame.balanceOf(userB.address, 1)).to.equal(50_000);
+
+      const proof   = getProof(tree, leaves, userA, [owner, userA, userB]);
+      const tx      = await killGame.connect(userA).claim(proof, 1);
+      const receipt = await tx.wait();
+
+      // Both Claimed and Killed events emitted in the same tx
+      const claimedEvents = receipt.events.filter(e => e.event === "Claimed");
+      const killedEvents  = receipt.events.filter(e => e.event === "Killed");
+      expect(claimedEvents.length).to.equal(1);
+      expect(killedEvents.length).to.equal(1);
+
+      const k = killedEvents[0].args;
+      expect(k.attacker).to.equal(userA.address);
+      expect(k.target).to.equal(userB.address);
+      expect(k.stackId).to.equal(1);
+      // Attacker sent full claim units and won — 0 losses
+      expect(k.summary.attackerUnitsSent).to.equal(CLAIM_UNITS);
+      expect(k.summary.attackerUnitsLost).to.equal(0);
+      // Defender lost everything
+      expect(k.summary.targetUnitsLost).to.equal(50_000);
+
+      // Weak occupant's units are gone; claimer keeps all
+      expect(await killGame.balanceOf(userB.address, 1)).to.equal(0);
+      expect(await killGame.balanceOf(userA.address, 1)).to.equal(CLAIM_UNITS);
+    });
+
+    it("does NOT auto-kill when occupant has > 50% of claim units", async function () {
+      // userB spawns 100,000 units — above the 75,000 threshold
+      await killGame.connect(userB).spawn(1, 100_000);
+
+      const proof = getProof(tree, leaves, userA, [owner, userA, userB]);
+      const tx    = await killGame.connect(userA).claim(proof, 1);
+      const receipt = await tx.wait();
+
+      const killedEvents = receipt.events.filter(e => e.event === "Killed");
+      expect(killedEvents.length).to.equal(0);
+
+      // Both wallets keep their units
+      expect(await killGame.balanceOf(userB.address, 1)).to.equal(100_000);
+      expect(await killGame.balanceOf(userA.address, 1)).to.equal(CLAIM_UNITS);
+    });
+
+    it("does NOT auto-kill when stack is empty (claimer is first occupant)", async function () {
+      const proof   = getProof(tree, leaves, userA, [owner, userA, userB]);
+      const tx      = await killGame.connect(userA).claim(proof, 1);
+      const receipt = await tx.wait();
+
+      const killedEvents = receipt.events.filter(e => e.event === "Killed");
+      expect(killedEvents.length).to.equal(0);
+      expect(await killGame.balanceOf(userA.address, 1)).to.equal(CLAIM_UNITS);
+    });
+
+    it("auto-kill is exact at threshold boundary (units == 50%)", async function () {
+      // userB spawns exactly 75,000 units — right at the <= threshold
+      await killGame.connect(userB).spawn(1, THRESHOLD.toNumber());
+
+      const proof   = getProof(tree, leaves, userA, [owner, userA, userB]);
+      const tx      = await killGame.connect(userA).claim(proof, 1);
+      const receipt = await tx.wait();
+
+      const killedEvents = receipt.events.filter(e => e.event === "Killed");
+      expect(killedEvents.length).to.equal(1);
+      expect(await killGame.balanceOf(userB.address, 1)).to.equal(0);
+    });
+
+    it("auto-kill: claimer earns bounty when target has mature pending bounty", async function () {
+      // Seed target with units and age them to generate a bounty
+      await killGame.connect(userB).spawn(1, 50_000);
+      // Fast-forward enough blocks to give userB a multiplier > 1
+      await setConfig(owner, { blocksPerMultiplier: 1 }); // 1 block per mult for test speed
+      await fastForward(5);
+
+      const bountyBefore = await killGame.getPendingBounty(userB.address, 1);
+      expect(bountyBefore).to.be.gt(0);
+
+      const claimerBalBefore = await killToken.balanceOf(userA.address);
+      const proof = getProof(tree, leaves, userA, [owner, userA, userB]);
+      await killGame.connect(userA).claim(proof, 1);
+
+      const claimerBalAfter = await killToken.balanceOf(userA.address);
+      expect(claimerBalAfter).to.be.gt(claimerBalBefore);
+    });
+  });
+
+  describe("Airdrop: pt1 live tree", function () {
+    // Uses the hardcoded merkle root and real proofs from pt1-tree.json.
+    // Impersonates actual pt1 addresses so no setMerkleRoot() is needed.
+    const path = require("path");
+    const fs   = require("fs");
+    const PT1_TREE = path.join(__dirname, "../../../scripts/base/pt1-tree.json");
+
+    let treeData, pt1Address, pt1Proof;
+
+    before(async function () {
+      treeData   = JSON.parse(fs.readFileSync(PT1_TREE, "utf8"));
+      pt1Address = Object.keys(treeData.proofs)[0];   // first pt1 wallet
+      pt1Proof   = treeData.proofs[pt1Address];
+    });
+
+    async function impersonate(addr) {
+      await ethers.provider.send("hardhat_impersonateAccount", [addr]);
+      await ethers.provider.send("hardhat_setBalance", [addr, "0xDE0B6B3A7640000"]); // 1 ETH for gas
+      return ethers.provider.getSigner(addr);
+    }
+
+    async function stopImpersonate(addr) {
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [addr]);
+    }
+
+    it("pt1 wallet: can claim and receives correct units", async function () {
+      const signer = await impersonate(pt1Address);
+      const expectedUnits = ethers.BigNumber.from(3_000_000).div(20); // 150,000
+
+      await expect(killGame.connect(signer).claim(pt1Proof, 1))
+        .to.emit(killGame, "Claimed")
+        .withArgs(ethers.utils.getAddress(pt1Address), 1, expectedUnits);
+
+      expect(await killGame.balanceOf(pt1Address, 1)).to.equal(expectedUnits);
+      await stopImpersonate(pt1Address);
+    });
+
+    it("pt1 wallet: cannot claim a second time", async function () {
+      const signer = await impersonate(pt1Address);
+
+      await killGame.connect(signer).claim(pt1Proof, 1);
+      await expect(killGame.connect(signer).claim(pt1Proof, 1))
+        .to.be.revertedWith("Already claimed");
+
+      await stopImpersonate(pt1Address);
+    });
+
+    it("wallet not on pt1: cannot claim with a stolen proof", async function () {
+      // Steal a valid proof but call from a different address
+      const [,,, stranger] = await ethers.getSigners();
+      await expect(killGame.connect(stranger).claim(pt1Proof, 1))
+        .to.be.revertedWith("Not eligible");
+    });
+
+    it("wallet not on pt1: cannot claim with an empty proof", async function () {
+      const [,,, stranger] = await ethers.getSigners();
+      await expect(killGame.connect(stranger).claim([], 1))
+        .to.be.revertedWith("Not eligible");
+    });
+
+    it("second pt1 wallet: can independently claim", async function () {
+      const addr2  = Object.keys(treeData.proofs)[1];
+      const proof2 = treeData.proofs[addr2];
+      const signer = await impersonate(addr2);
+      const expectedUnits = ethers.BigNumber.from(3_000_000).div(20);
+
+      await killGame.connect(signer).claim(proof2, 5);
+      expect(await killGame.balanceOf(addr2, 5)).to.equal(expectedUnits);
+      expect(await killGame.hasClaimed(addr2)).to.be.true;
+
+      await stopImpersonate(addr2);
+    });
+
+    it("pt1 claim: auto-kills a weak occupant placed on the target stack", async function () {
+      // userA (test signer) spawns 50,000 units on stack 3 — below 75,000 threshold
+      await killGame.connect(userA).spawn(3, 50_000);
+
+      const signer = await impersonate(pt1Address);
+      const proof  = treeData.proofs[pt1Address];
+
+      const tx      = await killGame.connect(signer).claim(proof, 3);
+      const receipt = await tx.wait();
+
+      const killedEvents = receipt.events.filter(e => e.event === "Killed");
+      expect(killedEvents.length).to.equal(1);
+      expect(killedEvents[0].args.attacker.toLowerCase()).to.equal(pt1Address.toLowerCase());
+      expect(killedEvents[0].args.target).to.equal(userA.address);
+
+      // Weak occupant eliminated
+      expect(await killGame.balanceOf(userA.address, 3)).to.equal(0);
+
+      await stopImpersonate(pt1Address);
+    });
+
+    it("pt1 claim: no auto-kill when stack has a strong occupant", async function () {
+      // userA spawns 100,000 units — above the 75,000 threshold
+      await killGame.connect(userA).spawn(3, 100_000);
+
+      const signer = await impersonate(pt1Address);
+      const proof  = treeData.proofs[pt1Address];
+
+      const tx      = await killGame.connect(signer).claim(proof, 3);
+      const receipt = await tx.wait();
+
+      const killedEvents = receipt.events.filter(e => e.event === "Killed");
+      expect(killedEvents.length).to.equal(0);
+
+      // Strong occupant survives
+      expect(await killGame.balanceOf(userA.address, 3)).to.equal(100_000);
+
+      await stopImpersonate(pt1Address);
     });
   });
 

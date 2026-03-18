@@ -73,7 +73,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     // airdropAmount: KILL tokens allocated per claim from treasury (default 3M KILL).
     // Units spawned = airdropAmount / spawnCost. Treasury absorbs the cost.
     uint256 public airdropAmount = 3_000_000 * 10**18;
-    bytes32 public merkleRoot;
+    bytes32 public merkleRoot = 0x92006a4b48f4b8cd10508859991d70ea8e924a4606bdf58a90e92c63b0f22497;
     mapping(address => bool) public hasClaimed;
 
     // --- STORAGE ---
@@ -132,6 +132,8 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     // --- AIRDROP CLAIM ---
     // Verifies msg.sender is in the pt1 Merkle tree, then spawns units on stackId.
     // Units = airdropAmount / spawnCost. Cost comes from the vault, not the claimer.
+    // If an occupant on stackId holds <= 50% of the claim units, they are auto-attacked,
+    // earning the claimer a bounty and clearing a weak stack in one transaction.
     function claim(bytes32[] calldata proof, uint16 stackId) external nonReentrant {
         require(merkleRoot != bytes32(0), "No airdrop");
         require(stackId >= 1 && stackId <= 216, "Invalid stack");
@@ -145,13 +147,62 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         uint256 units = airdropAmount / spawnCost;
         require(units > 0, "Zero units");
 
-        _mintAndReg(msg.sender, uint256(stackId), units);
+        uint256 uId = uint256(stackId);
+        uint256 rId = uId + 216;
 
+        _mintAndReg(msg.sender, uId, units);
         uint256 reaperCount = units / 666;
-        if (reaperCount > 0) _mintAndReg(msg.sender, uint256(stackId) + 216, reaperCount);
+        if (reaperCount > 0) _mintAndReg(msg.sender, rId, reaperCount);
 
         emit Claimed(msg.sender, stackId, units);
-        emit Spawned(msg.sender, stackId, units, reaperCount, agentStacks[msg.sender][uint256(stackId)].birthBlock);
+        emit Spawned(msg.sender, stackId, units, reaperCount, agentStacks[msg.sender][uId].birthBlock);
+
+        // Auto-kill: find the first occupant on this stack with <= 50% of claim units and attack.
+        address target = _findWeakOccupant(uId, units / 2);
+        if (target != address(0)) {
+            _claimKill(target, uId, rId, units, reaperCount);
+        }
+    }
+
+    // Returns the first occupant on uId (other than the claimer) whose unit count <= threshold.
+    function _findWeakOccupant(uint256 uId, uint256 threshold) internal view returns (address) {
+        address current = stackHeads[uId];
+        while (current != address(0)) {
+            if (current != msg.sender && balanceOf(current, uId) <= threshold) {
+                return current;
+            }
+            current = stackNodes[uId][current].next;
+        }
+        return address(0);
+    }
+
+    // Executes a kill from the claimer against target using the freshly spawned units.
+    function _claimKill(address target, uint256 uId, uint256 rId, uint256 sentUnits, uint256 sentReaper) internal {
+        uint256 defU = balanceOf(target, uId);
+        uint256 defR = balanceOf(target, rId);
+        uint256 targetBirth = agentStacks[target][uId].birthBlock;
+
+        uint256 atkDecay = _getDecayPct(agentStacks[msg.sender][uId].birthBlock);
+        uint256 defDecay = _getDecayPct(targetBirth);
+
+        LossReport memory loss = _resolveCombat(sentUnits, sentReaper, atkDecay, defU, defR, defDecay);
+
+        BattleSummary memory sum;
+        sum.attackerUnitsSent    = sentUnits;
+        sum.attackerReaperSent   = sentReaper;
+        sum.initialDefenderUnits = defU;
+        sum.initialDefenderReaper = defR;
+        sum.attackerUnitsLost    = loss.aUnits;
+        sum.attackerReaperLost   = loss.aReaper;
+        sum.targetUnitsLost      = loss.tUnits;
+        sum.targetReaperLost     = loss.tReaper;
+
+        _applyRewards(target, uId, loss, sum);
+        _updateCombatGlobalStats(loss);
+        _executeCombatEffects(msg.sender, target, uId, rId, loss);
+
+        emit Killed(msg.sender, target, uint16(uId), sum, targetBirth);
+        _emitGlobalStats();
     }
 
     // --- VIEWS / HELPERS ---
