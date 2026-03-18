@@ -1,7 +1,7 @@
 {
-  "name": "killgame-sol",
-  "version": "1.0.0",
-  "description": "KILLGame Solana Agent — Desktop",
+  "name": "killgame",
+  "version": "1.1.0",
+  "description": "KILLGame Agent — Solana & Base Desktop",
   "author": "KILLGame",
   "main": "main.js",
   "scripts": {
@@ -12,17 +12,21 @@
     "build:all": "electron-builder --mac --win"
   },
   "build": {
-    "appId": "ai.killgame.sol",
+    "appId": "ai.killgame",
     "productName": "KILLGAME",
     "files": [
       "main.js",
       "preload.js",
       "index.html",
-      "agents/**/*",
+      "hardhat-shim.js",
       "idl/**/*",
       "node_modules/**/*"
     ],
-    "extraResources": [],
+    "extraResources": [
+      { "from": "../sol",    "to": "agents/sol",    "filter": ["**/*", "!desktop/**"] },
+      { "from": "../base",   "to": "agents/base",   "filter": ["**/*"] },
+      { "from": "../common", "to": "agents/common",  "filter": ["**/*"] }
+    ],
     "icon": "icon.png",
     "mac": {
       "category": "public.app-category.games",
@@ -42,6 +46,8 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
+    "ethers": "^5.7.2",
+    "node-fetch": "^2.7.0",
     "@coral-xyz/anchor": "^0.30.1",
     "@solana/web3.js": "^1.98.0",
     "@solana/spl-token": "^0.4.9",

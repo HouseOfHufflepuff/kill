@@ -71,6 +71,9 @@
     "aftershock": {
       "MAX_KILL": 1000000
     },
+    "nuke": {
+      "TARGET_STACKS": [22, 23, 28, 29]
+    },
     "market-maker": {
       "ETH_TARGET": "0.01",
       "KILL_TARGET": "5000000",

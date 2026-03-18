@@ -4,14 +4,7 @@ const web3   = anchor.web3;
 const { getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync } = require("@solana/spl-token");
 const { GRN, YEL, RED, RES, getManhattanDist, calcPower, calcEffectivePower,
         powerDecayPct, agentStackPDA, gameConfigPDA, txLink } = require('../common');
-
-function fmtPow(n) {
-    const v = Number(n);
-    if (v >= 1e9) return (v / 1e9).toFixed(1) + 'B';
-    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
-    if (v >= 1e3) return Math.round(v / 1e3) + 'K';
-    return String(Math.round(v));
-}
+const { fmtPow } = require('../../common/format');
 
 // BFS: single next step from start toward goal
 function bfsNextStep(start, goal) {

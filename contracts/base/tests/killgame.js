@@ -1,5 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { MerkleTree } = require("merkletreejs");
+const keccak256 = require("keccak256");
 
 describe("KILLGame: Full Suite", function () {
   let killToken, killGame, owner, userA, userB;
@@ -30,25 +32,38 @@ describe("KILLGame: Full Suite", function () {
     await killToken.connect(userB).approve(killGame.address, amount);
   });
 
+  // Helper: calls setConfig with defaults, overriding only specified fields
+  const defaults = {
+    spawnCost: ethers.utils.parseEther("20"),
+    treasuryBps: 30,
+    maxMultiplier: 20,
+    blocksPerMultiplier: 2273,
+    globalCapBps: 2500,
+  };
+  const setConfig = (signer, overrides = {}) => {
+    const c = { ...defaults, ...overrides };
+    return killGame.connect(signer).setConfig(
+      c.spawnCost, c.treasuryBps, c.maxMultiplier, c.blocksPerMultiplier, c.globalCapBps
+    );
+  };
+
   describe("Owner Functions & Access Control", function () {
-    it("16. should allow owner to change treasuryBps and emit event", async function () {
-      await expect(killGame.connect(owner).setTreasuryBps(7500))
-        .to.emit(killGame, "TreasuryBpsUpdated")
-        .withArgs(30, 7500); // 30 is the default in constructor
+    it("16. should allow owner to change treasuryBps via setConfig", async function () {
+      await setConfig(owner, { treasuryBps: 7500 });
       expect(await killGame.treasuryBps()).to.equal(7500);
     });
 
-    it("17. should revert if a non-owner tries to change treasuryBps", async function () {
-      await expect(killGame.connect(userA).setTreasuryBps(5000))
+    it("17. should revert if a non-owner tries setConfig", async function () {
+      await expect(setConfig(userA, { treasuryBps: 5000 }))
         .to.be.revertedWithCustomError(killGame, "OwnableUnauthorizedAccount")
         .withArgs(userA.address);
     });
 
     it("18. should correctly scale pending rewards when age increases", async function () {
       await killGame.connect(userA).spawn(1, 100);
-      await fastForward(1100); 
+      await fastForward(2300);
       const pendingOld = await killGame.getPendingBounty(userA.address, 1);
-      await fastForward(1100); 
+      await fastForward(2300);
       const pendingNew = await killGame.getPendingBounty(userA.address, 1);
       expect(pendingNew).to.be.gt(pendingOld);
     });
@@ -66,13 +81,120 @@ describe("KILLGame: Full Suite", function () {
         .to.be.revertedWithCustomError(killGame, "OwnableUnauthorizedAccount")
         .withArgs(userA.address);
     });
+
+    it("should have correct defaults on deploy", async function () {
+      expect(await killGame.spawnCost()).to.equal(ethers.utils.parseEther("20"));
+      expect(await killGame.treasuryBps()).to.equal(30);
+      expect(await killGame.maxMultiplier()).to.equal(20);
+      expect(await killGame.blocksPerMultiplier()).to.equal(2273);
+      expect(await killGame.globalCapBps()).to.equal(2500);
+    });
+
+    it("should update all config values and emit ConfigUpdated", async function () {
+      const newCost = ethers.utils.parseEther("50");
+      await expect(setConfig(owner, { spawnCost: newCost, treasuryBps: 500, maxMultiplier: 10, blocksPerMultiplier: 1000, globalCapBps: 1000 }))
+        .to.emit(killGame, "ConfigUpdated")
+        .withArgs(newCost, 500, 10, 1000, 1000);
+      expect(await killGame.spawnCost()).to.equal(newCost);
+      expect(await killGame.treasuryBps()).to.equal(500);
+      expect(await killGame.maxMultiplier()).to.equal(10);
+      expect(await killGame.blocksPerMultiplier()).to.equal(1000);
+      expect(await killGame.globalCapBps()).to.equal(1000);
+    });
+
+    it("should charge the updated spawnCost on spawn", async function () {
+      const newCost = ethers.utils.parseEther("50");
+      await setConfig(owner, { spawnCost: newCost });
+
+      const before = await killToken.balanceOf(userA.address);
+      await killGame.connect(userA).spawn(1, 10);
+      const after = await killToken.balanceOf(userA.address);
+      // 10 units * 50 KILL = 500 KILL
+      expect(before.sub(after)).to.equal(newCost.mul(10));
+    });
+
+    it("should revert setConfig with zero spawnCost", async function () {
+      await expect(setConfig(owner, { spawnCost: 0 }))
+        .to.be.revertedWith("Zero cost");
+    });
+
+    it("should cap multiplier at maxMultiplier", async function () {
+      // Set maxMultiplier to 3, blocksPerMultiplier to 10 for fast testing
+      await setConfig(owner, { maxMultiplier: 3, blocksPerMultiplier: 10 });
+      await killGame.connect(userA).spawn(1, 100);
+      // Fast forward well past 3x (30 blocks would be 3x + 1 = 4x uncapped)
+      await fastForward(100);
+      const pending = await killGame.getPendingBounty(userA.address, 1);
+      // Bounty uses headcount: 100 units * 1e18 * 3 = 300e18
+      expect(pending).to.equal(ethers.utils.parseEther("300"));
+    });
+
+    it("should use headcount not power for bounty (reapers count as 1)", async function () {
+      // Spawn 666 units → gets 1 free reaper (667 total headcount)
+      await killGame.connect(userA).spawn(1, 666);
+      const pending = await killGame.getPendingBounty(userA.address, 1);
+      // 666 units + 1 reaper = 667 headcount, multiplier = 1
+      expect(pending).to.equal(ethers.utils.parseEther("667"));
+    });
+
+    it("should respect globalCapBps limit", async function () {
+      // Lower cap to 1% of vault
+      await setConfig(owner, { globalCapBps: 100 });
+      // Spawn a massive stack so rawBounty exceeds the cap
+      await killGame.connect(userA).spawn(1, 100000);
+      await fastForward(5000);
+      const pending = await killGame.getPendingBounty(userA.address, 1);
+      const vaultBalance = await killToken.balanceOf(killGame.address);
+      const cap = vaultBalance.mul(100).div(10000);
+      expect(pending).to.equal(cap);
+    });
+  });
+
+  describe("Power Decay", function () {
+    it("fresh units should fight at full power (100% decay)", async function () {
+      // Use fast blocksPerMultiplier for testing
+      await setConfig(owner, { blocksPerMultiplier: 10, maxMultiplier: 20 });
+      // userA has 100 units, userB has 90 — attacker should win fresh
+      await killGame.connect(userA).spawn(1, 100);
+      await killGame.connect(userB).spawn(1, 90);
+      await killGame.connect(userA).kill(userB.address, 1, 100, 0);
+      expect(await killGame.balanceOf(userB.address, 1)).to.equal(0);
+    });
+
+    it("aged attacker should lose to fresh defender due to decay", async function () {
+      await setConfig(owner, { blocksPerMultiplier: 10, maxMultiplier: 20 });
+      // userA spawns and ages to near-minimum power (1/5)
+      await killGame.connect(userA).spawn(1, 100);
+      await fastForward(200); // well past max age
+      // userB spawns fresh — full power
+      await killGame.connect(userB).spawn(1, 30);
+      // Aged 100 units at 20% power = effective 20
+      // Fresh 30 units at 100% + 10% defender bonus = effective 33
+      // Attacker should lose
+      await killGame.connect(userA).kill(userB.address, 1, 100, 0);
+      expect(await killGame.balanceOf(userA.address, 1)).to.equal(0);
+      expect(await killGame.balanceOf(userB.address, 1)).to.be.gt(0);
+    });
+
+    it("move should reset decay (fresh power after move)", async function () {
+      await setConfig(owner, { blocksPerMultiplier: 10, maxMultiplier: 20 });
+      await killGame.connect(userA).spawn(1, 100);
+      await fastForward(200); // fully decayed
+      // Move resets birth block → full power again
+      await killGame.connect(userA).move(1, 2, 100, 0);
+      // Now attack a fresh but smaller defender
+      await killGame.connect(userB).spawn(2, 30);
+      // Fresh 100 vs fresh 30 + 10% bonus = 33 → attacker wins
+      await killGame.connect(userA).kill(userB.address, 2, 100, 0);
+      expect(await killGame.balanceOf(userB.address, 2)).to.equal(0);
+    });
   });
 
   describe("Bi-directional Looting (Combat Logic)", function () {
     const cube = 1;
     it("1. should reward the defender when they successfully repel an attack", async function () {
       await killGame.connect(userA).spawn(cube, 100);
-      await fastForward(1100);
+      await fastForward(2300);
       await killGame.connect(userB).spawn(cube, 10);
       const before = await killToken.balanceOf(userA.address);
       await killGame.connect(userB).kill(userA.address, cube, 10, 0);
@@ -81,9 +203,9 @@ describe("KILLGame: Full Suite", function () {
 
     it("2. should reward the attacker for partial damage dealt", async function () {
       await killGame.connect(userA).spawn(cube, 10);
-      await fastForward(1100);
+      await fastForward(2300);
       await killGame.connect(userB).spawn(cube, 100);
-      await fastForward(1100); 
+      await fastForward(2300);
       
       const before = await killToken.balanceOf(userB.address);
       await killGame.connect(userB).kill(userA.address, cube, 100, 0);
@@ -94,7 +216,7 @@ describe("KILLGame: Full Suite", function () {
 
     it("3. should emit DefenderRewarded event with correct amount", async function () {
       await killGame.connect(userA).spawn(cube, 50);
-      await fastForward(1100);
+      await fastForward(2300);
       await killGame.connect(userB).spawn(cube, 10);
       const tx = await killGame.connect(userB).kill(userA.address, cube, 10, 0);
       await tx.wait();
@@ -212,6 +334,99 @@ describe("KILLGame: Full Suite", function () {
       await killGame.connect(userB).spawn(1, 20);
       await killGame.connect(userB).kill(userA.address, 1, 20, 0);
       expect(await killGame.totalUnitsKilled()).to.equal(10);
+    });
+  });
+
+  // ── Merkle tree helpers shared by airdrop tests ──────────────────────────
+  function buildTree(signers) {
+    const leaves = signers.map(s =>
+      Buffer.from(
+        ethers.utils.solidityKeccak256(["address"], [s.address]).slice(2),
+        "hex"
+      )
+    );
+    const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+    return { tree, leaves };
+  }
+
+  function getProof(tree, leaves, signer, signers) {
+    const idx = signers.findIndex(s => s.address === signer.address);
+    return tree.getHexProof(leaves[idx]);
+  }
+
+  describe("Airdrop: claim()", function () {
+    let tree, leaves, root;
+
+    beforeEach(async function () {
+      ({ tree, leaves } = buildTree([owner, userA, userB]));
+      root = tree.getHexRoot();
+    });
+
+    it("should have correct airdropAmount default (3M KILL)", async function () {
+      expect(await killGame.airdropAmount()).to.equal(ethers.utils.parseEther("3000000"));
+    });
+
+    it("should revert claim when merkleRoot not set", async function () {
+      const proof = getProof(tree, leaves, userA, [owner, userA, userB]);
+      await expect(killGame.connect(userA).claim(proof, 1))
+        .to.be.revertedWith("No airdrop");
+    });
+
+    it("should allow owner to set merkle root", async function () {
+      await killGame.connect(owner).setMerkleRoot(root);
+      expect(await killGame.merkleRoot()).to.equal(root);
+    });
+
+    it("should revert with invalid proof (not in tree)", async function () {
+      await killGame.connect(owner).setMerkleRoot(root);
+      // userA's proof won't verify for owner
+      const wrongProof = getProof(tree, leaves, userA, [owner, userA, userB]);
+      // sign as a random signer not in the tree
+      const [,,, stranger] = await ethers.getSigners();
+      await expect(killGame.connect(stranger).claim(wrongProof, 1))
+        .to.be.revertedWith("Not eligible");
+    });
+
+    it("should spawn correct units on valid claim", async function () {
+      await killGame.connect(owner).setMerkleRoot(root);
+      const proof = getProof(tree, leaves, userA, [owner, userA, userB]);
+
+      // airdropAmount = 3M KILL, spawnCost = 20 KILL → 150,000 units
+      const expectedUnits = ethers.utils.parseEther("3000000").div(ethers.utils.parseEther("20"));
+
+      await expect(killGame.connect(userA).claim(proof, 1))
+        .to.emit(killGame, "Claimed")
+        .withArgs(userA.address, 1, expectedUnits);
+
+      expect(await killGame.balanceOf(userA.address, 1)).to.equal(expectedUnits);
+    });
+
+    it("should mark hasClaimed and prevent double claim", async function () {
+      await killGame.connect(owner).setMerkleRoot(root);
+      const proof = getProof(tree, leaves, userA, [owner, userA, userB]);
+
+      await killGame.connect(userA).claim(proof, 1);
+      expect(await killGame.hasClaimed(userA.address)).to.be.true;
+
+      await expect(killGame.connect(userA).claim(proof, 1))
+        .to.be.revertedWith("Already claimed");
+    });
+
+    it("should allow owner to update airdropAmount", async function () {
+      const newAmount = ethers.utils.parseEther("6000000");
+      await killGame.connect(owner).setAirdropAmount(newAmount);
+      expect(await killGame.airdropAmount()).to.equal(newAmount);
+    });
+
+    it("should spawn updated unit count when airdropAmount changes", async function () {
+      await killGame.connect(owner).setMerkleRoot(root);
+      // Double the airdrop: 6M KILL / 20 KILL = 300,000 units
+      await killGame.connect(owner).setAirdropAmount(ethers.utils.parseEther("6000000"));
+      const proof = getProof(tree, leaves, userA, [owner, userA, userB]);
+
+      await killGame.connect(userA).claim(proof, 1);
+      expect(await killGame.balanceOf(userA.address, 1))
+        .to.equal(ethers.BigNumber.from(300000));
     });
   });
 

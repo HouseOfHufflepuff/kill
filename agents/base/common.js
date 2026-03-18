@@ -1,22 +1,22 @@
 "use strict";
-// agents/common.js — Shared utilities for all KILL agents
-// Usage: const { YEL, ERC20_ABI, countdown, ... } = require('../common');
+// agents/base/common.js — Base/EVM-specific utilities for KILL agents
+// Re-exports shared code from agents/common/ so strategies keep using require('../common').
 
 const fs   = require("fs");
 const path = require("path");
 const { ethers } = require("hardhat");
 
-// ── ANSI Colors ───────────────────────────────────────────────────────────────
+// ── Shared imports (re-exported) ─────────────────────────────────────────────
 
-const YEL   = "\x1b[33m";
-const CYA   = "\x1b[36m";
-const PNK   = "\x1b[35m";
-const GRN   = "\x1b[32m";
-const RED   = "\x1b[31m";
-const RES   = "\x1b[0m";
-const BRIGHT = "\x1b[1m";
+const { YEL, CYA, PNK, GRN, RED, RES, BRIGHT,
+        displayActivity, displayHeader: _displayHeader } = require('../common/display');
+const { createGrid } = require('../common/grid');
+const { loadConfig: _loadConfig, countdown } = require('../common/config');
 
-// ── ABIs ──────────────────────────────────────────────────────────────────────
+// Base uses 1-indexed stacks (1–216)
+const { getCoords, getId, getManhattanDist, isAdjacent, getPath3D } = createGrid(1);
+
+// ── ABIs ─────────────────────────────────────────────────────────────────────
 
 const ERC20_ABI = [
     "function balanceOf(address) view returns (uint256)",
@@ -30,51 +30,11 @@ const FAUCET_ABI = [
     "function hasClaimed(address) view returns (bool)"
 ];
 
-// ── Grid math (6×6×6 = 216 stacks) ───────────────────────────────────────────
-
-function getCoords(id) {
-    const v = Number(id) - 1;
-    return { x: v % 6, y: Math.floor(v / 6) % 6, z: Math.floor(v / 36) };
-}
-
-function getId(x, y, z) { return (z * 36) + (y * 6) + x + 1; }
-
-function getManhattanDist(id1, id2) {
-    const c1 = getCoords(id1), c2 = getCoords(id2);
-    return Math.abs(c1.x - c2.x) + Math.abs(c1.y - c2.y) + Math.abs(c1.z - c2.z);
-}
-
-function isAdjacent(id1, id2) { return getManhattanDist(id1, id2) === 1; }
+// ── Power (ethers.BigNumber) ─────────────────────────────────────────────────
 
 function calcPower(units, reapers) { return units.add(reapers.mul(666)); }
 
-function getPath3D(startId, endId) {
-    let current = getCoords(startId);
-    const target = getCoords(endId);
-    const steps = [];
-    while (current.x !== target.x || current.y !== target.y || current.z !== target.z) {
-        const fromId = getId(current.x, current.y, current.z);
-        if      (current.x !== target.x) current.x += (target.x > current.x ? 1 : -1);
-        else if (current.y !== target.y) current.y += (target.y > current.y ? 1 : -1);
-        else if (current.z !== target.z) current.z += (target.z > current.z ? 1 : -1);
-        steps.push({ from: fromId, to: getId(current.x, current.y, current.z) });
-    }
-    return steps;
-}
-
-// ── Countdown ─────────────────────────────────────────────────────────────────
-
-async function countdown(seconds, label = 'WAIT') {
-    for (let i = seconds; i > 0; i--) {
-        process.stdout.write(`\r[${label}] Recheck in ${i}s... `);
-        await new Promise(r => setTimeout(r, 1000));
-    }
-    process.stdout.write('\r\x1b[K');
-}
-
-// ── Block listener ────────────────────────────────────────────────────────────
-// Fires handler every `delta` blocks. Skips if a prior call is still running.
-// Keeps the process alive via the provider's polling event loop.
+// ── Block listener ───────────────────────────────────────────────────────────
 
 function onBlock(provider, delta, handler) {
     let lastBlock = 0;
@@ -90,8 +50,7 @@ function onBlock(provider, delta, handler) {
     });
 }
 
-// ── Subgraph query ────────────────────────────────────────────────────────────
-// Lazy-requires node-fetch so agents that don't use subgraph don't need it.
+// ── Subgraph query ───────────────────────────────────────────────────────────
 
 async function subgraphQuery(url, query) {
     const fetch = require("node-fetch");
@@ -104,7 +63,7 @@ async function subgraphQuery(url, query) {
     return json.data;
 }
 
-// ── Faucet claim ──────────────────────────────────────────────────────────────
+// ── Faucet claim ─────────────────────────────────────────────────────────────
 
 async function claimFaucet(killFaucet, walletAddress) {
     try {
@@ -120,30 +79,12 @@ async function claimFaucet(killFaucet, walletAddress) {
     }
 }
 
-// ── Basescan TX link ──────────────────────────────────────────────────────────
+// ── Basescan TX link ─────────────────────────────────────────────────────────
 
 function txLink(hash) { return `https://sepolia.basescan.org/tx/${hash}`; }
 
-// ── Display utilities ─────────────────────────────────────────────────────────
-// ANSI-aware string helpers so colored values align correctly in tables.
+// ── Base displayHeader wrapper ───────────────────────────────────────────────
 
-const _ANSI_RE = /\x1b(?:\[[0-9;]*m|\]8;;[^\x1b]*\x1b\\)/g;
-function _visLen(s) { return String(s).replace(_ANSI_RE, '').length; }
-function _pad(s, w) { return String(s) + ' '.repeat(Math.max(0, w - _visLen(s))); }
-
-// Internal: render a single-row box table (header + one data row).
-function _printBox(title, cols, color = CYA) {
-    if (title) console.log(`\n${color}── ${title} ${'─'.repeat(Math.max(0, 60 - title.length))}${RES}`);
-    console.log(color + '┌' + cols.map(c => '─'.repeat(c.width + 2)).join('┬') + '┐' + RES);
-    console.log(color + '│' + cols.map(c => ' ' + _pad(c.label, c.width) + ' ').join(color + '│') + color + '│' + RES);
-    console.log(color + '├' + cols.map(c => '─'.repeat(c.width + 2)).join('┼') + '┤' + RES);
-    console.log(color + '│' + cols.map(c => ' ' + _pad(c.value, c.width) + ' ').join(color + '│') + color + '│' + RES);
-    console.log(color + '└' + cols.map(c => '─'.repeat(c.width + 2)).join('┴') + '┘' + RES);
-}
-
-// displayHeader — standard 4-column header (Block, ETH, KILL, MCap) + agent extras.
-// opts: { title, bn, wallet, killToken, pool?, poolAddr?, wethAddr?,
-//         ETH_PRICE_USD?, TOTAL_SUPPLY?, extra?: Record<string,string> }
 async function displayHeader(opts) {
     const { title, bn, wallet, killToken } = opts;
     const ethBal  = await wallet.getBalance();
@@ -168,75 +109,38 @@ async function displayHeader(opts) {
         } catch (_) { /* keep N/A */ }
     }
 
-    const baseCols = [
-        { label: 'Block', value: String(bn),  width: 10 },
-        { label: 'ETH',   value: ethStr,       width: 12 },
-        { label: 'KILL',  value: killStr,       width: 20 },
-        { label: 'MCap',  value: mcapStr,       width: 14 },
-    ];
-    const extraCols = Object.entries(opts.extra || {}).map(([label, value]) => ({
-        label, value: String(value),
-        width: Math.max(label.length, _visLen(String(value)), 8)
-    }));
-    _printBox(title, [...baseCols, ...extraCols]);
-}
-
-// displayActivity — multi-row table driven by an array of plain objects.
-// opts: { title?, rows: Array<Record<string,string>>, color? }
-function displayActivity(opts) {
-    const { rows, color = YEL, title } = opts;
-    if (!rows || rows.length === 0) return;
-    const keys    = Object.keys(rows[0]);
-    const widths  = keys.map(k => Math.max(k.length, ...rows.map(r => _visLen(String(r[k] ?? ''))), 6));
-    const headers = keys.map((k, i) => ({ label: k, width: widths[i] }));
-    if (title) console.log(`\n${color}── ${title} ${'─'.repeat(Math.max(0, 60 - title.length))}${RES}`);
-    console.log(color + '┌' + headers.map(h => '─'.repeat(h.width + 2)).join('┬') + '┐' + RES);
-    console.log(color + '│' + headers.map(h => ' ' + _pad(h.label, h.width) + ' ').join(color + '│') + color + '│' + RES);
-    console.log(color + '├' + headers.map(h => '─'.repeat(h.width + 2)).join('┼') + '┤' + RES);
-    rows.forEach(row => {
-        console.log(color + '│' + headers.map(h => ' ' + _pad(String(row[h.label] ?? ''), h.width) + ' ').join(color + '│') + color + '│' + RES);
+    _displayHeader({
+        title,
+        cols: [
+            { label: 'Block', value: String(bn),  width: 10 },
+            { label: 'ETH',   value: ethStr,       width: 12 },
+            { label: 'KILL',  value: killStr,       width: 20 },
+            { label: 'MCap',  value: mcapStr,       width: 14 },
+        ],
+        extra: opts.extra,
     });
-    console.log(color + '└' + headers.map(h => '─'.repeat(h.width + 2)).join('┴') + '┘' + RES);
 }
 
-// ── Config loader ─────────────────────────────────────────────────────────────
-// Merges agents/config.json with the agent's own config.json.
-// Agent-specific values override common values.
-// Usage: const config = loadConfig(__dirname);
+// ── Config loader (delegates to common, binds chain dir) ─────────────────────
 
 function loadConfig(agentDir) {
-    const common = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
-    const agent  = JSON.parse(fs.readFileSync(path.join(agentDir, "config.json"), "utf8"));
-    // Flatten the agent-named block from common settings so role-specific
-    // values (e.g. SEED_AMOUNT, HUB_PERIMETER) remain top-level in settings.
-    const agentBlock = common.settings[agent.role] || {};
-    return {
-        ...agent,
-        network:  { ...common.network,  ...(agent.network  || {}) },
-        settings: { ...common.settings, ...agentBlock, ...(agent.settings || {}) }
-    };
+    return _loadConfig(__dirname, agentDir);
 }
 
-// ── ABI loader (path relative to agents/) ────────────────────────────────────
-// Example: loadABI('./KillGame.json')
+// ── ABI loader ───────────────────────────────────────────────────────────────
 
 function loadABI(relPath) {
     return JSON.parse(fs.readFileSync(path.resolve(__dirname, relPath), "utf8")).abi;
 }
 
-// ── Exports ───────────────────────────────────────────────────────────────────
+// ── Exports ──────────────────────────────────────────────────────────────────
 
 module.exports = {
-    // Colors
     YEL, CYA, PNK, GRN, RED, RES, BRIGHT,
-    // ABIs
     ERC20_ABI, FAUCET_ABI,
-    // Grid
-    getCoords, getId, getManhattanDist, isAdjacent, calcPower, getPath3D,
-    // Async helpers
+    getCoords, getId, getManhattanDist, isAdjacent, getPath3D,
+    calcPower,
     countdown, onBlock, subgraphQuery, claimFaucet,
-    // Display
     displayHeader, displayActivity,
-    // Utils
-    txLink, loadABI, loadConfig
+    txLink, loadABI, loadConfig,
 };

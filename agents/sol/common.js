@@ -1,39 +1,23 @@
 "use strict";
-// agents-sol/common.js — Shared utilities for all Solana KILL agents
+// agents/sol/common.js — Solana-specific utilities for KILL agents
+// Re-exports shared code from agents/common/ so strategies keep using require('../common').
 require("dotenv").config();
-const fs     = require("fs");
-const path   = require("path");
 const anchor = require("@coral-xyz/anchor");
 const web3   = anchor.web3;
 const { getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, getAccount } = require("@solana/spl-token");
 
-// ── ANSI Colors ───────────────────────────────────────────────────────────────
+// ── Shared imports (re-exported) ─────────────────────────────────────────────
 
-const YEL   = "\x1b[33m";
-const CYA   = "\x1b[36m";
-const PNK   = "\x1b[35m";
-const GRN   = "\x1b[32m";
-const RED   = "\x1b[31m";
-const RES   = "\x1b[0m";
-const BRIGHT = "\x1b[1m";
+const { YEL, CYA, PNK, GRN, RED, RES, BRIGHT,
+        displayActivity, displayHeader: _displayHeader } = require('../common/display');
+const { createGrid } = require('../common/grid');
+const { loadConfig: _loadConfig, countdown } = require('../common/config');
 
-// ── Grid math (0-based: 0–215, 6×6×6) ────────────────────────────────────────
+// Solana uses 0-indexed stacks (0–215)
+const { getCoords, getId, getManhattanDist, isAdjacent, getPath3D } = createGrid(0);
 
-function getCoords(id) {
-    const v = Number(id);
-    return { x: v % 6, y: Math.floor(v / 6) % 6, z: Math.floor(v / 36) };
-}
+// ── Power (BigInt — no ethers dependency) ────────────────────────────────────
 
-function getId(x, y, z) { return (z * 36) + (y * 6) + x; }
-
-function getManhattanDist(id1, id2) {
-    const c1 = getCoords(id1), c2 = getCoords(id2);
-    return Math.abs(c1.x - c2.x) + Math.abs(c1.y - c2.y) + Math.abs(c1.z - c2.z);
-}
-
-function isAdjacent(id1, id2) { return getManhattanDist(id1, id2) === 1; }
-
-// All arithmetic uses BigInt — no ethers.BigNumber dependency
 function calcPower(units, reapers) {
     return BigInt(units.toString()) + BigInt(reapers.toString()) * 666n;
 }
@@ -60,18 +44,7 @@ function calcEffectivePower(units, reapers, spawnSlot, currentSlot) {
     return raw * decay / 100n;
 }
 
-// ── Countdown ─────────────────────────────────────────────────────────────────
-
-async function countdown(seconds, label = 'WAIT') {
-    for (let i = seconds; i > 0; i--) {
-        process.stdout.write(`\r[${label}] Recheck in ${i}s... `);
-        await new Promise(r => setTimeout(r, 1000));
-    }
-    process.stdout.write('\r\x1b[K');
-}
-
-// ── Slot polling ──────────────────────────────────────────────────────────────
-// Polls every 2 s; fires handler once SLOT_DELTA slots have elapsed.
+// ── Slot polling ─────────────────────────────────────────────────────────────
 
 function onSlot(connection, delta, handler) {
     let lastSlot = 0;
@@ -91,7 +64,7 @@ function onSlot(connection, delta, handler) {
     setInterval(check, 2000);
 }
 
-// ── Supabase query (replaces EVM subgraphQuery) ───────────────────────────────
+// ── Supabase query ───────────────────────────────────────────────────────────
 
 async function supabaseQuery(supabaseUrl, supabaseKey, query) {
     const resp = await fetch(`${supabaseUrl}/graphql/v1`, {
@@ -103,7 +76,7 @@ async function supabaseQuery(supabaseUrl, supabaseKey, query) {
     return json.data;
 }
 
-// ── Faucet claim ──────────────────────────────────────────────────────────────
+// ── Faucet claim ─────────────────────────────────────────────────────────────
 
 async function claimFaucet(killFaucet, wallet, connection, KILL_MINT, faucetId) {
     try {
@@ -114,7 +87,6 @@ async function claimFaucet(killFaucet, wallet, connection, KILL_MINT, faucetId) 
             [Buffer.from("claim_record"), wallet.publicKey.toBuffer()], faucetId
         );
 
-        // claimRecord exists → already claimed
         try {
             await killFaucet.account.claimRecord.fetch(claimRecord);
             console.log(`${YEL}[STARTUP] Faucet already claimed.${RES}`);
@@ -143,8 +115,7 @@ async function claimFaucet(killFaucet, wallet, connection, KILL_MINT, faucetId) 
     }
 }
 
-// ── TX / explorer links ──────────────────────────────────────────────────────
-// Uses ANSI OSC 8 hyperlinks — clickable in modern terminals (iTerm2, etc.)
+// ── TX / explorer links ─────────────────────────────────────────────────────
 
 function txLink(sig, cluster = 'devnet') {
     const url = `https://explorer.solana.com/tx/${sig}?cluster=${cluster}`;
@@ -157,20 +128,7 @@ function addrLink(pubkey, cluster = 'devnet') {
     return `\x1b]8;;${url}\x1b\\${CYA}${addr}${RES}\x1b]8;;\x1b\\`;
 }
 
-// ── Display utilities ─────────────────────────────────────────────────────────
-
-const _ANSI_RE = /\x1b(?:\[[0-9;]*m|\]8;;[^\x1b]*\x1b\\)/g;
-function _visLen(s) { return String(s).replace(_ANSI_RE, '').length; }
-function _pad(s, w) { return String(s) + ' '.repeat(Math.max(0, w - _visLen(s))); }
-
-function _printBox(title, cols, color = CYA) {
-    if (title) console.log(`\n${color}── ${title} ${'─'.repeat(Math.max(0, 60 - title.length))}${RES}`);
-    console.log(color + '┌' + cols.map(c => '─'.repeat(c.width + 2)).join('┬') + '┐' + RES);
-    console.log(color + '│' + cols.map(c => ' ' + _pad(c.label, c.width) + ' ').join(color + '│') + color + '│' + RES);
-    console.log(color + '├' + cols.map(c => '─'.repeat(c.width + 2)).join('┼') + '┤' + RES);
-    console.log(color + '│' + cols.map(c => ' ' + _pad(c.value, c.width) + ' ').join(color + '│') + color + '│' + RES);
-    console.log(color + '└' + cols.map(c => '─'.repeat(c.width + 2)).join('┴') + '┘' + RES);
-}
+// ── Solana displayHeader wrapper ─────────────────────────────────────────────
 
 async function displayHeader({ title, slot, wallet, connection, killMint, killGame, extra }) {
     const solBal = await connection.getBalance(wallet.publicKey);
@@ -182,7 +140,6 @@ async function displayHeader({ title, slot, wallet, connection, killMint, killGa
         killStr = Math.round(Number(acct.amount) / 1e6).toLocaleString();
     } catch (_) {}
 
-    // Total power across all stacks owned by this wallet
     let pwrStr = '0';
     if (killGame) {
         try {
@@ -202,53 +159,26 @@ async function displayHeader({ title, slot, wallet, connection, killMint, killGa
         } catch (_) {}
     }
 
-    // Show wallet address with clickable explorer link
-    const addr = wallet.publicKey.toBase58();
-    console.log(`${CYA}   Agent: ${addrLink(addr)}${RES}`);
-
-    const baseCols = [
-        { label: 'Slot', value: String(slot), width: 12 },
-        { label: 'SOL',  value: solStr,        width: 10 },
-        { label: 'KILL', value: killStr,        width: 20 },
-        { label: 'PWR',  value: pwrStr,         width: 10 },
-    ];
-    const extraCols = Object.entries(extra || {}).map(([label, value]) => ({
-        label, value: String(value),
-        width: Math.max(label.length, _visLen(String(value)), 8)
-    }));
-    _printBox(title, [...baseCols, ...extraCols]);
-}
-
-function displayActivity(opts) {
-    const { rows, color = YEL, title } = opts;
-    if (!rows || rows.length === 0) return;
-    const keys    = Object.keys(rows[0]);
-    const widths  = keys.map(k => Math.max(k.length, ...rows.map(r => _visLen(String(r[k] ?? ''))), 6));
-    const headers = keys.map((k, i) => ({ label: k, width: widths[i] }));
-    if (title) console.log(`\n${color}── ${title} ${'─'.repeat(Math.max(0, 60 - title.length))}${RES}`);
-    console.log(color + '┌' + headers.map(h => '─'.repeat(h.width + 2)).join('┬') + '┐' + RES);
-    console.log(color + '│' + headers.map(h => ' ' + _pad(h.label, h.width) + ' ').join(color + '│') + color + '│' + RES);
-    console.log(color + '├' + headers.map(h => '─'.repeat(h.width + 2)).join('┼') + '┤' + RES);
-    rows.forEach(row => {
-        console.log(color + '│' + headers.map(h => ' ' + _pad(String(row[h.label] ?? ''), h.width) + ' ').join(color + '│') + color + '│' + RES);
+    _displayHeader({
+        title,
+        agentLabel: addrLink(wallet.publicKey.toBase58()),
+        cols: [
+            { label: 'Slot', value: String(slot), width: 12 },
+            { label: 'SOL',  value: solStr,        width: 10 },
+            { label: 'KILL', value: killStr,        width: 20 },
+            { label: 'PWR',  value: pwrStr,         width: 10 },
+        ],
+        extra,
     });
-    console.log(color + '└' + headers.map(h => '─'.repeat(h.width + 2)).join('┴') + '┘' + RES);
 }
 
-// ── Config loader ─────────────────────────────────────────────────────────────
+// ── Config loader (delegates to common, binds chain dir) ─────────────────────
 
 function loadConfig(agentDir) {
-    const common = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
-    const agent  = JSON.parse(fs.readFileSync(path.join(agentDir, "config.json"), "utf8"));
-    const agentBlock = common.settings[agent.role] || {};
-    return {
-        ...agent,
-        network:  { ...common.network,  ...(agent.network  || {}) },
-        settings: { ...common.settings, ...agentBlock, ...(agent.settings || {}) }
-    };
+    return _loadConfig(__dirname, agentDir);
 }
 
-// ── PDA helpers ───────────────────────────────────────────────────────────────
+// ── PDA helpers ──────────────────────────────────────────────────────────────
 
 function gameConfigPDA(gameId) {
     return web3.PublicKey.findProgramAddressSync([Buffer.from("game_config")], gameId)[0];
@@ -262,11 +192,12 @@ function agentStackPDA(agentPubkey, stackId, gameId) {
     )[0];
 }
 
-// ── Exports ───────────────────────────────────────────────────────────────────
+// ── Exports ──────────────────────────────────────────────────────────────────
 
 module.exports = {
     YEL, CYA, PNK, GRN, RED, RES, BRIGHT,
-    getCoords, getId, getManhattanDist, isAdjacent, calcPower, powerDecayPct, calcEffectivePower,
+    getCoords, getId, getManhattanDist, isAdjacent, getPath3D,
+    calcPower, powerDecayPct, calcEffectivePower,
     countdown, onSlot, supabaseQuery, claimFaucet,
     displayHeader, displayActivity,
     txLink, addrLink, loadConfig, gameConfigPDA, agentStackPDA,

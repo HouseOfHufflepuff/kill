@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     // --- STRUCTS ---
@@ -53,20 +54,30 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     event Moved(address indexed agent, uint16 fromStack, uint16 toStack, uint256 units, uint256 reaper, uint256 birthBlock);
     event Killed(address indexed attacker, address indexed target, uint16 indexed stackId, BattleSummary summary, uint256 targetBirthBlock);
     event GlobalStats(uint256 totalUnitsKilled, uint256 totalReaperKilled, uint256 killAdded, uint256 killExtracted, uint256 killBurned);
-    event TreasuryBpsUpdated(uint256 oldBps, uint256 newBps);
+    event ConfigUpdated(uint256 spawnCost, uint256 treasuryBps, uint256 maxMultiplier, uint256 blocksPerMultiplier, uint256 globalCapBps);
+    event Claimed(address indexed claimer, uint16 indexed stackId, uint256 units);
 
     // --- ECONOMIC CONSTANTS ---
-    uint256 public constant BURN_BPS = 666; 
-    uint256 public constant SPAWN_COST = 20 * 10**18;
+    uint256 public constant BURN_BPS = 666;
     uint256 public constant MOVE_COST = 100 * 10**18;
     uint256 public constant THERMAL_PARITY = 666;
-    uint256 public constant MAX_MULTIPLIER = 20;
-    uint256 public constant BLOCKS_PER_MULTIPLIER = 1080; 
-    uint256 public constant GLOBAL_CAP_BPS = 2500; 
-    
+
+    // --- CONFIGURABLE PARAMS ---
+    uint256 public spawnCost = 20 * 10**18;
+    uint256 public treasuryBps = 30;
+    uint256 public maxMultiplier = 20;
+    uint256 public blocksPerMultiplier = 2273;  // 24h full age @ 2s Base blocks
+    uint256 public globalCapBps = 2500;
+
+    // --- AIRDROP ---
+    // airdropAmount: KILL tokens allocated per claim from treasury (default 3M KILL).
+    // Units spawned = airdropAmount / spawnCost. Treasury absorbs the cost.
+    uint256 public airdropAmount = 3_000_000 * 10**18;
+    bytes32 public merkleRoot;
+    mapping(address => bool) public hasClaimed;
+
     // --- STORAGE ---
     IERC20 public immutable killToken;
-    uint256 public treasuryBps = 30; 
     
     // Global Trackers
     uint256 public totalUnitsKilled;
@@ -85,15 +96,62 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     }
 
     // --- ADMIN ---
-    function setTreasuryBps(uint256 _newBps) external onlyOwner {
-        require(_newBps <= 10000, "Max 100%");
-        uint256 old = treasuryBps;
-        treasuryBps = _newBps;
-        emit TreasuryBpsUpdated(old, _newBps);
+    function setConfig(
+        uint256 _spawnCost,
+        uint256 _treasuryBps,
+        uint256 _maxMultiplier,
+        uint256 _blocksPerMultiplier,
+        uint256 _globalCapBps
+    ) external onlyOwner {
+        require(_spawnCost > 0, "Zero cost");
+        require(_treasuryBps <= 10000, "Max 100%");
+        require(_maxMultiplier > 0, "Zero mult");
+        require(_blocksPerMultiplier > 0, "Zero blocks");
+        require(_globalCapBps <= 10000, "Max 100%");
+        spawnCost = _spawnCost;
+        treasuryBps = _treasuryBps;
+        maxMultiplier = _maxMultiplier;
+        blocksPerMultiplier = _blocksPerMultiplier;
+        globalCapBps = _globalCapBps;
+        emit ConfigUpdated(_spawnCost, _treasuryBps, _maxMultiplier, _blocksPerMultiplier, _globalCapBps);
     }
 
-    function adminWithdraw(uint256 amt) external onlyOwner { 
-        killToken.transfer(msg.sender, amt); 
+    function adminWithdraw(uint256 amt) external onlyOwner {
+        killToken.transfer(msg.sender, amt);
+    }
+
+    function setAirdropAmount(uint256 _amount) external onlyOwner {
+        require(_amount > 0, "Zero amount");
+        airdropAmount = _amount;
+    }
+
+    function setMerkleRoot(bytes32 _root) external onlyOwner {
+        merkleRoot = _root;
+    }
+
+    // --- AIRDROP CLAIM ---
+    // Verifies msg.sender is in the pt1 Merkle tree, then spawns units on stackId.
+    // Units = airdropAmount / spawnCost. Cost comes from the vault, not the claimer.
+    function claim(bytes32[] calldata proof, uint16 stackId) external nonReentrant {
+        require(merkleRoot != bytes32(0), "No airdrop");
+        require(stackId >= 1 && stackId <= 216, "Invalid stack");
+        require(!hasClaimed[msg.sender], "Already claimed");
+
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+        require(MerkleProof.verify(proof, merkleRoot, leaf), "Not eligible");
+
+        hasClaimed[msg.sender] = true;
+
+        uint256 units = airdropAmount / spawnCost;
+        require(units > 0, "Zero units");
+
+        _mintAndReg(msg.sender, uint256(stackId), units);
+
+        uint256 reaperCount = units / 666;
+        if (reaperCount > 0) _mintAndReg(msg.sender, uint256(stackId) + 216, reaperCount);
+
+        emit Claimed(msg.sender, stackId, units);
+        emit Spawned(msg.sender, stackId, units, reaperCount, agentStacks[msg.sender][uint256(stackId)].birthBlock);
     }
 
     // --- VIEWS / HELPERS ---
@@ -111,16 +169,18 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         uint256 actualTreasury = killToken.balanceOf(address(this));
         
         uint256 ageBlocks = (block.number > birth) ? block.number - birth : 0;
-        uint256 multiplier = 1 + (ageBlocks / BLOCKS_PER_MULTIPLIER);
-        if (multiplier > MAX_MULTIPLIER) multiplier = MAX_MULTIPLIER;
+        uint256 multiplier = 1 + (ageBlocks / blocksPerMultiplier);
+        if (multiplier > maxMultiplier) multiplier = maxMultiplier;
 
         uint256 balU = balanceOf(agent, uId);
         uint256 balR = balanceOf(agent, rId);
-        
-        uint256 power = balU + (balR * 666);
-        uint256 rawBounty = power * SPAWN_COST * multiplier;
 
-        uint256 globalCap = (actualTreasury * GLOBAL_CAP_BPS) / 10000;
+        // Bounty is based on unit headcount, NOT combat power.
+        // Reapers count as 1 unit for bounty — power (666x) is only for battle outcomes.
+        uint256 totalUnits = balU + balR;
+        uint256 rawBounty = totalUnits * 1e18 * multiplier;
+
+        uint256 globalCap = (actualTreasury * globalCapBps) / 10000;
 
         return rawBounty > globalCap ? globalCap : rawBounty;
     }
@@ -148,9 +208,13 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         sum.initialDefenderUnits = defU;
         sum.initialDefenderReaper = defR;
         
-        uint256 targetBirth = agentStacks[target][uId].birthBlock; 
+        uint256 targetBirth = agentStacks[target][uId].birthBlock;
 
-        LossReport memory loss = _resolveCombat(target, uId, rId, sentUnits, sentReaper, defU, defR);
+        // Power decays with age — fresh units fight at full strength, aged units at 1/5.
+        uint256 atkDecay = _getDecayPct(agentStacks[msg.sender][uId].birthBlock);
+        uint256 defDecay = _getDecayPct(targetBirth);
+
+        LossReport memory loss = _resolveCombat(sentUnits, sentReaper, atkDecay, defU, defR, defDecay);
         
         sum.attackerUnitsLost = loss.aUnits;
         sum.attackerReaperLost = loss.aReaper;
@@ -195,7 +259,7 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
     function spawn(uint16 stackId, uint256 amount) external nonReentrant {
         require(stackId > 0 && stackId <= 216, "Invalid Stack");
         uint256 reaperCount = amount / 666;
-        uint256 totalCost = amount * SPAWN_COST;
+        uint256 totalCost = amount * spawnCost;
         
         require(killToken.transferFrom(msg.sender, address(this), totalCost), "Pay fail");
         
@@ -252,15 +316,29 @@ contract KILLGame is ERC1155, ReentrancyGuard, Ownable, Multicall {
         }
     }
 
-    function _resolveCombat(address, uint256, uint256, uint256 sU, uint256 sR, uint256 defU, uint256 defR) 
-        internal 
-        pure 
-        returns (LossReport memory loss) 
+    // Power decay: 100% at birth → 20% (1/5) at max age.
+    // Mirrors bounty multiplier ramp — high bounty = weak fighters.
+    // A move resets birth block, resetting both decay and bounty.
+    function _getDecayPct(uint256 birthBlock) internal view returns (uint256) {
+        if (birthBlock == 0) return 100;
+        uint256 ageBlocks = block.number > birthBlock ? block.number - birthBlock : 0;
+        uint256 mult = 1 + (ageBlocks / blocksPerMultiplier);
+        if (mult > maxMultiplier) mult = maxMultiplier;
+        if (maxMultiplier <= 1) return 100;
+        return 100 - ((mult - 1) * 80) / (maxMultiplier - 1);
+    }
+
+    // Combat power uses 666x reaper multiplier, then applies age decay.
+    // Bounty uses headcount only — see getPendingBounty.
+    function _resolveCombat(uint256 sU, uint256 sR, uint256 atkDecay, uint256 defU, uint256 defR, uint256 defDecay)
+        internal
+        pure
+        returns (LossReport memory loss)
     {
-        uint256 atkP = sU + (sR * 666);
-        uint256 defP = (defU + (defR * 666)) * 110 / 100; 
+        uint256 atkP = (sU + (sR * 666)) * atkDecay / 100;
+        uint256 defP = ((defU + (defR * 666)) * defDecay / 100) * 110 / 100;
         if (defP == 0) defP = 1;
-        
+
         if (atkP > defP) {
             loss.tUnits = defU;
             loss.tReaper = defR;

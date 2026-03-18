@@ -30,16 +30,16 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        working-directory: agents/sol/desktop
+        working-directory: agents/desktop
         run: npm ci
 
       - name: Build
-        working-directory: agents/sol/desktop
+        working-directory: agents/desktop
         run: ${{ matrix.build_cmd }}
 
       - name: Ad-hoc codesign (macOS)
         if: runner.os == 'macOS'
-        working-directory: agents/sol/desktop
+        working-directory: agents/desktop
         run: |
           for app in dist/mac-arm64/*.app dist/mac/*.app; do
             if [ -d "$app" ]; then
@@ -53,8 +53,8 @@ jobs:
         with:
           name: desktop-${{ matrix.os }}
           path: |
-            agents/sol/desktop/dist/*.dmg
-            agents/sol/desktop/dist/*.exe
+            agents/desktop/dist/*.dmg
+            agents/desktop/dist/*.exe
 
   release:
     needs: build

@@ -1,14 +1,7 @@
 "use strict";
 const { ethers } = require("hardhat");
 const { GRN, YEL, RED, RES, getManhattanDist, isAdjacent, calcPower } = require('../common');
-
-function fmtPow(n) {
-    const v = parseFloat(n.toString());
-    if (v >= 1e9) return (v / 1e9).toFixed(1) + 'B';
-    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
-    if (v >= 1e3) return Math.round(v / 1e3) + 'K';
-    return String(Math.round(v));
-}
+const { fmtPow } = require('../../common/format');
 
 // Returns the strongest enemy (highest individual power) from an array of stack items
 function topEnemy(enemies) {

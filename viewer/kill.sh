@@ -1,12 +1,12 @@
 #!/bin/bash
-# KILLGame Agent — Developer Install
+# KILLGame Agent — Developer Install (Solana + Base)
 # Usage: curl -fsSL https://killgame.ai/kill.sh | bash
 
 set -e
 
 REPO="https://github.com/HouseOfHufflepuff/kill.git"
 INSTALL_DIR="$HOME/.killgame"
-DESKTOP_DIR="$INSTALL_DIR/agents/sol/desktop"
+DESKTOP_DIR="$INSTALL_DIR/agents/desktop"
 BIN_DIR="$HOME/.local/bin"
 CMD_NAME="killgame"
 
@@ -27,7 +27,7 @@ print_header() {
   echo -e "${C_PURPLE}${C_BOLD}  ██║  ██╗██║███████╗███████╗╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗${C_RESET}"
   echo -e "${C_PURPLE}${C_BOLD}  ╚═╝  ╚═╝╚═╝╚══════╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝${C_RESET}"
   echo ""
-  echo -e "${C_GRAY}  Solana Agent — Developer Install${C_RESET}"
+  echo -e "${C_GRAY}  Solana + Base Agent — Developer Install${C_RESET}"
   echo ""
 }
 
@@ -63,11 +63,12 @@ else
   ok "Cloned to $INSTALL_DIR"
 fi
 
-# ── npm install ───────────────────────────────────────────────────────────────
+# ── npm install (desktop app — includes Solana + Base deps) ───────────────────
 step "3/4" "Installing dependencies..."
 
+echo -e "${C_GRAY}  Installing desktop app dependencies (Solana + Base)...${C_RESET}"
 (cd "$DESKTOP_DIR" && npm install --quiet 2>/dev/null)
-ok "Dependencies installed"
+ok "Desktop dependencies installed"
 
 # ── Write killgame command ────────────────────────────────────────────────────
 step "4/4" "Installing ${CMD_NAME} command..."
@@ -77,30 +78,27 @@ mkdir -p "$BIN_DIR"
 cat > "$BIN_DIR/$CMD_NAME" <<WRAPPER
 #!/bin/bash
 DESKTOP_DIR="$DESKTOP_DIR"
+INSTALL_DIR="$INSTALL_DIR"
 CMD="\${1:-help}"
 
 case "\$CMD" in
 
   setup)
-    # Open the app — setup screen appears automatically if no wallet is configured
     echo "Opening KILLGame setup..."
     cd "\$DESKTOP_DIR" && npm start --silent
     ;;
 
   start)
-    # Open the app — goes straight to dashboard if wallet already exists
     echo "Starting KILLGame agent..."
     cd "\$DESKTOP_DIR" && npm start --silent
     ;;
 
   dev)
-    # Launch with DevTools open for development
     echo "Starting KILLGame in developer mode..."
     cd "\$DESKTOP_DIR" && NODE_ENV=development npm start --silent
     ;;
 
   update)
-    INSTALL_DIR="$INSTALL_DIR"
     echo "Pulling latest from GitHub..."
     git -C "\$INSTALL_DIR" pull
     echo "Updating dependencies..."
@@ -122,12 +120,13 @@ case "\$CMD" in
     echo "  killgame <command>"
     echo ""
     echo "  setup     Configure wallet and agent settings"
-    echo "  start     Launch the agent GUI"
+    echo "  start     Launch the agent GUI (Solana + Base)"
     echo "  dev       Launch with developer tools open"
     echo "  update    Pull latest source from GitHub"
     echo "  build     Build distributable DMG / EXE"
     echo "  where     Print install directory"
     echo ""
+    echo "  Network is selectable in the app via dropdown."
     echo "  Source: $INSTALL_DIR"
     echo ""
     ;;
@@ -159,12 +158,12 @@ fi
 echo ""
 echo -e "${C_GREEN}${C_BOLD}  Installation complete.${C_RESET}"
 echo ""
-echo -e "  ${C_BOLD}killgame setup${C_RESET}   ${C_GRAY}— Create or import your Solana wallet${C_RESET}"
-echo -e "  ${C_BOLD}killgame start${C_RESET}   ${C_GRAY}— Launch the agent${C_RESET}"
+echo -e "  ${C_BOLD}killgame setup${C_RESET}   ${C_GRAY}— Create or import your wallet${C_RESET}"
+echo -e "  ${C_BOLD}killgame start${C_RESET}   ${C_GRAY}— Launch the agent (Solana + Base)${C_RESET}"
 echo -e "  ${C_BOLD}killgame dev${C_RESET}     ${C_GRAY}— Launch with DevTools for development${C_RESET}"
 echo -e "  ${C_BOLD}killgame update${C_RESET}  ${C_GRAY}— Pull latest source from GitHub${C_RESET}"
 echo ""
 echo -e "  ${C_GRAY}Source installed at: $INSTALL_DIR${C_RESET}"
 echo -e "  ${C_GRAY}Agent UI:            $DESKTOP_DIR/index.html${C_RESET}"
-echo -e "  ${C_GRAY}Capabilities:        $DESKTOP_DIR/agents/${C_RESET}"
+echo -e "  ${C_GRAY}Select network:      In-app dropdown (Solana / Base)${C_RESET}"
 echo ""
