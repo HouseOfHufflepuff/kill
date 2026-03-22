@@ -331,7 +331,7 @@ async function syncData() {
             const burned      = parseFloat(ethers.formatEther(globalStat.killBurned      || "0"));
             const treasury    = parseFloat(ethers.formatEther(globalStat.currentTreasury || "0"));
             const maxBounty   = parseFloat(ethers.formatEther(globalStat.maxBounty       || "0"));
-            const circulating = 66666666666 - burned;
+            const circulating = 666000000000 - burned;
 
             if (killBurnedEl) killBurnedEl.innerText = `${formatValue(burned)} KILL`;
 

@@ -601,8 +601,12 @@ ipcMain.handle("get-balances", async () => {
   } else {
     loadBaseDeps();
     const provider = new ethersLib.providers.JsonRpcProvider(config.network.rpc_url);
-    const killGame = new ethersLib.Contract(config.network.kill_game_addr, BASE_ABI, provider);
-    const killTokenAddr = await killGame.killToken();
+    let killTokenAddr = config.network.kill_token_addr;
+    if (!killTokenAddr) {
+      loadBaseABI();
+      const killGame = new ethersLib.Contract(config.network.kill_game_addr, BASE_ABI, provider);
+      killTokenAddr = await killGame.killToken();
+    }
     return await getBalances_base(wallet, provider, killTokenAddr);
   }
 });

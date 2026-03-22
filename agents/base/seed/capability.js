@@ -40,7 +40,7 @@ module.exports = {
 
         try {
             const gasEst  = await killGame.connect(wallet).estimateGas.multicall(encodedCalls);
-            const feeData = await ethers.provider.getFeeData();
+            const feeData = await wallet.provider.getFeeData();
             const estCost = gasEst.mul(feeData.maxFeePerGas || feeData.gasPrice);
             if (estCost.gt(ethBalance)) {
                 rows.push({ Action: 'SEED', Detail: 'Gas exceeds balance', Result: `${RED}SKIP${RES}` });

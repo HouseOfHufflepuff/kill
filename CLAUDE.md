@@ -18,7 +18,7 @@ anchor build
 anchor test                    # runs local validator + 29 integration tests
 
 # Agent desktop app
-cd agents/sol/desktop
+cd agents/desktop
 npm install && npm start
 ```
 

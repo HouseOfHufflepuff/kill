@@ -5,7 +5,7 @@
 // --- GLOBAL CONFIGURATION ---
 const NETWORK = "Base Sepolia";
 const ALCHEMY_URL = "https://base-sepolia-rpc.publicnode.com";
-const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-testnet-subgraph/1.0.2/gn";
+const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmlgypvyy520901u8f5821f19/subgraphs/kill-game/1.0.2/gn";
 const BLOCK_EXPLORER = "https://sepolia.basescan.org";
 
 // --- DOM ELEMENT REGISTRY ---
@@ -83,12 +83,14 @@ function copyCommand(id, btn) {
 
 function switchOS(os) {
     const isMac = os === 'mac';
-    document.getElementById('cmd-mac').style.display          = isMac ? 'flex' : 'none';
-    document.getElementById('cmd-win').style.display          = isMac ? 'none' : 'flex';
-    document.getElementById('step-execute-mac').style.display = isMac ? '' : 'none';
-    document.getElementById('step-execute-win').style.display = isMac ? 'none' : '';
     document.getElementById('os-mac').classList.toggle('active', isMac);
     document.getElementById('os-win').classList.toggle('active', !isMac);
+    document.getElementById('dl-mac-section').style.display = isMac ? 'flex' : 'none';
+    document.getElementById('dl-win-section').style.display = isMac ? 'none' : 'flex';
+    document.getElementById('step-dl-text').textContent = 'Click the download button below.';
+    document.getElementById('step-install-text').innerHTML = isMac
+        ? 'Open the <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">.dmg</code> and drag KILLGAME to Applications.<br><span style="opacity:0.6;font-size:0.62rem;">macOS "damaged" fix: <code style="color:var(--cyan);background:#111;padding:1px 4px;border-radius:3px;">xattr -cr /Applications/KILLGAME.app</code></span>'
+        : 'Run the <code style="color:var(--cyan);background:#111;padding:1px 5px;border-radius:3px;">.exe</code> installer and follow the prompts.';
 }
 
 function updateSystemStatus(totalStacked) {

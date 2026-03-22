@@ -6,48 +6,54 @@
 <title>KILLGAME</title>
 <style>
   :root {
-    --purple: #9945FF;
-    --green:  #14F195;
-    --blue:   #00C2FF;
+    --accent: #ff2d75;
+    --accent-rgb: 255,45,117;
+    --green:  #aaaaaa;
+    --green-rgb: 170,170,170;
+    --blue:   #00f0ff;
     --bg:     #050505;
     --surface:#0d0d0d;
     --border: #1e1e1e;
     --text:   #eee;
-    --muted:  #555;
+    --muted:  #888;
   }
+  /* Solana theme */
+  body.theme-solana { --accent: #9945FF; --accent-rgb: 153,69,255; --green: #14F195; --green-rgb: 20,241,149; --blue: #00C2FF; }
+  /* Base theme (default) */
+  body.theme-base   { --accent: #ff2d75; --accent-rgb: 255,45,117; --green: #aaaaaa; --green-rgb: 170,170,170; --blue: #00f0ff; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
     background: var(--bg); color: var(--text);
     min-height: 100vh; padding: 10px 14px;
   }
-  h1 { color: var(--purple); font-size: 15px; margin-bottom: 6px; letter-spacing: 2px; }
+  h1 { color: var(--accent); font-size: 15px; margin-bottom: 6px; letter-spacing: 2px; }
   .hidden { display: none !important; }
 
   /* ── Setup ─────────────────────────────────────────────────────────── */
   #setup { max-width: 500px; margin: 60px auto; }
-  #setup h2 { color: var(--purple); font-size: 16px; margin-bottom: 20px; }
+  #setup h2 { color: var(--accent); font-size: 16px; margin-bottom: 20px; }
   .btn {
     display: inline-block; padding: 7px 18px; margin: 3px 2px;
-    background: transparent; color: var(--purple); border: 1px solid var(--purple);
+    background: transparent; color: var(--accent); border: 1px solid var(--accent);
     font-family: inherit; font-size: 12px; cursor: pointer;
     transition: background 0.12s, box-shadow 0.12s, transform 0.08s, color 0.12s;
     letter-spacing: 1px; user-select: none;
   }
   .btn:hover {
-    background: rgba(153,69,255,0.18);
-    box-shadow: 0 0 16px rgba(153,69,255,0.5), inset 0 0 8px rgba(153,69,255,0.1);
-    color: #c580ff;
+    background: rgba(var(--accent-rgb),0.18);
+    box-shadow: 0 0 16px rgba(var(--accent-rgb),0.5), inset 0 0 8px rgba(var(--accent-rgb),0.1);
+    color: var(--accent); filter: brightness(1.3);
   }
-  .btn:active { transform: scale(0.96); background: rgba(153,69,255,0.3); box-shadow: 0 0 6px rgba(153,69,255,0.4); }
-  .btn.active { background: var(--purple); color: #000; box-shadow: 0 0 14px var(--purple); }
+  .btn:active { transform: scale(0.96); background: rgba(var(--accent-rgb),0.3); box-shadow: 0 0 6px rgba(var(--accent-rgb),0.4); }
+  .btn.active { background: var(--accent); color: #000; box-shadow: 0 0 14px var(--accent); }
   .btn.green { color: var(--green); border-color: var(--green); }
   .btn.green:hover {
-    background: rgba(20,241,149,0.15);
-    box-shadow: 0 0 16px rgba(20,241,149,0.45), inset 0 0 8px rgba(20,241,149,0.08);
-    color: #5fffb8;
+    background: rgba(var(--green-rgb),0.15);
+    box-shadow: 0 0 16px rgba(var(--green-rgb),0.45), inset 0 0 8px rgba(var(--green-rgb),0.08);
+    color: var(--green); filter: brightness(1.3);
   }
-  .btn.green:active { transform: scale(0.96); background: rgba(20,241,149,0.25); }
+  .btn.green:active { transform: scale(0.96); background: rgba(var(--green-rgb),0.25); }
   .btn.green.active { background: var(--green); color: #000; box-shadow: 0 0 14px var(--green); }
   .btn.cyan { color: var(--blue); border-color: var(--blue); }
   .btn.cyan:hover {
@@ -73,13 +79,13 @@
     display: inline-flex; align-items: center; gap: 6px; margin-left: 12px;
   }
   .network-selector select {
-    background: #0a0a0a; border: 1px solid var(--border); color: var(--purple);
+    background: #0a0a0a; border: 1px solid var(--border); color: var(--accent);
     padding: 4px 8px; font-family: inherit; font-size: 11px;
     cursor: pointer; outline: none; letter-spacing: 1px;
     transition: border-color 0.15s;
   }
-  .network-selector select:focus { border-color: var(--purple); box-shadow: 0 0 8px rgba(153,69,255,0.2); }
-  .network-selector select:hover { border-color: var(--purple); }
+  .network-selector select:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(var(--accent-rgb),0.2); }
+  .network-selector select:hover { border-color: var(--accent); }
 
   /* ── Dashboard ──────────────────────────────────────────────────────── */
   #dashboard { width: 100%; }
@@ -100,11 +106,11 @@
   }
   .header-bar .stat { text-align: center; }
   .header-bar .stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; }
-  .header-bar .stat-value { font-size: 13px; color: var(--purple); }
+  .header-bar .stat-value { font-size: 13px; color: var(--accent); }
   .header-bar .stat-value.green { color: var(--green); }
   .header-bar .divider { width: 1px; height: 24px; background: #2a2a2a; flex-shrink: 0; }
   .pnl-pos { color: var(--green) !important; }
-  .pnl-neg { color: var(--purple) !important; }
+  .pnl-neg { color: var(--accent) !important; }
 
   .controls { margin-bottom: 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; transition: background 0.3s; }
@@ -114,7 +120,7 @@
   .status-dot.stopped  { background: var(--muted); }
   .status-text { font-size: 12px; color: #888; margin-left: 4px; }
 
-  .error-msg { color: var(--purple); font-size: 11px; padding: 6px 8px; background: rgba(153,69,255,0.06); border: 1px solid rgba(153,69,255,0.2); margin: 6px 0; }
+  .error-msg { color: var(--accent); font-size: 11px; padding: 6px 8px; background: rgba(var(--accent-rgb),0.06); border: 1px solid rgba(var(--accent-rgb),0.2); margin: 6px 0; }
   .cap-name  { color: var(--blue); font-size: 12px; font-weight: bold; }
 
   /* ── Modal base ─────────────────────────────────────────────────────── */
@@ -126,10 +132,10 @@
   .modal-box {
     background: var(--surface); border: 1px solid var(--border); padding: 24px;
     width: min(700px, 92vw); max-height: 88vh; overflow-y: auto;
-    position: relative; box-shadow: 0 0 40px rgba(153,69,255,0.15);
+    position: relative; box-shadow: 0 0 40px rgba(var(--accent-rgb),0.15);
   }
   .modal-box h2 {
-    color: var(--purple); font-size: 15px; letter-spacing: 3px;
+    color: var(--accent); font-size: 15px; letter-spacing: 3px;
     margin-bottom: 4px; text-transform: uppercase;
   }
   .modal-sub {
@@ -156,7 +162,7 @@
     padding: 9px 11px; font-family: inherit; font-size: 12px;
     outline: none; transition: border-color 0.15s;
   }
-  .cfg-input:focus { border-color: var(--purple); box-shadow: 0 0 8px rgba(153,69,255,0.2); }
+  .cfg-input:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(var(--accent-rgb),0.2); }
 
   /* ── Playbook modal ─────────────────────────────────────────────────── */
   .runs-list { display: flex; flex-direction: column; gap: 12px; }
@@ -168,7 +174,7 @@
     padding: 4px 10px; cursor: pointer; font-family: inherit;
     font-size: 10px; letter-spacing: 1px; transition: 0.15s;
   }
-  .run-rm:hover { border-color: var(--purple); color: var(--purple); box-shadow: 0 0 8px rgba(153,69,255,0.2); }
+  .run-rm:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 8px rgba(var(--accent-rgb),0.2); }
   .run-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
   .slot-card { background: #000; border: 1px solid #1a1a1a; padding: 8px 10px; }
   .slot-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
@@ -177,7 +183,7 @@
     background: none; border: none; color: #333; cursor: pointer;
     font-size: 13px; line-height: 1; padding: 0 2px; transition: 0.15s; font-family: monospace;
   }
-  .slot-rm:hover { color: var(--purple); }
+  .slot-rm:hover { color: var(--accent); }
   .slot-select {
     background: #0a0a0a; border: 1px solid #2a2a2a; color: #ddd;
     padding: 7px 8px; font-family: inherit; font-size: 11px;
@@ -202,18 +208,18 @@
   /* ── Tables ─────────────────────────────────────────────────────────── */
   .section { margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); }
   .section-title {
-    font-size: 9px; color: var(--purple); padding: 5px 10px;
+    font-size: 9px; color: var(--accent); padding: 5px 10px;
     border-bottom: 1px solid var(--border); letter-spacing: 3px;
     text-transform: uppercase; background: #080808;
   }
   .section-sub {
-    font-size: 9px; color: #555; padding: 3px 10px;
+    font-size: 9px; color: var(--muted); padding: 3px 10px;
     background: #060606; border-top: 1px solid #111; border-bottom: 1px solid #111;
     letter-spacing: 2px; text-transform: uppercase;
   }
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
   th {
-    text-align: left; padding: 5px 10px; color: #555;
+    text-align: left; padding: 5px 10px; color: var(--muted);
     border-bottom: 1px solid #161616; font-size: 9px;
     letter-spacing: 1px; text-transform: uppercase; background: #080808;
   }
@@ -224,11 +230,11 @@
     display: inline-block; padding: 1px 7px; font-size: 9px;
     letter-spacing: 1px; border-radius: 2px;
   }
-  .badge-secure  { background: rgba(20,241,149,0.1);  color: var(--green);  border: 1px solid rgba(20,241,149,0.2); }
-  .badge-hostile { background: rgba(153,69,255,0.1);  color: var(--purple); border: 1px solid rgba(153,69,255,0.2); }
+  .badge-secure  { background: rgba(var(--green-rgb),0.1);  color: var(--green);  border: 1px solid rgba(var(--green-rgb),0.2); }
+  .badge-hostile { background: rgba(var(--accent-rgb),0.1);  color: var(--accent); border: 1px solid rgba(var(--accent-rgb),0.2); }
   .badge-ready   { background: rgba(255,170,0,0.1);   color: #ffaa00;       border: 1px solid rgba(255,170,0,0.2); }
-  .badge-ok      { background: rgba(20,241,149,0.1);  color: var(--green);  border: 1px solid rgba(20,241,149,0.2); }
-  .badge-fail    { background: rgba(153,69,255,0.1);  color: var(--purple); border: 1px solid rgba(153,69,255,0.2); }
+  .badge-ok      { background: rgba(var(--green-rgb),0.1);  color: var(--green);  border: 1px solid rgba(var(--green-rgb),0.2); }
+  .badge-fail    { background: rgba(var(--accent-rgb),0.1);  color: var(--accent); border: 1px solid rgba(var(--accent-rgb),0.2); }
   .badge-pending { background: rgba(255,170,0,0.08);  color: #ffaa00;       border: 1px solid rgba(255,170,0,0.15); }
   .last-action-bar {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -239,10 +245,10 @@
   .last-action-type { font-weight: bold; letter-spacing: 1px; }
   .last-action-detail { color: #888; flex: 1; }
   td.ok      { color: var(--green); }
-  td.fail    { color: var(--purple); }
+  td.fail    { color: var(--accent); }
   td.pending { color: #ffaa00; }
   td.secure  { color: var(--green); }
-  td.hostile { color: var(--purple); }
+  td.hostile { color: var(--accent); }
   td.ready   { color: #ffaa00; }
 
   /* ── Two-column layout ──────────────────────────────────────────────── */
@@ -257,8 +263,9 @@
     display: flex; flex-direction: column; overflow: hidden;
   }
   .kill-log-title {
-    font-size: 9px; letter-spacing: 3px; color: var(--purple);
+    font-size: 9px; letter-spacing: 3px; color: var(--accent);
     padding: 5px 10px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
     background: var(--surface); text-transform: uppercase; flex-shrink: 0;
   }
   .kill-log-entries {
@@ -273,7 +280,7 @@
     padding: 3px 8px; line-height: 1.4; font-size: 0.65rem;
     background: rgba(255,255,255,0.02);
   }
-  .log-kill    { border-left-color: var(--purple); color: var(--purple); }
+  .log-kill    { border-left-color: var(--accent); color: var(--accent); }
   .log-spawn   { border-left-color: var(--green);  color: var(--green); }
   .log-move    { border-left-color: var(--blue);   color: var(--blue); }
   .log-retreat { border-left-color: #ffaa00;        color: #ffaa00; }
@@ -281,14 +288,14 @@
   .log-network { border-left-color: transparent;    color: #aaa; }
   .log-block { color: #777; font-size: 0.6rem; }
   .log-ok   { color: var(--green); }
-  .log-fail { color: var(--purple); }
+  .log-fail { color: var(--accent); }
   .log-tx { color: var(--blue); cursor: pointer; text-decoration: none; margin-left: 4px; }
   .log-tx:hover { text-decoration: underline; }
 
   /* ── Private key modal ──────────────────────────────────────────────── */
   .pk-warn {
-    background: rgba(153,69,255,0.06); border: 1px solid rgba(153,69,255,0.3);
-    padding: 10px 12px; font-size: 11px; color: #cc99ff;
+    background: rgba(var(--accent-rgb),0.06); border: 1px solid rgba(var(--accent-rgb),0.3);
+    padding: 10px 12px; font-size: 11px; color: var(--accent);
     margin-bottom: 14px; line-height: 1.6;
   }
   .pk-box {
@@ -305,7 +312,7 @@
   .copy-btn:hover { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 8px rgba(0,194,255,0.2); }
 </style>
 </head>
-<body>
+<body class="theme-base">
 
 <!-- ── SETUP SCREEN ──────────────────────────────────────────────────────── -->
 <div id="setup">
@@ -313,8 +320,8 @@
     <h1 id="setup-title">KILLGAME</h1>
     <div class="network-selector">
       <select id="network-select-setup" onchange="switchNetwork(this.value)">
-        <option value="solana">SOLANA</option>
         <option value="base">BASE</option>
+        <option value="solana">SOLANA</option>
       </select>
     </div>
   </div>
@@ -350,8 +357,8 @@
     <h1 id="dash-title">KILLGAME</h1>
     <div class="network-selector">
       <select id="network-select-dash" onchange="switchNetwork(this.value)">
-        <option value="solana">SOLANA</option>
         <option value="base">BASE</option>
+        <option value="solana">SOLANA</option>
       </select>
     </div>
     <a id="d-wallet" class="wallet-link" href="#" onclick="return false;">—</a>
@@ -395,7 +402,7 @@
       ">
         <div style="color:#ff6600;font-weight:bold;letter-spacing:2px;margin-bottom:4px;">WALLET UNFUNDED — AGENT PAUSED</div>
         <div style="color:#888;">Your wallet has no funds. Fund it to start the agent.</div>
-        <div style="margin-top:6px;"><span style="color:#555;font-size:11px;">ADDRESS</span><br>
+        <div style="margin-top:6px;"><span style="color:var(--muted);font-size:11px;">ADDRESS</span><br>
           <span id="unfunded-addr" style="color:#33ccff;font-size:11px;word-break:break-all;"></span></div>
         <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <a id="faucet-link" href="https://faucet.solana.com" style="color:#ff3333;font-size:11px;letter-spacing:1px;"></a>
@@ -407,7 +414,13 @@
 
     </div>
     <div class="kill-log-panel">
-      <div class="kill-log-title">KILL Log</div>
+      <div class="kill-log-title">
+        <span>KILL Log</span>
+        <span style="display:flex;gap:4px;">
+          <button id="log-pause-btn" onclick="toggleLogPause()" style="background:none;border:1px solid #333;color:#888;font-family:inherit;font-size:9px;padding:2px 6px;cursor:pointer;letter-spacing:1px;transition:.15s;">PAUSE</button>
+          <button onclick="clearLog()" style="background:none;border:1px solid #333;color:#888;font-family:inherit;font-size:9px;padding:2px 6px;cursor:pointer;letter-spacing:1px;transition:.15s;">CLEAR</button>
+        </span>
+      </div>
       <div class="kill-log-entries" id="kill-log-entries"></div>
     </div>
   </div>
@@ -577,7 +590,7 @@
 </div>
 
 <script>
-  let activeChain  = 'solana';
+  let activeChain  = 'base';
   let walletReady  = false;
   let pendingPK    = null;
   let agentRunning = false;
@@ -610,6 +623,9 @@
     document.getElementById('network-select-setup').value = activeChain;
     document.getElementById('network-select-dash').value  = activeChain;
     document.title = 'KILLGAME ' + activeChain.toUpperCase();
+    // Apply color theme
+    document.body.classList.remove('theme-solana', 'theme-base');
+    document.body.classList.add('theme-' + activeChain);
   }
 
   async function switchNetwork(chain) {
@@ -636,7 +652,7 @@
   async function generateWallet() {
     try {
       const result = await window.killAPI.generateWallet();
-      showWallet(result.address);
+      showWallet(result.address, true);
       showPKModal(result.address, result.privateKey);
     } catch (e) { showSetupError(e.message); }
   }
@@ -652,13 +668,35 @@
     } catch (e) { showSetupError(e.message); }
   }
 
-  function showWallet(addr) {
+  function showWallet(addr, skipDashboard) {
     document.getElementById("wallet-addr").textContent = addr;
     document.getElementById("wallet-info").classList.remove("hidden");
     document.getElementById("step-start").classList.remove("hidden");
     document.getElementById("import-box").classList.add("hidden");
     setWalletLink(addr);
     walletReady = true;
+    if (!skipDashboard) goToDashboard();
+  }
+
+  let balancePollTimer = null;
+
+  function goToDashboard() {
+    document.getElementById("setup").classList.add("hidden");
+    document.getElementById("dashboard").classList.remove("hidden");
+    fetchBalances();
+    fetchAgentInfo();
+    startBalancePoll();
+  }
+
+  function startBalancePoll() {
+    if (balancePollTimer) return;
+    balancePollTimer = setInterval(() => {
+      if (!agentRunning) fetchBalances();
+    }, 10000);
+  }
+
+  function stopBalancePoll() {
+    if (balancePollTimer) { clearInterval(balancePollTimer); balancePollTimer = null; }
   }
 
   function showSetupError(msg) {
@@ -678,6 +716,7 @@
   function closePKModal() {
     document.getElementById("pk-modal").classList.add("hidden");
     pendingPK = null;
+    goToDashboard();
   }
 
   function copyPK() {
@@ -718,7 +757,31 @@
   }
 
   // ── Kill Log helpers ───────────────────────────────────────────────────
+  let logPaused = false;
+
+  function toggleLogPause() {
+    logPaused = !logPaused;
+    const btn = document.getElementById("log-pause-btn");
+    btn.textContent = logPaused ? "RESUME" : "PAUSE";
+    btn.style.color = logPaused ? "var(--accent)" : "#888";
+    btn.style.borderColor = logPaused ? "var(--accent)" : "#333";
+  }
+
+  function setLogPaused(paused) {
+    logPaused = paused;
+    const btn = document.getElementById("log-pause-btn");
+    btn.textContent = logPaused ? "RESUME" : "PAUSE";
+    btn.style.color = logPaused ? "var(--accent)" : "#888";
+    btn.style.borderColor = logPaused ? "var(--accent)" : "#333";
+  }
+
+  function clearLog() {
+    const log = document.getElementById("kill-log-entries");
+    if (log) log.innerHTML = "";
+  }
+
   function appendLog(slot, msg, cls, txUrl) {
+    if (logPaused) return;
     const log = document.getElementById("kill-log-entries");
     if (!log) return;
     const entry = document.createElement("div");
@@ -937,7 +1000,8 @@
       const bal = await window.killAPI.getBalances();
       document.getElementById("d-native").textContent = bal.native.toFixed(4);
       document.getElementById("d-kill").textContent = Math.round(bal.kill).toLocaleString();
-    } catch (_) {}
+      if (bal.power !== undefined) document.getElementById("d-power").textContent = bal.power.toLocaleString();
+    } catch (e) { console.warn("[fetchBalances]", e.message || e); }
   }
 
   function setWalletLink(addr) {
@@ -963,6 +1027,7 @@
     walletReady = true;
     fetchBalances();
     fetchAgentInfo();
+    startBalancePoll();
   });
 
   // chain-changed: when switching to a chain with no wallet
@@ -970,6 +1035,7 @@
     activeChain = data.chain;
     applyChainLabels();
     walletReady = false;
+    stopBalancePoll();
     document.getElementById("dashboard").classList.add("hidden");
     document.getElementById("setup").classList.remove("hidden");
     // Reset setup state
@@ -1109,7 +1175,7 @@
     }
 
     if (lastAction) {
-      const colorMap = { "log-kill": "var(--purple)", "log-spawn": "var(--green)", "log-move": "var(--blue)", "log-retreat": "#ffaa00", "log-refresh": "#ffaa00" };
+      const colorMap = { "log-kill": "var(--accent)", "log-spawn": "var(--green)", "log-move": "var(--blue)", "log-retreat": "#ffaa00", "log-refresh": "#ffaa00" };
       document.getElementById("la-type").textContent = lastAction.action;
       document.getElementById("la-type").style.color = colorMap[lastAction.cls] || "#aaa";
       document.getElementById("la-detail").textContent = lastAction.detail;
@@ -1131,9 +1197,17 @@
     }
   });
 
+  let lastBalanceFetch = 0;
   window.killAPI.onBlockScan((data) => {
     if (agentRunning) return;
     document.getElementById("d-slot").textContent = data.slot;
+    appendLog(data.slot, `${CHAIN[activeChain].slot.toLowerCase()} received`, "log-block");
+    // Fetch balances every ~15s via block scan
+    const now = Date.now();
+    if (now - lastBalanceFetch > 15000) {
+      lastBalanceFetch = now;
+      fetchBalances();
+    }
   });
 
   window.killAPI.onAgentStatus((data) => {
@@ -1142,6 +1216,7 @@
     const btnStart = document.getElementById("btn-start");
     if (data.running) {
       agentRunning = true;
+      setLogPaused(false);
       dot.className = "status-dot running"; text.textContent = "Running";
       btnStart.textContent = "Start"; btnStart.disabled = false;
       appendLog("—", `AGENT ONLINE — strategy: ${(data.strategy || []).join(", ")}`, "log-spawn");
@@ -1150,6 +1225,7 @@
       dot.className = "status-dot stopped"; text.textContent = "Stopped";
       btnStart.textContent = "Start"; btnStart.disabled = false;
       appendLog("—", "AGENT STOPPED", "log-network");
+      setLogPaused(true);
       fetchBalances();
     }
   });
