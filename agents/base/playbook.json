@@ -1,11 +1,11 @@
 {
   "runs": {
     "run1": [
-      "market-maker",
-      "market-taker"
+      "fortress",
+      "fortress"
     ],
     "run2": [
-      "market-maker"
+      "sniper"
     ]
   },
   "strategy": ["run1", "run2"]
