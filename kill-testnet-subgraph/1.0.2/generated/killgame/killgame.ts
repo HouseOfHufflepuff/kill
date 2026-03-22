@@ -36,6 +36,66 @@ export class ApprovalForAll__Params {
   }
 }
 
+export class Claimed extends ethereum.Event {
+  get params(): Claimed__Params {
+    return new Claimed__Params(this);
+  }
+}
+
+export class Claimed__Params {
+  _event: Claimed;
+
+  constructor(event: Claimed) {
+    this._event = event;
+  }
+
+  get claimer(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get stackId(): i32 {
+    return this._event.parameters[1].value.toI32();
+  }
+
+  get units(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+}
+
+export class ConfigUpdated extends ethereum.Event {
+  get params(): ConfigUpdated__Params {
+    return new ConfigUpdated__Params(this);
+  }
+}
+
+export class ConfigUpdated__Params {
+  _event: ConfigUpdated;
+
+  constructor(event: ConfigUpdated) {
+    this._event = event;
+  }
+
+  get spawnCost(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get treasuryBps(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get maxMultiplier(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+
+  get blocksPerMultiplier(): BigInt {
+    return this._event.parameters[3].value.toBigInt();
+  }
+
+  get globalCapBps(): BigInt {
+    return this._event.parameters[4].value.toBigInt();
+  }
+}
+
 export class GlobalStats extends ethereum.Event {
   get params(): GlobalStats__Params {
     return new GlobalStats__Params(this);
@@ -310,28 +370,6 @@ export class TransferSingle__Params {
   }
 }
 
-export class TreasuryBpsUpdated extends ethereum.Event {
-  get params(): TreasuryBpsUpdated__Params {
-    return new TreasuryBpsUpdated__Params(this);
-  }
-}
-
-export class TreasuryBpsUpdated__Params {
-  _event: TreasuryBpsUpdated;
-
-  constructor(event: TreasuryBpsUpdated) {
-    this._event = event;
-  }
-
-  get oldBps(): BigInt {
-    return this._event.parameters[0].value.toBigInt();
-  }
-
-  get newBps(): BigInt {
-    return this._event.parameters[1].value.toBigInt();
-  }
-}
-
 export class URI extends ethereum.Event {
   get params(): URI__Params {
     return new URI__Params(this);
@@ -413,29 +451,6 @@ export class killgame extends ethereum.SmartContract {
     return new killgame("killgame", address);
   }
 
-  BLOCKS_PER_MULTIPLIER(): BigInt {
-    let result = super.call(
-      "BLOCKS_PER_MULTIPLIER",
-      "BLOCKS_PER_MULTIPLIER():(uint256)",
-      [],
-    );
-
-    return result[0].toBigInt();
-  }
-
-  try_BLOCKS_PER_MULTIPLIER(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "BLOCKS_PER_MULTIPLIER",
-      "BLOCKS_PER_MULTIPLIER():(uint256)",
-      [],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
   BURN_BPS(): BigInt {
     let result = super.call("BURN_BPS", "BURN_BPS():(uint256)", []);
 
@@ -451,44 +466,6 @@ export class killgame extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
-  GLOBAL_CAP_BPS(): BigInt {
-    let result = super.call("GLOBAL_CAP_BPS", "GLOBAL_CAP_BPS():(uint256)", []);
-
-    return result[0].toBigInt();
-  }
-
-  try_GLOBAL_CAP_BPS(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "GLOBAL_CAP_BPS",
-      "GLOBAL_CAP_BPS():(uint256)",
-      [],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  MAX_MULTIPLIER(): BigInt {
-    let result = super.call("MAX_MULTIPLIER", "MAX_MULTIPLIER():(uint256)", []);
-
-    return result[0].toBigInt();
-  }
-
-  try_MAX_MULTIPLIER(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "MAX_MULTIPLIER",
-      "MAX_MULTIPLIER():(uint256)",
-      [],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
   MOVE_COST(): BigInt {
     let result = super.call("MOVE_COST", "MOVE_COST():(uint256)", []);
 
@@ -497,21 +474,6 @@ export class killgame extends ethereum.SmartContract {
 
   try_MOVE_COST(): ethereum.CallResult<BigInt> {
     let result = super.tryCall("MOVE_COST", "MOVE_COST():(uint256)", []);
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  SPAWN_COST(): BigInt {
-    let result = super.call("SPAWN_COST", "SPAWN_COST():(uint256)", []);
-
-    return result[0].toBigInt();
-  }
-
-  try_SPAWN_COST(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall("SPAWN_COST", "SPAWN_COST():(uint256)", []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -593,6 +555,25 @@ export class killgame extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
+  airdropAmount(): BigInt {
+    let result = super.call("airdropAmount", "airdropAmount():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_airdropAmount(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "airdropAmount",
+      "airdropAmount():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   balanceOf(account: Address, id: BigInt): BigInt {
     let result = super.call(
       "balanceOf",
@@ -652,6 +633,29 @@ export class killgame extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBigIntArray());
+  }
+
+  blocksPerMultiplier(): BigInt {
+    let result = super.call(
+      "blocksPerMultiplier",
+      "blocksPerMultiplier():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_blocksPerMultiplier(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "blocksPerMultiplier",
+      "blocksPerMultiplier():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   getBirthBlock(agent: Address, id: BigInt): BigInt {
@@ -740,6 +744,40 @@ export class killgame extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  globalCapBps(): BigInt {
+    let result = super.call("globalCapBps", "globalCapBps():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_globalCapBps(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall("globalCapBps", "globalCapBps():(uint256)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  hasClaimed(param0: Address): boolean {
+    let result = super.call("hasClaimed", "hasClaimed(address):(bool)", [
+      ethereum.Value.fromAddress(param0),
+    ]);
+
+    return result[0].toBoolean();
+  }
+
+  try_hasClaimed(param0: Address): ethereum.CallResult<boolean> {
+    let result = super.tryCall("hasClaimed", "hasClaimed(address):(bool)", [
+      ethereum.Value.fromAddress(param0),
+    ]);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
   isApprovedForAll(account: Address, operator: Address): boolean {
@@ -832,6 +870,40 @@ export class killgame extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  maxMultiplier(): BigInt {
+    let result = super.call("maxMultiplier", "maxMultiplier():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_maxMultiplier(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "maxMultiplier",
+      "maxMultiplier():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  merkleRoot(): Bytes {
+    let result = super.call("merkleRoot", "merkleRoot():(bytes32)", []);
+
+    return result[0].toBytes();
+  }
+
+  try_merkleRoot(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall("merkleRoot", "merkleRoot():(bytes32)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
   multicall(data: Array<Bytes>): Array<Bytes> {
     let result = super.call("multicall", "multicall(bytes[]):(bytes[])", [
       ethereum.Value.fromBytesArray(data),
@@ -864,6 +936,21 @@ export class killgame extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  spawnCost(): BigInt {
+    let result = super.call("spawnCost", "spawnCost():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_spawnCost(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall("spawnCost", "spawnCost():(uint256)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   stackHeads(param0: BigInt): Address {
@@ -1156,6 +1243,40 @@ export class AdminWithdrawCall__Outputs {
   }
 }
 
+export class ClaimCall extends ethereum.Call {
+  get inputs(): ClaimCall__Inputs {
+    return new ClaimCall__Inputs(this);
+  }
+
+  get outputs(): ClaimCall__Outputs {
+    return new ClaimCall__Outputs(this);
+  }
+}
+
+export class ClaimCall__Inputs {
+  _call: ClaimCall;
+
+  constructor(call: ClaimCall) {
+    this._call = call;
+  }
+
+  get proof(): Array<Bytes> {
+    return this._call.inputValues[0].value.toBytesArray();
+  }
+
+  get stackId(): i32 {
+    return this._call.inputValues[1].value.toI32();
+  }
+}
+
+export class ClaimCall__Outputs {
+  _call: ClaimCall;
+
+  constructor(call: ClaimCall) {
+    this._call = call;
+  }
+}
+
 export class KillCall extends ethereum.Call {
   get inputs(): KillCall__Inputs {
     return new KillCall__Inputs(this);
@@ -1396,6 +1517,36 @@ export class SafeTransferFromCall__Outputs {
   }
 }
 
+export class SetAirdropAmountCall extends ethereum.Call {
+  get inputs(): SetAirdropAmountCall__Inputs {
+    return new SetAirdropAmountCall__Inputs(this);
+  }
+
+  get outputs(): SetAirdropAmountCall__Outputs {
+    return new SetAirdropAmountCall__Outputs(this);
+  }
+}
+
+export class SetAirdropAmountCall__Inputs {
+  _call: SetAirdropAmountCall;
+
+  constructor(call: SetAirdropAmountCall) {
+    this._call = call;
+  }
+
+  get _amount(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+}
+
+export class SetAirdropAmountCall__Outputs {
+  _call: SetAirdropAmountCall;
+
+  constructor(call: SetAirdropAmountCall) {
+    this._call = call;
+  }
+}
+
 export class SetApprovalForAllCall extends ethereum.Call {
   get inputs(): SetApprovalForAllCall__Inputs {
     return new SetApprovalForAllCall__Inputs(this);
@@ -1430,32 +1581,78 @@ export class SetApprovalForAllCall__Outputs {
   }
 }
 
-export class SetTreasuryBpsCall extends ethereum.Call {
-  get inputs(): SetTreasuryBpsCall__Inputs {
-    return new SetTreasuryBpsCall__Inputs(this);
+export class SetConfigCall extends ethereum.Call {
+  get inputs(): SetConfigCall__Inputs {
+    return new SetConfigCall__Inputs(this);
   }
 
-  get outputs(): SetTreasuryBpsCall__Outputs {
-    return new SetTreasuryBpsCall__Outputs(this);
+  get outputs(): SetConfigCall__Outputs {
+    return new SetConfigCall__Outputs(this);
   }
 }
 
-export class SetTreasuryBpsCall__Inputs {
-  _call: SetTreasuryBpsCall;
+export class SetConfigCall__Inputs {
+  _call: SetConfigCall;
 
-  constructor(call: SetTreasuryBpsCall) {
+  constructor(call: SetConfigCall) {
     this._call = call;
   }
 
-  get _newBps(): BigInt {
+  get _spawnCost(): BigInt {
     return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _treasuryBps(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get _maxMultiplier(): BigInt {
+    return this._call.inputValues[2].value.toBigInt();
+  }
+
+  get _blocksPerMultiplier(): BigInt {
+    return this._call.inputValues[3].value.toBigInt();
+  }
+
+  get _globalCapBps(): BigInt {
+    return this._call.inputValues[4].value.toBigInt();
   }
 }
 
-export class SetTreasuryBpsCall__Outputs {
-  _call: SetTreasuryBpsCall;
+export class SetConfigCall__Outputs {
+  _call: SetConfigCall;
 
-  constructor(call: SetTreasuryBpsCall) {
+  constructor(call: SetConfigCall) {
+    this._call = call;
+  }
+}
+
+export class SetMerkleRootCall extends ethereum.Call {
+  get inputs(): SetMerkleRootCall__Inputs {
+    return new SetMerkleRootCall__Inputs(this);
+  }
+
+  get outputs(): SetMerkleRootCall__Outputs {
+    return new SetMerkleRootCall__Outputs(this);
+  }
+}
+
+export class SetMerkleRootCall__Inputs {
+  _call: SetMerkleRootCall;
+
+  constructor(call: SetMerkleRootCall) {
+    this._call = call;
+  }
+
+  get _root(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+}
+
+export class SetMerkleRootCall__Outputs {
+  _call: SetMerkleRootCall;
+
+  constructor(call: SetMerkleRootCall) {
     this._call = call;
   }
 }

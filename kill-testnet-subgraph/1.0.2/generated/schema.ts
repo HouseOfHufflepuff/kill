@@ -496,7 +496,7 @@ export class Killed extends Entity {
   }
 }
 
-export class DefenderReward extends Entity {
+export class Claimed extends Entity {
   constructor(id: string) {
     super();
     this.set("id", Value.fromString(id));
@@ -504,24 +504,22 @@ export class DefenderReward extends Entity {
 
   save(): void {
     let id = this.get("id");
-    assert(id != null, "Cannot save DefenderReward entity without an ID");
+    assert(id != null, "Cannot save Claimed entity without an ID");
     if (id) {
       assert(
         id.kind == ValueKind.STRING,
-        `Entities of type DefenderReward must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+        `Entities of type Claimed must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
       );
-      store.set("DefenderReward", id.toString(), this);
+      store.set("Claimed", id.toString(), this);
     }
   }
 
-  static loadInBlock(id: string): DefenderReward | null {
-    return changetype<DefenderReward | null>(
-      store.get_in_block("DefenderReward", id),
-    );
+  static loadInBlock(id: string): Claimed | null {
+    return changetype<Claimed | null>(store.get_in_block("Claimed", id));
   }
 
-  static load(id: string): DefenderReward | null {
-    return changetype<DefenderReward | null>(store.get("DefenderReward", id));
+  static load(id: string): Claimed | null {
+    return changetype<Claimed | null>(store.get("Claimed", id));
   }
 
   get id(): string {
@@ -537,8 +535,8 @@ export class DefenderReward extends Entity {
     this.set("id", Value.fromString(value));
   }
 
-  get defender(): Bytes {
-    let value = this.get("defender");
+  get claimer(): Bytes {
+    let value = this.get("claimer");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -546,12 +544,12 @@ export class DefenderReward extends Entity {
     }
   }
 
-  set defender(value: Bytes) {
-    this.set("defender", Value.fromBytes(value));
+  set claimer(value: Bytes) {
+    this.set("claimer", Value.fromBytes(value));
   }
 
-  get amount(): BigInt {
-    let value = this.get("amount");
+  get stackId(): BigInt {
+    let value = this.get("stackId");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -559,8 +557,21 @@ export class DefenderReward extends Entity {
     }
   }
 
-  set amount(value: BigInt) {
-    this.set("amount", Value.fromBigInt(value));
+  set stackId(value: BigInt) {
+    this.set("stackId", Value.fromBigInt(value));
+  }
+
+  get units(): BigInt {
+    let value = this.get("units");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set units(value: BigInt) {
+    this.set("units", Value.fromBigInt(value));
   }
 
   get block_number(): BigInt {
@@ -877,6 +888,124 @@ export class Agent extends Entity {
   set lastActiveBlock(value: BigInt) {
     this.set("lastActiveBlock", Value.fromBigInt(value));
   }
+
+  get airdropClaimed(): boolean {
+    let value = this.get("airdropClaimed");
+    if (!value || value.kind == ValueKind.NULL) {
+      return false;
+    } else {
+      return value.toBoolean();
+    }
+  }
+
+  set airdropClaimed(value: boolean) {
+    this.set("airdropClaimed", Value.fromBoolean(value));
+  }
+}
+
+export class Config extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save Config entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type Config must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("Config", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): Config | null {
+    return changetype<Config | null>(store.get_in_block("Config", id));
+  }
+
+  static load(id: string): Config | null {
+    return changetype<Config | null>(store.get("Config", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get spawnCost(): BigInt {
+    let value = this.get("spawnCost");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set spawnCost(value: BigInt) {
+    this.set("spawnCost", Value.fromBigInt(value));
+  }
+
+  get treasuryBps(): BigInt {
+    let value = this.get("treasuryBps");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set treasuryBps(value: BigInt) {
+    this.set("treasuryBps", Value.fromBigInt(value));
+  }
+
+  get maxMultiplier(): BigInt {
+    let value = this.get("maxMultiplier");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set maxMultiplier(value: BigInt) {
+    this.set("maxMultiplier", Value.fromBigInt(value));
+  }
+
+  get blocksPerMultiplier(): BigInt {
+    let value = this.get("blocksPerMultiplier");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set blocksPerMultiplier(value: BigInt) {
+    this.set("blocksPerMultiplier", Value.fromBigInt(value));
+  }
+
+  get globalCapBps(): BigInt {
+    let value = this.get("globalCapBps");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set globalCapBps(value: BigInt) {
+    this.set("globalCapBps", Value.fromBigInt(value));
+  }
 }
 
 export class GlobalStat extends Entity {
@@ -1020,5 +1149,57 @@ export class GlobalStat extends Entity {
 
   set maxBounty(value: BigInt) {
     this.set("maxBounty", Value.fromBigInt(value));
+  }
+
+  get spawnCost(): BigInt {
+    let value = this.get("spawnCost");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set spawnCost(value: BigInt) {
+    this.set("spawnCost", Value.fromBigInt(value));
+  }
+
+  get blocksPerMultiplier(): BigInt {
+    let value = this.get("blocksPerMultiplier");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set blocksPerMultiplier(value: BigInt) {
+    this.set("blocksPerMultiplier", Value.fromBigInt(value));
+  }
+
+  get maxMultiplier(): BigInt {
+    let value = this.get("maxMultiplier");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set maxMultiplier(value: BigInt) {
+    this.set("maxMultiplier", Value.fromBigInt(value));
+  }
+
+  get globalCapBps(): BigInt {
+    let value = this.get("globalCapBps");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set globalCapBps(value: BigInt) {
+    this.set("globalCapBps", Value.fromBigInt(value));
   }
 }

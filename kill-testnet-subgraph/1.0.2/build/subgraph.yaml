@@ -6,9 +6,9 @@ dataSources:
     name: killgame
     network: base-sepolia
     source:
-      address: "0xfd21c1c28d58e420837e8057A227C3D432D289Ec"
+      address: "0x51D5d36749FD12cf78ca38E39F68Aa4b78a6D28C"
       abi: killgame
-      startBlock: 38231086
+      startBlock: 39215199
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -17,9 +17,12 @@ dataSources:
         - Spawned
         - Moved
         - Killed
+        - Claimed
         - GlobalStat
         - Stack
         - AgentStack
+        - Agent
+        - Config
       abis:
         - name: killgame
           file: killgame/killgame.json
@@ -33,4 +36,8 @@ dataSources:
           handler: handleKilled
         - event: GlobalStats(uint256,uint256,uint256,uint256,uint256)
           handler: handleGlobalStats
+        - event: ConfigUpdated(uint256,uint256,uint256,uint256,uint256)
+          handler: handleConfigUpdated
+        - event: Claimed(indexed address,indexed uint16,uint256)
+          handler: handleClaimed
       file: killgame/killgame.wasm
