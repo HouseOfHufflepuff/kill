@@ -54,7 +54,7 @@ const ENV_PATH   = path.join(USER_DATA, ".env");
 const NETWORK_PATH = path.join(USER_DATA, "network.json");
 
 // ── Chain state ───────────────────────────────────────────────────────────
-let currentChain = "solana"; // 'solana' | 'base'
+let currentChain = "base"; // 'solana' | 'base'
 
 function loadNetworkPref() {
   try {
@@ -367,8 +367,9 @@ ipcMain.handle("import-wallet", async (_e, input) => {
     return kp.publicKey.toBase58();
   } else {
     loadBaseDeps();
-    const pk = input.trim();
-    if (!/^0x[0-9a-fA-F]{64}$/.test(pk)) throw new Error("Must be a 0x-prefixed 64-char hex key");
+    let pk = input.trim();
+    if (/^[0-9a-fA-F]{64}$/.test(pk)) pk = "0x" + pk;
+    if (!/^0x[0-9a-fA-F]{64}$/.test(pk)) throw new Error("Must be a 64-char hex key (with or without 0x prefix)");
     const w = new ethersLib.Wallet(pk);
     writeEnvKey(envKey(), pk);
     wallet = w;

@@ -7,8 +7,6 @@ set -e
 REPO="https://github.com/HouseOfHufflepuff/kill.git"
 INSTALL_DIR="$(pwd)"
 DESKTOP_DIR="$INSTALL_DIR/agents/desktop"
-BIN_DIR="$HOME/.local/bin"
-CMD_NAME="killgame"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 C_PURPLE="\033[0;35m"
@@ -50,120 +48,42 @@ NODE_VERSION=$(node -e "process.stdout.write(process.version.slice(1).split('.')
 
 ok "Node $(node --version), npm $(npm --version), git $(git --version | awk '{print $3}')"
 
-# ── Clone or update ───────────────────────────────────────────────────────────
+# ── Sparse clone (agents/ only) ──────────────────────────────────────────────
 step "2/4" "Installing source..."
 
 if [ -d "$INSTALL_DIR/.git" ]; then
   echo -e "${C_GRAY}  Existing install found — pulling latest...${C_RESET}"
-  git -C "$INSTALL_DIR" pull --quiet
+  git -C "$INSTALL_DIR" fetch --quiet origin
+  git -C "$INSTALL_DIR" reset --hard origin/main --quiet
   ok "Updated $INSTALL_DIR"
 else
-  echo -e "${C_GRAY}  Cloning into $(pwd) ...${C_RESET}"
-  git clone --quiet "$REPO" .
-  ok "Cloned to $INSTALL_DIR"
+  echo -e "${C_GRAY}  Fetching agents into $(pwd) ...${C_RESET}"
+  git init --quiet
+  git remote add origin "$REPO"
+  git config core.sparseCheckout true
+  echo "agents/" > .git/info/sparse-checkout
+  git fetch --quiet --depth=1 origin main
+  git checkout --quiet main
+  ok "Installed to $INSTALL_DIR"
 fi
 
 # ── npm install (desktop app — includes Solana + Base deps) ───────────────────
 step "3/4" "Installing dependencies..."
 
-echo -e "${C_GRAY}  Installing desktop app dependencies (Solana + Base)...${C_RESET}"
+echo -e "${C_GRAY}  Installing desktop app dependencies...${C_RESET}"
 (cd "$DESKTOP_DIR" && npm install --quiet 2>/dev/null)
-ok "Desktop dependencies installed"
+ok "Dependencies installed"
 
-# ── Write killgame command ────────────────────────────────────────────────────
-step "4/4" "Installing ${CMD_NAME} command..."
+# ── Launch ────────────────────────────────────────────────────────────────────
+step "4/4" "Launching KILLGame..."
 
-mkdir -p "$BIN_DIR"
-
-cat > "$BIN_DIR/$CMD_NAME" <<WRAPPER
-#!/bin/bash
-DESKTOP_DIR="$DESKTOP_DIR"
-INSTALL_DIR="$INSTALL_DIR"
-CMD="\${1:-help}"
-
-case "\$CMD" in
-
-  setup)
-    echo "Opening KILLGame setup..."
-    cd "\$DESKTOP_DIR" && npm start --silent
-    ;;
-
-  start)
-    echo "Starting KILLGame agent..."
-    cd "\$DESKTOP_DIR" && npm start --silent
-    ;;
-
-  dev)
-    echo "Starting KILLGame in developer mode..."
-    cd "\$DESKTOP_DIR" && NODE_ENV=development npm start --silent
-    ;;
-
-  update)
-    echo "Pulling latest from GitHub..."
-    git -C "\$INSTALL_DIR" pull
-    echo "Updating dependencies..."
-    cd "\$DESKTOP_DIR" && npm install --quiet
-    echo "Done."
-    ;;
-
-  build)
-    echo "Building distributable..."
-    cd "\$DESKTOP_DIR" && npm run build
-    ;;
-
-  where)
-    echo "\$INSTALL_DIR"
-    ;;
-
-  help|--help|-h|*)
-    echo ""
-    echo "  killgame <command>"
-    echo ""
-    echo "  setup     Configure wallet and agent settings"
-    echo "  start     Launch the agent GUI (Solana + Base)"
-    echo "  dev       Launch with developer tools open"
-    echo "  update    Pull latest source from GitHub"
-    echo "  build     Build distributable DMG / EXE"
-    echo "  where     Print install directory"
-    echo ""
-    echo "  Network is selectable in the app via dropdown."
-    echo "  Source: $INSTALL_DIR"
-    echo ""
-    ;;
-
-esac
-WRAPPER
-
-chmod +x "$BIN_DIR/$CMD_NAME"
-ok "Wrote $BIN_DIR/$CMD_NAME"
-
-# ── PATH check ────────────────────────────────────────────────────────────────
-if ! echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
-  echo ""
-  warn "$BIN_DIR is not in your PATH."
-  echo ""
-  echo -e "${C_GRAY}  Add it by running:${C_RESET}"
-  echo ""
-
-  SHELL_RC="$HOME/.bashrc"
-  [ -n "$ZSH_VERSION" ] && SHELL_RC="$HOME/.zshrc"
-  [ -f "$HOME/.zshrc" ] && SHELL_RC="$HOME/.zshrc"
-
-  echo "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> $SHELL_RC"
-  echo "    source $SHELL_RC"
-  echo ""
-fi
-
-# ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${C_GREEN}${C_BOLD}  Installation complete.${C_RESET}"
 echo ""
-echo -e "  ${C_BOLD}killgame setup${C_RESET}   ${C_GRAY}— Create or import your wallet${C_RESET}"
-echo -e "  ${C_BOLD}killgame start${C_RESET}   ${C_GRAY}— Launch the agent (Solana + Base)${C_RESET}"
-echo -e "  ${C_BOLD}killgame dev${C_RESET}     ${C_GRAY}— Launch with DevTools for development${C_RESET}"
-echo -e "  ${C_BOLD}killgame update${C_RESET}  ${C_GRAY}— Pull latest source from GitHub${C_RESET}"
+echo -e "  ${C_GRAY}Source installed at: $INSTALL_DIR/agents${C_RESET}"
+echo -e "  ${C_GRAY}To relaunch:  cd $INSTALL_DIR/agents/desktop && npm start${C_RESET}"
+echo -e "  ${C_GRAY}With DevTools: cd $INSTALL_DIR/agents/desktop && NODE_ENV=development npm start${C_RESET}"
+echo -e "  ${C_GRAY}To update:    cd $INSTALL_DIR && git pull${C_RESET}"
 echo ""
-echo -e "  ${C_GRAY}Source installed at: $INSTALL_DIR${C_RESET}"
-echo -e "  ${C_GRAY}All source files are in this directory for editing.${C_RESET}"
-echo -e "  ${C_GRAY}Select network:      In-app dropdown (Solana / Base)${C_RESET}"
-echo ""
+
+cd "$DESKTOP_DIR" && exec npm start --silent
