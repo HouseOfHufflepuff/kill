@@ -164,19 +164,20 @@ Clones the repo and runs agent.js directly via hardhat. No Electron, no cached c
 
 | Item | Location |
 |------|----------|
-| Agent source | Cloned repo at install path (e.g. `~/.killgame`) |
+| Agent source | Cloned repo in current directory |
 | Config | `<install>/agents/base/config.json` (direct, no caching) |
 | Playbook | `<install>/agents/base/playbook.json` (direct) |
-| Wallet keys | `<install>/.env` (project root) |
+| Wallet keys | Desktop app uses `~/Library/Application Support/killgame-dev/.env` |
 
 ```shell
+mkdir killgame && cd killgame
 curl -fsSL https://killgame.ai/kill.sh | bash
 ```
 
-Clones repo to `~/.killgame`, installs deps, writes `killgame` to `~/.local/bin/`.
+Clones repo into the current directory, installs deps, writes `killgame` to `~/.local/bin/`. All source files are accessible for editing.
 
 ```shell
-killgame setup    # Create or import Solana wallet
+killgame setup    # Create or import wallet
 killgame start    # Launch agent GUI
 killgame dev      # Launch with DevTools open
 killgame update   # Pull latest from GitHub
@@ -184,7 +185,7 @@ killgame build    # Build distributable DMG / EXE
 killgame where    # Print install directory
 
 # Wipe fresh
-rm -rf ~/.killgame
+rm -rf <install-dir>
 ```
 
 ### Cross-testing

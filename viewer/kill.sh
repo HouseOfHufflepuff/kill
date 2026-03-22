@@ -1,11 +1,11 @@
 #!/bin/bash
 # KILLGame Agent — Developer Install (Solana + Base)
-# Usage: curl -fsSL https://killgame.ai/kill.sh | bash
+# Usage: mkdir killgame && cd killgame && curl -fsSL https://killgame.ai/kill.sh | bash
 
 set -e
 
 REPO="https://github.com/HouseOfHufflepuff/kill.git"
-INSTALL_DIR="$HOME/.killgame"
+INSTALL_DIR="$(pwd)"
 DESKTOP_DIR="$INSTALL_DIR/agents/desktop"
 BIN_DIR="$HOME/.local/bin"
 CMD_NAME="killgame"
@@ -27,7 +27,7 @@ print_header() {
   echo -e "${C_PURPLE}${C_BOLD}  ██║  ██╗██║███████╗███████╗╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗${C_RESET}"
   echo -e "${C_PURPLE}${C_BOLD}  ╚═╝  ╚═╝╚═╝╚══════╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝${C_RESET}"
   echo ""
-  echo -e "${C_GRAY}  Solana + Base Agent — Developer Install${C_RESET}"
+  echo -e "${C_GRAY}  Developer Install — Solana + Base${C_RESET}"
   echo ""
 }
 
@@ -58,8 +58,8 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   git -C "$INSTALL_DIR" pull --quiet
   ok "Updated $INSTALL_DIR"
 else
-  echo -e "${C_GRAY}  Cloning to $INSTALL_DIR ...${C_RESET}"
-  git clone --quiet "$REPO" "$INSTALL_DIR"
+  echo -e "${C_GRAY}  Cloning into $(pwd) ...${C_RESET}"
+  git clone --quiet "$REPO" .
   ok "Cloned to $INSTALL_DIR"
 fi
 
@@ -112,7 +112,7 @@ case "\$CMD" in
     ;;
 
   where)
-    echo "\$DESKTOP_DIR"
+    echo "\$INSTALL_DIR"
     ;;
 
   help|--help|-h|*)
@@ -164,6 +164,6 @@ echo -e "  ${C_BOLD}killgame dev${C_RESET}     ${C_GRAY}— Launch with DevTools
 echo -e "  ${C_BOLD}killgame update${C_RESET}  ${C_GRAY}— Pull latest source from GitHub${C_RESET}"
 echo ""
 echo -e "  ${C_GRAY}Source installed at: $INSTALL_DIR${C_RESET}"
-echo -e "  ${C_GRAY}Agent UI:            $DESKTOP_DIR/index.html${C_RESET}"
+echo -e "  ${C_GRAY}All source files are in this directory for editing.${C_RESET}"
 echo -e "  ${C_GRAY}Select network:      In-app dropdown (Solana / Base)${C_RESET}"
 echo ""
