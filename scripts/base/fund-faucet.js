@@ -12,7 +12,7 @@ async function main() {
     const killToken = new ethers.Contract(process.env.KILL_TOKEN, TRANSFER_ABI, deployer);
 
     const amount = ethers.utils.parseEther("6660000000"); // 6.66B KILL
-    console.log(`Transferring 666M KILL to faucet ${process.env.KILL_FAUCET}...`);
+    console.log(`Transferring 6.66B KILL to faucet ${process.env.KILL_FAUCET}...`);
 
     const tx = await killToken.transfer(process.env.KILL_FAUCET, amount);
     await tx.wait();

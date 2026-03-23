@@ -38,7 +38,7 @@
     "rpc_url": "https://base-sepolia-rpc.publicnode.com",
     "kill_game_addr": "0x51D5d36749FD12cf78ca38E39F68Aa4b78a6D28C",
     "kill_token_addr": "0x64495a16a43309bf863A62d6E85B861c9215C6C3",
-    "kill_faucet_addr": "0xDFcF36Df2ed7769Bb642c22D4CCdC064eF999B41",
+    "kill_faucet_addr": "0x9EdFb34B998078dd96928deEcCe3e2fa25B03AeE",
     "weth_addr": "0x4200000000000000000000000000000000000006",
     "pool_addr": "0xe0f2D522dad89eB1fA3Dc829B760aCe8fc027Ae5",
     "uniswap_v3_factory": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",

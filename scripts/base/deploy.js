@@ -28,9 +28,9 @@ async function main() {
     const killFaucet = await KillFaucet.deploy(KILL_TOKEN);
     console.log(killFaucet.address + " deployed to KillFaucet");
 
-    const KillGame = await ethers.getContractFactory("KILLGame");
-    const killGame = await KillGame.deploy(KILL_TOKEN);
-    console.log(killGame.address + " deployed to KillGame");
+    // const KillGame = await ethers.getContractFactory("KILLGame");
+    // const killGame = await KillGame.deploy(KILL_TOKEN);
+    // console.log(killGame.address + " deployed to KillGame");
 
 
 

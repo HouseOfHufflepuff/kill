@@ -535,10 +535,16 @@ async function startBaseAgent(config, playbook) {
     try {
       const claimed = await killFaucet.hasClaimed(baseWallet.address);
       if (!claimed) {
+        console.log("[AGENT/BASE] Claiming faucet...");
         const tx = await killFaucet.pullKill({ gasLimit: 200000 });
         await tx.wait();
+        console.log("[AGENT/BASE] Faucet claimed.");
+        send("agent-airdrop", { success: true });
       }
-    } catch (_) {}
+    } catch (e) {
+      console.log("[AGENT/BASE] Faucet claim failed:", e.reason || e.message);
+      send("agent-unfunded", { message: "Faucet claim failed: " + (e.reason || e.message) });
+    }
   }
 
   console.log("[AGENT/BASE] Starting. Wallet:", baseWallet.address);
