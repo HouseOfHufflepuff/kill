@@ -72,14 +72,6 @@ module.exports = {
         if (!hasReachedTarget) {
             actionBatch.push(killGame.interface.encodeFunctionData("spawn", [HUB_STACK, REPLENISH_AMT]));
             actionRows.push({ Action: 'SPAWN', Detail: `${REPLENISH_AMT} → Stack ${HUB_STACK}`, Result: `${YEL}PENDING${RES}` });
-
-            // Retreat stranded stacks while building up
-            const stranded = myActiveStacks.find(s => s.id !== HUB_STACK);
-            if (stranded) {
-                const step = ALL_IDS.filter(id => isAdjacent(stranded.id, id)).sort((a, b) => getManhattanDist(a, HUB_STACK) - getManhattanDist(b, HUB_STACK))[0];
-                actionBatch.push(killGame.interface.encodeFunctionData("move", [stranded.id, step, stranded.units, stranded.reapers]));
-                actionRows.push({ Action: 'RETREAT', Detail: `Stack ${stranded.id} → ${step}`, Result: `${YEL}PENDING${RES}` });
-            }
         } else {
             // At target power — only attack with overwhelming force against the strongest enemy
             if (hubState.enemies.length > 0 && hubState.self) {
@@ -117,6 +109,23 @@ module.exports = {
                 actionRows.forEach(r => { r.Result = `${GRN}OK${RES}`; r.Tx = txLinkStr; });
             } catch (e) {
                 actionRows.push({ Action: 'TX', Detail: e.reason || e.message, Result: `${RED}FAIL${RES}`, Tx: '' });
+            }
+        }
+
+        // Retreat stranded stacks separately so failure doesn't block spawns
+        if (!hasReachedTarget) {
+            const stranded = myActiveStacks.find(s => s.id !== HUB_STACK);
+            if (stranded) {
+                const step = ALL_IDS.filter(id => isAdjacent(stranded.id, id)).sort((a, b) => getManhattanDist(a, HUB_STACK) - getManhattanDist(b, HUB_STACK))[0];
+                try {
+                    const tx = await killGame.move(stranded.id, step, stranded.units, stranded.reapers, txOpt);
+                    await tx.wait();
+                    const fullUrl   = `${config.network.block_explorer}/${tx.hash}`;
+                    const txLinkStr = config.network.block_explorer ? `\x1b]8;;${fullUrl}\x1b\\↗\x1b]8;;\x1b\\` : '';
+                    actionRows.push({ Action: 'RETREAT', Detail: `Stack ${stranded.id} → ${step}`, Result: `${GRN}OK${RES}`, Tx: txLinkStr });
+                } catch (e) {
+                    actionRows.push({ Action: 'RETREAT', Detail: `Stack ${stranded.id} → ${step}: ${e.reason || e.message}`, Result: `${RED}FAIL${RES}`, Tx: '' });
+                }
             }
         }
 
