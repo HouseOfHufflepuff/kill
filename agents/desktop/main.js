@@ -538,13 +538,27 @@ async function startBaseAgent(config, playbook) {
         console.log("[AGENT/BASE] Claiming faucet...");
         const tx = await killFaucet.pullKill({ gasLimit: 200000 });
         await tx.wait();
-        console.log("[AGENT/BASE] Faucet claimed.");
-        send("agent-airdrop", { success: true });
+        const faucetBal = await getBalances_base(baseWallet, provider, killTokenAddr);
+        console.log("[AGENT/BASE] Faucet claimed. KILL:", Math.round(faucetBal.kill));
+        send("agent-airdrop", { amount: Math.round(faucetBal.kill).toLocaleString(), unit: "KILL" });
       }
     } catch (e) {
       console.log("[AGENT/BASE] Faucet claim failed:", e.reason || e.message);
       send("agent-unfunded", { message: "Faucet claim failed: " + (e.reason || e.message) });
     }
+  }
+
+  // Ensure max approval for game contract to spend KILL
+  try {
+    const allowance = await killToken.allowance(baseWallet.address, config.network.kill_game_addr);
+    if (allowance.lt(ethersLib.constants.MaxUint256.div(2))) {
+      console.log("[AGENT/BASE] Approving game contract...");
+      const tx = await killToken.approve(config.network.kill_game_addr, ethersLib.constants.MaxUint256);
+      await tx.wait();
+      console.log("[AGENT/BASE] Approved.");
+    }
+  } catch (e) {
+    console.log("[AGENT/BASE] Approval failed:", e.reason || e.message);
   }
 
   console.log("[AGENT/BASE] Starting. Wallet:", baseWallet.address);
